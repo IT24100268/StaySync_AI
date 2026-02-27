@@ -327,6 +327,7 @@ def dashboard_summary(request):
     data = {
         "partner": {
             "id": partner.id,
+            "username": partner.user.username,
             "is_online": partner.is_online,
             "rating": partner.rating if hasattr(partner, 'rating') else None
         },

@@ -9,6 +9,33 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 class DeliverySerializer(serializers.ModelSerializer):
+    order_details = serializers.SerializerMethodField()
+    restaurant_name = serializers.SerializerMethodField()
+    drop_address = serializers.SerializerMethodField()
+    earning_amount = serializers.SerializerMethodField()
+
+    def get_order_details(self, obj):
+        order = obj.order
+        return {
+            "id": order.id,
+            "restaurant_name": order.restaurant_name,
+            "drop_address": order.drop_address,
+            "total_price": str(order.total_price),
+            "student_name": order.student_name,
+        }
+
+    def get_restaurant_name(self, obj):
+        return obj.order.restaurant_name
+
+    def get_drop_address(self, obj):
+        return obj.order.drop_address
+
+    def get_earning_amount(self, obj):
+        # Show computed earning even if Earnings row doesn't exist yet.
+        if hasattr(obj, "earnings"):
+            return str(obj.earnings.amount)
+        return str(obj.order.total_price * 0.2)
+
     class Meta:
         model = Delivery
         fields = "__all__"
