@@ -1,42 +1,71 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  min-height: 100vh;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 620px at -10% -25%, rgba(72, 138, 255, 0.3), transparent 60%),
+    radial-gradient(900px 480px at 100% -20%, rgba(91, 180, 255, 0.22), transparent 65%),
+    linear-gradient(180deg, #eaf1ff 0%, #dfebff 100%);
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.glass-card {
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  box-shadow: 0 12px 32px rgba(47, 74, 126, 0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 24px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.topbar-gradient {
+  background: linear-gradient(135deg, #2f5ed1 0%, #4094ff 58%, #54afff 100%);
+  border-radius: 24px;
+  box-shadow: 0 16px 36px rgba(44, 106, 224, 0.3);
 }
 
-.card {
-  padding: 2em;
+.pill {
+  border-radius: 999px !important;
 }
 
-.read-the-docs {
-  color: #888;
+.dashboard-shell {
+  position: relative;
+}
+
+.page-shell {
+  background: rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 26px;
+  padding: 18px;
+}
+
+.top-pill {
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: #526993 !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+}
+
+.top-pill-green {
+  background: linear-gradient(145deg, #5ec7a4 0%, #4bad8e 100%) !important;
+  color: #fff !important;
+}
+
+.top-pill-warn {
+  background: linear-gradient(145deg, #ffbb58 0%, #f0a33d 100%) !important;
+  color: #fff !important;
+}
+
+.map-placeholder {
+  background:
+    linear-gradient(180deg, rgba(239, 244, 255, 0.85), rgba(229, 237, 254, 0.95)),
+    repeating-linear-gradient(55deg, rgba(116, 146, 199, 0.09), rgba(116, 146, 199, 0.09) 12px, transparent 12px, transparent 24px);
+  border: 1px solid rgba(137, 162, 210, 0.24);
+}
+
+.route-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #75cfb0 0%, #60c3c3 22%, #4d84e7 60%, #cfd8ef 100%);
 }
