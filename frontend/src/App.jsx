@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
 import Navbar from './components/Navbar';
+import PublicHome from './pages/PublicHome';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -16,25 +17,33 @@ import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
 import Tracking from './pages/Tracking';
 
+const ProtectedLayout = ({ children }) => (
+  <>
+    <Navbar />
+    {children}
+  </>
+);
+
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Navbar />
         <Routes>
+          <Route path="/" element={<PublicHome />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
-          <Route path="/rooms" element={<PrivateRoute><Rooms /></PrivateRoute>} />
-          <Route path="/rooms/:id" element={<PrivateRoute><RoomDetail /></PrivateRoute>} />
-          <Route path="/favorites" element={<PrivateRoute><Favorites /></PrivateRoute>} />
-          <Route path="/bookings" element={<PrivateRoute><Bookings /></PrivateRoute>} />
-          <Route path="/restaurants" element={<PrivateRoute><Restaurants /></PrivateRoute>} />
-          <Route path="/restaurants/:id" element={<PrivateRoute><RestaurantMenu /></PrivateRoute>} />
-          <Route path="/checkout" element={<PrivateRoute><Checkout /></PrivateRoute>} />
-          <Route path="/orders" element={<PrivateRoute><Orders /></PrivateRoute>} />
-          <Route path="/tracking/:orderId" element={<PrivateRoute><Tracking /></PrivateRoute>} />
+          
+          <Route path="/student/dashboard" element={<PrivateRoute><ProtectedLayout><Dashboard /></ProtectedLayout></PrivateRoute>} />
+          <Route path="/profile" element={<PrivateRoute><ProtectedLayout><Profile /></ProtectedLayout></PrivateRoute>} />
+          <Route path="/rooms" element={<PrivateRoute><ProtectedLayout><Rooms /></ProtectedLayout></PrivateRoute>} />
+          <Route path="/rooms/:id" element={<PrivateRoute><ProtectedLayout><RoomDetail /></ProtectedLayout></PrivateRoute>} />
+          <Route path="/favorites" element={<PrivateRoute><ProtectedLayout><Favorites /></ProtectedLayout></PrivateRoute>} />
+          <Route path="/bookings" element={<PrivateRoute><ProtectedLayout><Bookings /></ProtectedLayout></PrivateRoute>} />
+          <Route path="/restaurants" element={<PrivateRoute><ProtectedLayout><Restaurants /></ProtectedLayout></PrivateRoute>} />
+          <Route path="/restaurants/:id" element={<PrivateRoute><ProtectedLayout><RestaurantMenu /></ProtectedLayout></PrivateRoute>} />
+          <Route path="/checkout" element={<PrivateRoute><ProtectedLayout><Checkout /></ProtectedLayout></PrivateRoute>} />
+          <Route path="/orders" element={<PrivateRoute><ProtectedLayout><Orders /></ProtectedLayout></PrivateRoute>} />
+          <Route path="/tracking/:orderId" element={<PrivateRoute><ProtectedLayout><Tracking /></ProtectedLayout></PrivateRoute>} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </BrowserRouter>

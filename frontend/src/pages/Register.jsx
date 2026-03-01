@@ -1,391 +1,395 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const Register = () => {
+  const [step, setStep] = useState(1);
+  const [userType, setUserType] = useState('');
   const [formData, setFormData] = useState({
-    email: "",
-    username: "",
-    password: "",
-    password2: "",
-    first_name: "",
-    last_name: "",
-    university: "",
-    gender_preference: "any",
-    budget: "",
-    phone_number: "",
+    email: '',
+    username: '',
+    password: '',
   });
-
-  const [error, setError] = useState("");
+  const [profileData, setProfileData] = useState({});
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const { register } = useAuth();
   const navigate = useNavigate();
 
+  const roleOptions = [
+    { value: 'student', label: 'Student', icon: '🎓', desc: 'Find rooms and order food' },
+    { value: 'hostel_owner', label: 'Hostel Owner', icon: '🏠', desc: 'List your hostel rooms' },
+    { value: 'restaurant_owner', label: 'Restaurant Owner', icon: '🍽️', desc: 'List your restaurant' },
+    { value: 'delivery', label: 'Delivery Partner', icon: '🚴', desc: 'Deliver orders' },
+  ];
+
+  const handleRoleSelect = (role) => {
+    setUserType(role);
+    setStep(2);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setError('');
+    setSuccess('');
 
     try {
-      const { university, gender_preference, budget, phone_number, ...userData } = formData;
+      const payload = {
+        ...formData,
+        user_type: userType,
+        profile: profileData,
+      };
 
-      await register({
-        ...userData,
-        user_type: "student",
-        profile: { university, gender_preference, budget, phone_number },
-      });
-
-      navigate("/login");
+      await register(payload);
+      
+      if (userType === 'student') {
+        setSuccess('Registration successful! Redirecting to login...');
+        setTimeout(() => navigate('/login'), 2000);
+      } else {
+        setSuccess('Registration submitted! Please wait for admin approval.');
+      }
     } catch (err) {
-      console.log("Error details:", err.response?.data);
-      setError(err.response?.data?.message || "Registration failed");
+      console.error('Registration error:', err);
+      setError(err.response?.data?.detail || err.response?.data?.email?.[0] || err.response?.data?.username?.[0] || 'Registration failed');
     }
   };
 
-  const handleChange = (e) => {
-    setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
-  };
-
-  return (
-    <div style={styles.page}>
-      {/* Background image */}
-      <div style={{ ...styles.bg, backgroundImage: "url('/images/Image4.jpeg')" }} />
-
-      {/* Dark overlay for readability */}
-      <div style={styles.overlay} />
-
-      {/* Floating Glass Card */}
-      <div className="registerFloat" style={styles.cardWrap}>
-        <form onSubmit={handleSubmit} style={styles.card}>
-          {/* Brand */}
-          <div style={styles.brandRow}>
-            <div style={styles.brandIcon}>S</div>
-            <div>
-              <div style={styles.brandTitle}>StaySync AI</div>
-              <div style={styles.brandSub}>Smart Student Living</div>
-            </div>
-          </div>
-
-          <h2 style={styles.heading}>Register</h2>
-
-          {error && <div style={styles.error}>{error}</div>}
-
-          {/* Grid inputs */}
-          <div style={styles.grid2}>
+  const renderProfileFields = () => {
+    switch (userType) {
+      case 'student':
+        return (
+          <>
             <input
-              name="first_name"
-              placeholder="First Name"
-              onChange={handleChange}
+              name="university"
+              placeholder="University"
+              onChange={(e) => setProfileData({ ...profileData, university: e.target.value })}
               required
               style={styles.input}
             />
-            <input
-              name="last_name"
-              placeholder="Last Name"
-              onChange={handleChange}
-              required
+            <select
+              name="gender_preference"
+              onChange={(e) => setProfileData({ ...profileData, gender_preference: e.target.value })}
               style={styles.input}
-            />
-          </div>
-
-          <input
-            name="email"
-            type="email"
-            placeholder="Email"
-            onChange={handleChange}
-            required
-            style={styles.input}
-          />
-
-          <input
-            name="username"
-            placeholder="Username"
-            onChange={handleChange}
-            required
-            style={styles.input}
-          />
-
-          <div style={styles.grid2}>
-            <input
-              name="password"
-              type="password"
-              placeholder="Password"
-              onChange={handleChange}
-              required
-              style={styles.input}
-            />
-            <input
-              name="password2"
-              type="password"
-              placeholder="Confirm Password"
-              onChange={handleChange}
-              required
-              style={styles.input}
-            />
-          </div>
-
-          <input
-            name="university"
-            placeholder="University"
-            onChange={handleChange}
-            required
-            style={styles.input}
-          />
-
-          <div style={styles.grid2}>
-            <select name="gender_preference" onChange={handleChange} style={styles.inputSelect}>
-              <option value="any">Any</option>
+            >
+              <option value="any">Gender Preference: Any</option>
               <option value="male">Male</option>
               <option value="female">Female</option>
             </select>
-
             <input
               name="budget"
               type="number"
               placeholder="Budget"
-              onChange={handleChange}
+              onChange={(e) => setProfileData({ ...profileData, budget: e.target.value })}
               style={styles.input}
             />
+            <input
+              name="phone_number"
+              placeholder="Phone Number"
+              onChange={(e) => setProfileData({ ...profileData, phone_number: e.target.value })}
+              required
+              style={styles.input}
+            />
+          </>
+        );
+      case 'hostel_owner':
+        return (
+          <>
+            <input
+              name="hostel_name"
+              placeholder="Hostel Name"
+              onChange={(e) => setProfileData({ ...profileData, hostel_name: e.target.value })}
+              required
+              style={styles.input}
+            />
+            <textarea
+              name="address"
+              placeholder="Address"
+              onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
+              required
+              style={{ ...styles.input, minHeight: '80px' }}
+            />
+            <input
+              name="phone_number"
+              placeholder="Phone Number"
+              onChange={(e) => setProfileData({ ...profileData, phone_number: e.target.value })}
+              required
+              style={styles.input}
+            />
+            <input
+              name="business_reg_no"
+              placeholder="Business Registration No (Optional)"
+              onChange={(e) => setProfileData({ ...profileData, business_reg_no: e.target.value })}
+              style={styles.input}
+            />
+          </>
+        );
+      case 'restaurant_owner':
+        return (
+          <>
+            <input
+              name="restaurant_name"
+              placeholder="Restaurant Name"
+              onChange={(e) => setProfileData({ ...profileData, restaurant_name: e.target.value })}
+              required
+              style={styles.input}
+            />
+            <textarea
+              name="address"
+              placeholder="Address"
+              onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
+              required
+              style={{ ...styles.input, minHeight: '80px' }}
+            />
+            <input
+              name="phone_number"
+              placeholder="Phone Number"
+              onChange={(e) => setProfileData({ ...profileData, phone_number: e.target.value })}
+              required
+              style={styles.input}
+            />
+          </>
+        );
+      case 'delivery':
+        return (
+          <>
+            <input
+              name="vehicle_type"
+              placeholder="Vehicle Type (e.g., Bike, Scooter)"
+              onChange={(e) => setProfileData({ ...profileData, vehicle_type: e.target.value })}
+              required
+              style={styles.input}
+            />
+            <input
+              name="license_no"
+              placeholder="License Number"
+              onChange={(e) => setProfileData({ ...profileData, license_no: e.target.value })}
+              required
+              style={styles.input}
+            />
+            <input
+              name="phone_number"
+              placeholder="Phone Number"
+              onChange={(e) => setProfileData({ ...profileData, phone_number: e.target.value })}
+              required
+              style={styles.input}
+            />
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div style={styles.page}>
+      <div style={styles.bg} />
+      <div style={styles.overlay} />
+
+      <div style={styles.container}>
+        {step === 1 ? (
+          <div style={styles.card}>
+            <h2 style={styles.title}>Choose Account Type</h2>
+            <div style={styles.roleGrid}>
+              {roleOptions.map((role) => (
+                <div
+                  key={role.value}
+                  onClick={() => handleRoleSelect(role.value)}
+                  style={styles.roleCard}
+                >
+                  <div style={styles.roleIcon}>{role.icon}</div>
+                  <div style={styles.roleLabel}>{role.label}</div>
+                  <div style={styles.roleDesc}>{role.desc}</div>
+                </div>
+              ))}
+            </div>
+            <p style={styles.footerText}>
+              Already have an account? <Link to="/login" style={styles.link}>Login</Link>
+            </p>
           </div>
+        ) : (
+          <form onSubmit={handleSubmit} style={styles.card}>
+            <button type="button" onClick={() => setStep(1)} style={styles.backBtn}>
+              ← Back
+            </button>
+            <h2 style={styles.title}>Register as {roleOptions.find(r => r.value === userType)?.label}</h2>
 
-          <input
-            name="phone_number"
-            placeholder="Phone Number"
-            onChange={handleChange}
-            required
-            style={styles.input}
-          />
+            {error && <div style={styles.error}>{error}</div>}
+            {success && <div style={styles.success}>{success}</div>}
 
-          <button
-            type="submit"
-            style={styles.button}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-2px)")}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0px)")}
-            onMouseDown={(e) => (e.currentTarget.style.transform = "translateY(0px) scale(0.99)")}
-            onMouseUp={(e) => (e.currentTarget.style.transform = "translateY(-2px)")}
-          >
-            Register
-          </button>
+            <input
+              name="email"
+              type="email"
+              placeholder="Email"
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              required
+              style={styles.input}
+            />
+            <input
+              name="username"
+              placeholder="Username"
+              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              required
+              style={styles.input}
+            />
+            <input
+              name="password"
+              type="password"
+              placeholder="Password"
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              required
+              style={styles.input}
+            />
 
-          <p style={styles.footerText}>
-            Already have an account?{" "}
-            <Link to="/login" style={styles.link}>
-              Login
-            </Link>
-          </p>
-        </form>
+            <div style={styles.divider} />
+            {renderProfileFields()}
+
+            <button type="submit" style={styles.button}>Register</button>
+          </form>
+        )}
       </div>
-
-      {/* Pro effects: focus glow + floating + moving light */}
-      <style>
-        {`
-          /* placeholder visibility */
-          .registerFloat input::placeholder {
-            color: rgba(255,255,255,0.75);
-            font-weight: 600;
-          }
-
-          /* focus glow */
-          .registerFloat input:focus,
-          .registerFloat select:focus {
-            outline: none !important;
-            border: 1px solid rgba(147,197,253,0.8) !important;
-            box-shadow: 0 0 0 4px rgba(59,130,246,0.25) !important;
-          }
-
-          /* hover border */
-          .registerFloat input:hover,
-          .registerFloat select:hover {
-            border-color: rgba(255,255,255,0.5);
-          }
-
-          /* floating */
-          .registerFloat {
-            animation: floaty 5s ease-in-out infinite;
-          }
-          @keyframes floaty {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-6px); }
-            100% { transform: translateY(0px); }
-          }
-
-          /* moving glow highlight */
-          .registerFloat form {
-            position: relative;
-            overflow: hidden;
-          }
-          .registerFloat form::before {
-            content: "";
-            position: absolute;
-            inset: -120px;
-            background: radial-gradient(circle at 30% 30%, rgba(96,165,250,0.25), transparent 55%);
-            animation: glowMove 6s ease-in-out infinite;
-            pointer-events: none;
-          }
-          @keyframes glowMove {
-            0% { transform: translate(-10px,-10px); }
-            50% { transform: translate(20px,15px); }
-            100% { transform: translate(-10px,-10px); }
-          }
-        `}
-      </style>
     </div>
   );
 };
 
 const styles = {
   page: {
-    position: "relative",
-    minHeight: "100vh",
-    overflow: "hidden",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "24px",
-    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+    minHeight: '100vh',
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontFamily: 'system-ui, -apple-system, sans-serif',
   },
-
   bg: {
-    position: "absolute",
+    position: 'absolute',
     inset: 0,
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    transform: "scale(1.03)",
+    backgroundImage: 'url(/images/Image4.jpeg)',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
     zIndex: 0,
-    filter: "brightness(1.08) saturate(1.05) contrast(1.05)",
   },
-
-  // ✅ clearer readability
   overlay: {
-    position: "absolute",
+    position: 'absolute',
     inset: 0,
-    background: "rgba(0,0,0,0.35)",
+    background: 'rgba(0,0,0,0.4)',
     zIndex: 1,
   },
-
-  cardWrap: {
-    position: "relative",
-    width: "100%",
-    maxWidth: "560px",
+  container: {
+    position: 'relative',
     zIndex: 2,
+    width: '100%',
+    maxWidth: '600px',
+    padding: '20px',
   },
-
-  // ✅ premium glass
   card: {
-    width: "100%",
-    padding: "28px",
-    borderRadius: "22px",
-    background: "rgba(255,255,255,0.14)",
-    border: "1px solid rgba(255,255,255,0.30)",
-    backdropFilter: "blur(18px)",
-    WebkitBackdropFilter: "blur(18px)",
-    boxShadow: "0 26px 70px rgba(0,0,0,0.35)",
-    color: "#fff",
-    position: "relative",
-    overflow: "hidden",
+    background: 'rgba(255,255,255,0.15)',
+    backdropFilter: 'blur(20px)',
+    borderRadius: '20px',
+    padding: '32px',
+    border: '1px solid rgba(255,255,255,0.3)',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
   },
-
-  brandRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-    marginBottom: "14px",
+  title: {
+    color: 'white',
+    fontSize: '28px',
+    fontWeight: 'bold',
+    marginBottom: '24px',
+    textAlign: 'center',
   },
-
-  brandIcon: {
-    width: "44px",
-    height: "44px",
-    borderRadius: "999px",
-    display: "grid",
-    placeItems: "center",
-    background: "linear-gradient(90deg,#3b82f6,#60a5fa)",
-    fontWeight: 900,
-    fontSize: "18px",
-    boxShadow: "0 12px 26px rgba(59,130,246,0.35)",
+  roleGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '16px',
+    marginBottom: '24px',
   },
-
-  brandTitle: { fontSize: "18px", fontWeight: 800, lineHeight: 1.1 },
-  brandSub: { fontSize: "13px", opacity: 0.85, marginTop: "2px" },
-
-  // ✅ clearer title
-  heading: {
-    margin: "10px 0 14px",
-    fontSize: "32px",
-    fontWeight: 900,
-    color: "#ffffff",
-    textShadow: "0 4px 12px rgba(0,0,0,0.35)",
+  roleCard: {
+    background: 'rgba(255,255,255,0.2)',
+    border: '2px solid rgba(255,255,255,0.3)',
+    borderRadius: '16px',
+    padding: '24px',
+    textAlign: 'center',
+    cursor: 'pointer',
+    transition: 'all 0.3s',
   },
-
-  error: {
-    background: "rgba(220,38,38,0.20)",
-    color: "white",
-    padding: "10px 12px",
-    borderRadius: "12px",
-    marginBottom: "12px",
-    border: "1px solid rgba(220,38,38,0.35)",
-    fontWeight: 700,
+  roleIcon: {
+    fontSize: '48px',
+    marginBottom: '12px',
   },
-
-  grid2: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "12px",
+  roleLabel: {
+    color: 'white',
+    fontSize: '18px',
+    fontWeight: 'bold',
+    marginBottom: '8px',
   },
-
-  // ✅ visible input text
+  roleDesc: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: '13px',
+  },
   input: {
-    width: "100%",
-    padding: "14px 14px",
-    margin: "6px 0",
-    borderRadius: "16px",
-    border: "1px solid rgba(255,255,255,0.35)",
-    background: "rgba(255,255,255,0.22)",
-    color: "#ffffff",
-    fontSize: "15px",
-    fontWeight: 700,
-    outline: "none",
-    boxSizing: "border-box",
+    width: '100%',
+    padding: '12px',
+    marginBottom: '12px',
+    borderRadius: '12px',
+    border: '1px solid rgba(255,255,255,0.3)',
+    background: 'rgba(255,255,255,0.25)',
+    color: 'white',
+    fontSize: '15px',
+    outline: 'none',
+    boxSizing: 'border-box',
   },
-
-  inputSelect: {
-    width: "100%",
-    padding: "14px 14px",
-    margin: "6px 0",
-    borderRadius: "16px",
-    border: "1px solid rgba(255,255,255,0.35)",
-    background: "rgba(255,255,255,0.22)",
-    color: "#ffffff",
-    fontSize: "15px",
-    fontWeight: 700,
-    outline: "none",
-    boxSizing: "border-box",
-    appearance: "none",
-    WebkitAppearance: "none",
-    MozAppearance: "none",
-  },
-
   button: {
-    width: "100%",
-    padding: "14px",
-    marginTop: "14px",
-    borderRadius: "16px",
-    border: "none",
-    cursor: "pointer",
-    fontWeight: 900,
-    fontSize: "16px",
-    color: "#fff",
-    background: "linear-gradient(90deg,#3b82f6,#60a5fa)",
-    boxShadow: "0 16px 34px rgba(59,130,246,0.35)",
-    transition: "transform 0.15s ease, box-shadow 0.15s ease",
+    width: '100%',
+    padding: '14px',
+    marginTop: '16px',
+    borderRadius: '12px',
+    border: 'none',
+    background: 'linear-gradient(90deg,#3b82f6,#60a5fa)',
+    color: 'white',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    boxShadow: '0 10px 30px rgba(59,130,246,0.4)',
   },
-
+  backBtn: {
+    background: 'rgba(255,255,255,0.2)',
+    border: 'none',
+    color: 'white',
+    padding: '8px 16px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    marginBottom: '16px',
+  },
+  divider: {
+    height: '1px',
+    background: 'rgba(255,255,255,0.2)',
+    margin: '20px 0',
+  },
+  error: {
+    background: 'rgba(220,38,38,0.2)',
+    color: 'white',
+    padding: '12px',
+    borderRadius: '8px',
+    marginBottom: '12px',
+    border: '1px solid rgba(220,38,38,0.4)',
+  },
+  success: {
+    background: 'rgba(34,197,94,0.2)',
+    color: 'white',
+    padding: '12px',
+    borderRadius: '8px',
+    marginBottom: '12px',
+    border: '1px solid rgba(34,197,94,0.4)',
+  },
   footerText: {
-    marginTop: "14px",
-    marginBottom: 0,
-    fontSize: "14px",
-    opacity: 0.95,
-    textAlign: "center",
+    color: 'white',
+    textAlign: 'center',
+    marginTop: '16px',
   },
-
-  link: { color: "#93c5fd", fontWeight: 800, textDecoration: "none" },
+  link: {
+    color: '#93c5fd',
+    fontWeight: 'bold',
+    textDecoration: 'none',
+  },
 };
 
 export default Register;

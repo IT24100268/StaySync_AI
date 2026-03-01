@@ -15,11 +15,14 @@ const Login = () => {
     e.preventDefault();
     setError('');
     try {
-      // If you later want remember-me functionality, handle it inside AuthContext/login
       await login(username, password, { remember });
-      navigate('/');
-    } catch {
-      setError('Invalid credentials');
+      navigate('/student/dashboard');
+    } catch (err) {
+      if (err.response?.status === 403) {
+        setError('⏳ Account pending admin approval. Please wait.');
+      } else {
+        setError('Invalid credentials');
+      }
     }
   };
 

@@ -15,9 +15,9 @@ const Navbar = () => {
   return (
     <nav style={styles.nav}>
       <div style={styles.container}>
-        <Link to="/" style={styles.brand}>Student Dashboard</Link>
+        <Link to="/student/dashboard" style={styles.brand}>StaySync AI</Link>
         <div style={styles.links}>
-          <Link to="/" style={styles.link}>Home</Link>
+          <Link to="/student/dashboard" style={styles.link}>Home</Link>
           <Link to="/rooms" style={styles.link}>Rooms</Link>
           <Link to="/favorites" style={styles.link}>Favorites</Link>
           <Link to="/bookings" style={styles.link}>Bookings</Link>
