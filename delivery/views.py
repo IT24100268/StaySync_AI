@@ -1,7 +1,9 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import authenticate
 from django.utils import timezone
 from django.db.models import Sum
 from django.db import transaction
@@ -9,7 +11,7 @@ from django.core.cache import cache
 from datetime import timedelta
 
 from .models import Order, DeliveryPartner, Delivery, ActivityLog, LiveLocation, Earnings
-from .serializers import OrderSerializer, DeliverySerializer, ActivityLogSerializer
+from .serializers import OrderSerializer, DeliverySerializer, ActivityLogSerializer, LoginSerializer, RegisterSerializer, UserSerializer
 from .permissions import DeliveryPartnerOnly
 from .utils import api_response
 from .validators import validate_delivery_status_transition
@@ -18,6 +20,70 @@ from .validators import validate_delivery_status_transition
 @api_view(["GET"])
 def test_api(request):
     return api_response(message="Delivery API working ✅", data={})
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def login_view(request):
+    serializer = LoginSerializer(data=request.data)
+    if not serializer.is_valid():
+        return api_response(success=False, message="Invalid input", errors=serializer.errors, status=400)
+    
+    user = authenticate(username=serializer.validated_data['username'], password=serializer.validated_data['password'])
+    if not user:
+        return api_response(success=False, message="Invalid credentials", status=401)
+    
+    refresh = RefreshToken.for_user(user)
+    
+    # Get user_type from profile
+    user_type = 'student'  # default
+    if hasattr(user, 'profile'):
+        user_type = user.profile.user_type
+    elif hasattr(user, 'deliverypartner'):
+        user_type = 'delivery'
+    
+    return api_response(
+        message="Login successful",
+        data={
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user_type': user_type,
+            'user': UserSerializer(user).data
+        }
+    )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def register_view(request):
+    serializer = RegisterSerializer(data=request.data)
+    if not serializer.is_valid():
+        return api_response(success=False, message="Invalid input", errors=serializer.errors, status=400)
+    
+    user = serializer.save()
+    return api_response(
+        message="Registration successful",
+        data=UserSerializer(user).data,
+        status=201
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def profile_view(request):
+    user_type = 'student'  # default
+    if hasattr(request.user, 'profile'):
+        user_type = request.user.profile.user_type
+    elif hasattr(request.user, 'deliverypartner'):
+        user_type = 'delivery'
+    
+    return api_response(
+        message="Profile retrieved",
+        data={
+            'user': UserSerializer(request.user).data,
+            'user_type': user_type
+        }
+    )
 
 
 @api_view(["GET"])

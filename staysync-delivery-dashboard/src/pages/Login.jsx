@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Alert, Box, Button, CircularProgress, Stack, TextField, Typography } from '@mui/material'
 import { useLocation, useNavigate } from 'react-router-dom'
 import GlassCard from '../components/GlassCard'
@@ -11,6 +11,21 @@ function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const redirectTo = location.state?.from?.pathname || '/dashboard'
+
+  // Auto-login if tokens are passed via URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const refresh = params.get('refresh');
+    
+    if (token && refresh) {
+      localStorage.setItem('access_token', token);
+      localStorage.setItem('refresh_token', refresh);
+      // Clear URL params and redirect
+      window.history.replaceState({}, '', '/dashboard');
+      navigate('/dashboard', { replace: true });
+    }
+  }, [navigate]);
 
   const onSubmit = async (event) => {
     event.preventDefault()

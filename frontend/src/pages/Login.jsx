@@ -15,9 +15,26 @@ const Login = () => {
     e.preventDefault();
     setError('');
     try {
-      await login(username, password, { remember });
-      navigate('/student/dashboard');
+      const data = await login(username, password, { remember });
+      
+      console.log('Login response:', data);
+      
+      // Redirect based on user type
+      if (data.user_type === 'delivery') {
+        // Get tokens and redirect to delivery dashboard
+        const token = localStorage.getItem('access_token');
+        const refresh = localStorage.getItem('refresh_token');
+        // Redirect with tokens in URL
+        window.location.href = `http://localhost:5174/auth-redirect?token=${encodeURIComponent(token)}&refresh=${encodeURIComponent(refresh)}`;
+      } else if (data.user_type === 'restaurant_owner') {
+        navigate('/restaurant/dashboard');
+      } else if (data.user_type === 'hostel_owner') {
+        navigate('/hostel/dashboard');
+      } else {
+        navigate('/student/dashboard');
+      }
     } catch (err) {
+      console.error('Login error:', err);
       if (err.response?.status === 403) {
         setError('⏳ Account pending admin approval. Please wait.');
       } else {
@@ -363,7 +380,7 @@ const styles = {
   iconLeft: {
     position: 'absolute',
     left: '14px',
-    color: 'rgba(255,255,255,0.85)',
+    color: '#6b7280',
     display: 'grid',
     placeItems: 'center',
   },
@@ -373,7 +390,7 @@ const styles = {
     right: '12px',
     border: 'none',
     background: 'transparent',
-    color: 'rgba(255,255,255,0.85)',
+    color: '#6b7280',
     display: 'grid',
     placeItems: 'center',
     cursor: 'pointer',
@@ -385,9 +402,10 @@ const styles = {
     width: '100%',
     padding: '14px 44px 14px 44px',
     borderRadius: '16px',
-    border: '1px solid rgba(255,255,255,0.18)',
-    background: 'rgba(255,255,255,0.14)',
-    color: 'white',
+    border: '1px solid rgba(255,255,255,0.3)',
+    background: 'rgba(255,255,255,0.95)',
+    color: '#1f2937',
+    fontSize: '15px',
     outline: 'none',
     boxSizing: 'border-box',
   },

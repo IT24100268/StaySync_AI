@@ -3,6 +3,11 @@ from . import views
 
 urlpatterns = [
     path("test/", views.test_api),
+    
+    # Auth endpoints
+    path("auth/login/", views.login_view),
+    path("auth/register/", views.register_view),
+    path("auth/profile/", views.profile_view),
 
     path("jobs/available/", views.available_jobs),
     path("jobs/<int:order_id>/accept/", views.accept_job),

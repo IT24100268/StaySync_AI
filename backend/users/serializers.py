@@ -58,8 +58,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         profile_data = validated_data.pop('profile')
         user_type = validated_data['user_type']
         
-        # Set is_approved based on user_type
-        validated_data['is_approved'] = (user_type == 'student')
+        # Auto-approve all user types
+        validated_data['is_approved'] = True
         
         user = User.objects.create_user(**validated_data)
         

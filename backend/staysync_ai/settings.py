@@ -54,23 +54,14 @@ ASGI_APPLICATION = "staysync_ai.asgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "mssql",
-        "NAME": os.getenv("MSSQL_DATABASE", "staysync_ai"),
-        "HOST": os.getenv("MSSQL_HOST", "localhost"),
-        "PORT": os.getenv("MSSQL_PORT", ""),
-        "USER": "",
-        "PASSWORD": "",
-        "OPTIONS": {
-            "driver": os.getenv("MSSQL_DRIVER", "ODBC Driver 17 for SQL Server"),
-            "extra_params": "Trusted_Connection=yes;TrustServerCertificate=yes;",
-        },
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": "staysync_db",
+        "USER": "root",
+        "PASSWORD": "Thamil2003",
+        "HOST": "localhost",
+        "PORT": "3306",
     }
 }
-
-if os.getenv("MSSQL_TRUSTED_CONNECTION", "True") != "True":
-    DATABASES["default"]["USER"] = os.getenv("MSSQL_USER", "")
-    DATABASES["default"]["PASSWORD"] = os.getenv("MSSQL_PASSWORD", "")
-    DATABASES["default"]["OPTIONS"]["extra_params"] = "TrustServerCertificate=yes;"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
