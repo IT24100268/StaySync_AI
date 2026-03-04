@@ -30,6 +30,17 @@ function Login() {
   const onSubmit = async (event) => {
     event.preventDefault()
     setError('')
+
+    // Client-side validation
+    if (form.username.trim().length < 3) {
+      setError('Username must be at least 3 characters long')
+      return
+    }
+    if (form.password.length < 6) {
+      setError('Password must be at least 6 characters long')
+      return
+    }
+
     const result = await login(form)
     if (!result.success) {
       setError(result.message)

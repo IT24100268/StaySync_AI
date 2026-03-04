@@ -33,6 +33,30 @@ const Register = () => {
     setError('');
     setSuccess('');
 
+    // Client-side validation
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+
+    if (formData.username.length < 3) {
+      setError('Username must be at least 3 characters long');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    // Validate phone number
+    const phone = profileData.phone_number;
+    if (phone && !/^[0-9+\-\s()]+$/.test(phone)) {
+      setError('Please enter a valid phone number');
+      return;
+    }
+
     try {
       const payload = {
         ...formData,

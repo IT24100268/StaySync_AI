@@ -23,8 +23,8 @@ const THEME = {
   pill: "rgba(31, 79, 150, 0.10)",
 };
 
-const phRoom = "https://via.placeholder.com/600x380?text=Room+Photo";
-const phFood = "https://via.placeholder.com/600x380?text=Food+Photo";
+const phRoom = "/images/Image1.jpg";
+const phFood = "/images/Image3.jpeg";
 
 const StudentDashboardMockBlue = () => {
   const { user } = useAuth();

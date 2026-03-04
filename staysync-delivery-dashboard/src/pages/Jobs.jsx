@@ -27,9 +27,13 @@ function Jobs() {
   }, [fetchJobs])
 
   const acceptJob = async (id) => {
+    if (!window.confirm('Accept this delivery job?')) {
+      return
+    }
     try {
       await api.post(`/api/jobs/${id}/accept/`)
       await fetchJobs()
+      setError('')
     } catch (err) {
       setError(err?.response?.data?.detail || 'Failed to accept job')
     }

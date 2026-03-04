@@ -139,21 +139,40 @@ export default function RestaurantDashboard() {
   };
 
   const handleDelete = async (item) => {
+    if (!item?.name) {
+      addToast({ title: 'Error', message: 'Invalid item selected.', variant: 'error' });
+      return;
+    }
     const confirmed = window.confirm(`Delete ${item.name}? This cannot be undone.`);
     if (!confirmed) {
       return;
     }
-    await deleteItem(item.id);
-    addToast({ title: 'Item deleted', message: `${item.name} removed from the menu.`, variant: 'success' });
+    try {
+      await deleteItem(item.id);
+      addToast({ title: 'Item deleted', message: `${item.name} removed from the menu.`, variant: 'success' });
+    } catch (error) {
+      addToast({ title: 'Error', message: 'Failed to delete item.', variant: 'error' });
+    }
   };
 
   const handleToggle = async (item) => {
-    await toggleAvailability(item.id);
-    addToast({
-      title: 'Availability updated',
-      message: `${item.name} is now ${item.is_available ? 'out of stock' : 'available'}.`,
-      variant: 'info',
-    });
+    if (!item?.name) {
+      addToast({ title: 'Error', message: 'Invalid item selected.', variant: 'error' });
+      return;
+    }
+    if (!window.confirm(`Mark ${item.name} as ${item.is_available ? 'out of stock' : 'available'}?`)) {
+      return;
+    }
+    try {
+      await toggleAvailability(item.id);
+      addToast({
+        title: 'Availability updated',
+        message: `${item.name} is now ${item.is_available ? 'out of stock' : 'available'}.`,
+        variant: 'info',
+      });
+    } catch (error) {
+      addToast({ title: 'Error', message: 'Failed to update availability.', variant: 'error' });
+    }
   };
 
   if (error) {

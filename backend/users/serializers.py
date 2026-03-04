@@ -27,7 +27,7 @@ class UserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'user_type', 'is_approved', 'profile']
+        fields = ['id', 'email', 'username', 'user_type', 'is_approved', 'is_superuser', 'is_staff', 'profile']
     
     def get_profile(self, obj):
         if obj.user_type == 'student' and hasattr(obj, 'student_profile'):
@@ -41,12 +41,24 @@ class UserSerializer(serializers.ModelSerializer):
         return None
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, validators=[validate_password])
+    password = serializers.CharField(write_only=True, validators=[validate_password], min_length=8)
     profile = serializers.JSONField()
     
     class Meta:
         model = User
         fields = ['email', 'username', 'password', 'user_type', 'profile']
+    
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Email already exists")
+        return value
+    
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("Username already exists")
+        if len(value) < 3:
+            raise serializers.ValidationError("Username must be at least 3 characters")
+        return value
     
     def validate_user_type(self, value):
         valid_types = ['student', 'hostel_owner', 'restaurant_owner', 'delivery']
@@ -54,12 +66,26 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Invalid user type")
         return value
     
+    def validate_profile(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Profile must be a valid object")
+        
+        # Validate phone number format
+        phone = value.get('phone_number', '')
+        if phone and not phone.replace('+', '').replace('-', '').replace(' ', '').isdigit():
+            raise serializers.ValidationError("Invalid phone number format")
+        
+        return value
+    
     def create(self, validated_data):
         profile_data = validated_data.pop('profile')
         user_type = validated_data['user_type']
         
-        # Auto-approve all user types
-        validated_data['is_approved'] = True
+        # Auto-approve only students, others need admin approval
+        if user_type == 'student':
+            validated_data['is_approved'] = True
+        else:
+            validated_data['is_approved'] = False
         
         user = User.objects.create_user(**validated_data)
         

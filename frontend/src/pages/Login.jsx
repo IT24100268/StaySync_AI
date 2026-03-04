@@ -14,22 +14,34 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Client-side validation
+    if (!username || username.length < 3) {
+      setError('Please enter a valid username');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
     try {
       const data = await login(username, password, { remember });
       
       console.log('Login response:', data);
       
       // Redirect based on user type
-      if (data.user_type === 'delivery') {
-        // Get tokens and redirect to delivery dashboard
+      if (data.is_superuser || data.is_staff) {
+        navigate('/admin/dashboard');
+      } else if (data.user_type === 'delivery') {
         const token = localStorage.getItem('access_token');
         const refresh = localStorage.getItem('refresh_token');
-        // Redirect with tokens in URL
-        window.location.href = `http://localhost:5174/auth-redirect?token=${encodeURIComponent(token)}&refresh=${encodeURIComponent(refresh)}`;
+        window.location.replace(`http://localhost:5174/auth-redirect?token=${encodeURIComponent(token)}&refresh=${encodeURIComponent(refresh)}`);
       } else if (data.user_type === 'restaurant_owner') {
         navigate('/restaurant/dashboard');
       } else if (data.user_type === 'hostel_owner') {
-        navigate('/hostel/dashboard');
+        navigate('/owner/dashboard');
       } else {
         navigate('/student/dashboard');
       }

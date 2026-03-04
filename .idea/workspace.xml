@@ -5,13 +5,125 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2928d3ef-8de7-4351-a612-8bef00f95df5" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/RestaurantDashboard.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/aws.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/copilot.data.migration.ask2agent.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/bookings/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/bookings/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/config/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/config/settings.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/backend/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/restaurant/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/restaurant/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/restaurants/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/restaurants/admin.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/restaurants/apps.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/restaurants/apps.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/restaurants/migrations/0001_initial.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/restaurants/migrations/0001_initial.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/restaurants/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/restaurants/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/restaurants/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/restaurants/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/restaurants/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/restaurants/urls.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/restaurants/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/restaurants/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/rooms/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/rooms/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/staysync_ai/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/staysync_ai/asgi.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/staysync_ai/settings.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/staysync_ai/urls.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/staysync_ai/wsgi.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/users/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/users/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/users/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/users/urls.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/users/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/users/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/delivery/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/delivery/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/FoodItemModal.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/FoodItemModal.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Checkout.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Checkout.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Dashboard.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Dashboard.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Login.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Login.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/PublicHome.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/PublicHome.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Register.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Register.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/RestaurantDashboard.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/RestaurantDashboard.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/manage.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/restaurant/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/restaurant/admin.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/restaurant/apps.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/restaurant/migrations/0001_initial.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/restaurant/migrations/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/restaurant/models.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/restaurant/permissions.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/restaurant/serializers.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/restaurant/templates/emails/restaurant_welcome.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/restaurant/urls.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/restaurant/views.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync-delivery-dashboard/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/staysync-delivery-dashboard/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync-delivery-dashboard/src/pages/Jobs.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/staysync-delivery-dashboard/src/pages/Jobs.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync-delivery-dashboard/src/pages/Login.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/staysync-delivery-dashboard/src/pages/Login.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/adminpanel/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/adminpanel/permissions.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/adminpanel/urls.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/adminpanel/views.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/asgi.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/db.sqlite3" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/deliveries/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/deliveries/models.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/deliveries/serializers.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/deliveries/urls.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/deliveries/views.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/manage.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/restaurants/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/restaurants/models.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/restaurants/serializers.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/restaurants/urls.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/restaurants/views.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/rooms/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/rooms/models.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/rooms/serializers.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/rooms/urls.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/rooms/views.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/settings.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/staysync/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/staysync/settings.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/staysync/urls.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/staysync/wsgi.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/urls.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/users/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/users/models.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/users/serializers.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/users/urls.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/users/views.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync/wsgi.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/package-lock.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/package.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/public/favicon.ico" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/public/index.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/public/logo192.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/public/logo512.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/public/manifest.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/public/robots.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/App.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/App.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/components/Layout.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/components/Layout.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/components/Sidebar.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/components/Sidebar.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/index.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/index.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/logo.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/pages/Dashboard.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/pages/Dashboard.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/pages/DeliveryPartners.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/pages/DeliveryPartners.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/pages/Orders.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/pages/Orders.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/pages/Reports.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/pages/Reports.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/pages/Restaurants.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/pages/Restaurants.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/pages/Rooms.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/pages/Rooms.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/pages/Users.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/pages/Users.jsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/react-app-env.d.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/reportWebVitals.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/services/api.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/src/setupTests.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/staysync_frontend/tsconfig.json" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -51,39 +163,39 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ChatTagsLlmMigration": "true",
-    "RunOnceActivity.ClientConfigCleanupMigration": "true",
-    "RunOnceActivity.CodyAccountHistoryMigration": "true",
-    "RunOnceActivity.CodyAccountsIdsRefresh": "true",
-    "RunOnceActivity.CodyAssignOrphanedChatsToActiveAccount": "true",
-    "RunOnceActivity.CodyConvertUrlToCodebaseName": "true",
-    "RunOnceActivity.CodyHistoryLlmMigration": "true",
-    "RunOnceActivity.CodyMigrateChatHistory-v2": "true",
-    "RunOnceActivity.CodyProjectSettingsMigration": "true",
-    "RunOnceActivity.DeprecatedChatLlmMigration": "true",
-    "RunOnceActivity.MCP Project settings loaded": "true",
-    "RunOnceActivity.OpenDjangoStructureViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.ToggleCodyToolWindowAfterMigration": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "ai.playground.ignore.import.keys.banner.in.settings": "true",
-    "django.template.preview.state": "SHOW_EDITOR_AND_PREVIEW",
-    "git-widget-placeholder": "StaySync__Dashboard",
-    "last_opened_file_path": "C:/y2s2project/StaySync_AI",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "com.intellij.python.django.customization.DjangoModulesConfigurable",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ChatTagsLlmMigration&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ClientConfigCleanupMigration&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.CodyAccountHistoryMigration&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.CodyAccountsIdsRefresh&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.CodyAssignOrphanedChatsToActiveAccount&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.CodyConvertUrlToCodebaseName&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.CodyHistoryLlmMigration&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.CodyMigrateChatHistory-v2&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.CodyProjectSettingsMigration&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.DeprecatedChatLlmMigration&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.OpenDjangoStructureViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ToggleCodyToolWindowAfterMigration&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;ai.playground.ignore.import.keys.banner.in.settings&quot;: &quot;true&quot;,
+    &quot;django.template.preview.state&quot;: &quot;SHOW_EDITOR_AND_PREVIEW&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;StaySync__Dashboard&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/y2s2project/StaySync_AI&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.intellij.python.django.customization.DjangoModulesConfigurable&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration name="RestaurantDashboard" type="Python.DjangoServer" factoryName="Django server">
       <module name="RestaurantDashboard" />

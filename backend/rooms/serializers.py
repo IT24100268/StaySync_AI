@@ -14,6 +14,23 @@ class RoomSerializer(serializers.ModelSerializer):
         model = Room
         fields = '__all__'
     
+    def validate_price(self, value):
+        if value < 1000:
+            raise serializers.ValidationError('Price must be at least LKR 1,000')
+        if value > 1000000:
+            raise serializers.ValidationError('Price seems too high')
+        return value
+    
+    def validate_title(self, value):
+        if not value or len(value.strip()) < 5:
+            raise serializers.ValidationError('Title must be at least 5 characters')
+        return value.strip()
+    
+    def validate_description(self, value):
+        if value and len(value.strip()) < 20:
+            raise serializers.ValidationError('Description must be at least 20 characters')
+        return value
+    
     def get_is_favorited(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:

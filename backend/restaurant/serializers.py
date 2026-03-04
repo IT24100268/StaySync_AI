@@ -41,6 +41,18 @@ class FoodItemSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'restaurant', 'created_at', 'image_url']
 
+    def validate_name(self, value):
+        if not value or len(value.strip()) < 3:
+            raise serializers.ValidationError('Name must be at least 3 characters')
+        return value.strip()
+
+    def validate_price(self, value):
+        if value < 0:
+            raise serializers.ValidationError('Price cannot be negative')
+        if value > 100000:
+            raise serializers.ValidationError('Price seems too high')
+        return value
+
     def get_image_url(self, obj):
         request = self.context.get('request')
         if obj.image and request:
@@ -90,7 +102,14 @@ class OrderStatusUpdateSerializer(serializers.ModelSerializer):
 
 class OrderCreateItemSerializer(serializers.Serializer):
     food_item_id = serializers.IntegerField()
-    quantity = serializers.IntegerField(min_value=1)
+    quantity = serializers.IntegerField(min_value=1, max_value=100)
+
+    def validate_quantity(self, value):
+        if value < 1:
+            raise serializers.ValidationError('Quantity must be at least 1')
+        if value > 100:
+            raise serializers.ValidationError('Quantity cannot exceed 100')
+        return value
 
 
 class OrderCreateSerializer(serializers.Serializer):

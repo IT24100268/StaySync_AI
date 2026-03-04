@@ -20,6 +20,26 @@ class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
 
+    def validate_username(self, value):
+        if len(value.strip()) < 3:
+            raise serializers.ValidationError('Username must be at least 3 characters long.')
+        return value.strip()
+
+    def validate_password(self, value):
+        if len(value) < 6:
+            raise serializers.ValidationError('Password must be at least 6 characters long.')
+        return value
+
+    def validate_username(self, value):
+        if len(value.strip()) < 3:
+            raise serializers.ValidationError('Username must be at least 3 characters long.')
+        return value.strip()
+
+    def validate_password(self, value):
+        if len(value) < 6:
+            raise serializers.ValidationError('Password must be at least 6 characters long.')
+        return value
+
 
 class RegisterSerializer(serializers.Serializer):
     username = serializers.CharField()
@@ -28,6 +48,43 @@ class RegisterSerializer(serializers.Serializer):
     first_name = serializers.CharField(required=False)
     last_name = serializers.CharField(required=False)
     user_type = serializers.ChoiceField(choices=['delivery', 'student', 'restaurant_owner', 'hostel_owner'])
+
+    def validate_username(self, value):
+        if len(value.strip()) < 3:
+            raise serializers.ValidationError('Username must be at least 3 characters long.')
+        if User.objects.filter(username=value.strip()).exists():
+            raise serializers.ValidationError('Username already exists.')
+        return value.strip()
+
+    def validate_password(self, value):
+        if len(value) < 8:
+            raise serializers.ValidationError('Password must be at least 8 characters long.')
+        return value
+
+    def validate_email(self, value):
+        if value and User.objects.filter(email=value).exists():
+            raise serializers.ValidationError('Email already exists.')
+        return value
+
+    def validate_username(self, value):
+        if len(value.strip()) < 3:
+            raise serializers.ValidationError('Username must be at least 3 characters long.')
+        from django.contrib.auth.models import User
+        if User.objects.filter(username=value.strip()).exists():
+            raise serializers.ValidationError('Username already exists.')
+        return value.strip()
+
+    def validate_password(self, value):
+        if len(value) < 8:
+            raise serializers.ValidationError('Password must be at least 8 characters long.')
+        return value
+
+    def validate_email(self, value):
+        if value:
+            from django.contrib.auth.models import User
+            if User.objects.filter(email=value).exists():
+                raise serializers.ValidationError('Email already exists.')
+        return value
 
     def create(self, validated_data):
         user_type = validated_data.pop('user_type')
@@ -48,6 +105,20 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = '__all__'
 
+    def validate_total_amount(self, value):
+        if value < 0:
+            raise serializers.ValidationError('Total amount cannot be negative.')
+        if value > 1000000:
+            raise serializers.ValidationError('Total amount exceeds maximum limit.')
+        return value
+
+    def validate_total_amount(self, value):
+        if value < 0:
+            raise serializers.ValidationError('Total amount cannot be negative.')
+        if value > 1000000:
+            raise serializers.ValidationError('Total amount exceeds maximum limit.')
+        return value
+
 
 class DeliverySerializer(serializers.ModelSerializer):
     order = OrderSerializer(read_only=True)
@@ -55,6 +126,12 @@ class DeliverySerializer(serializers.ModelSerializer):
     class Meta:
         model = Delivery
         fields = '__all__'
+
+    def validate_status(self, value):
+        valid_statuses = ['pending', 'accepted', 'picked_up', 'delivered', 'cancelled']
+        if value and value.lower() not in valid_statuses:
+            raise serializers.ValidationError(f'Invalid status. Must be one of: {', '.join(valid_statuses)}')
+        return value
 
 
 class ActivityLogSerializer(serializers.ModelSerializer):

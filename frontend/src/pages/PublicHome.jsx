@@ -69,7 +69,7 @@ const PublicHome = () => {
             {featuredRooms.map((room) => (
               <div key={room.id} className="card">
                 <img 
-                  src={`https://via.placeholder.com/400x250?text=Room+Image`} 
+                  src={`/images/Image1.jpg`} 
                   alt={room.name}
                   className="card-image"
                 />
@@ -94,7 +94,7 @@ const PublicHome = () => {
             {featuredFood.map((provider) => (
               <div key={provider.id} className="card">
                 <img 
-                  src={`https://via.placeholder.com/400x250?text=Food+Image`} 
+                  src={`/images/Image3.jpeg`} 
                   alt={provider.name}
                   className="card-image"
                 />
