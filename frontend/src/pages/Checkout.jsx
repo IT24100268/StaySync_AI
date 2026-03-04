@@ -9,8 +9,23 @@ const Checkout = () => {
   const [address, setAddress] = useState('');
 
   const handleOrder = async () => {
-    if (!address) {
-      alert('Please enter delivery address');
+    // Validation
+    if (!address || address.trim().length < 10) {
+      alert('Please enter a complete delivery address (at least 10 characters)');
+      return;
+    }
+
+    if (!cart || cart.length === 0) {
+      alert('Your cart is empty');
+      return;
+    }
+
+    if (!totalPrice || totalPrice <= 0) {
+      alert('Invalid order total');
+      return;
+    }
+
+    if (!window.confirm(`Confirm order for LKR ${totalPrice}?`)) {
       return;
     }
 

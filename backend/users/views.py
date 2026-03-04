@@ -17,9 +17,11 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         
+        print(f"✅ User created: {user.username}, Type: {user.user_type}, Approved: {user.is_approved}")
+        
         response_data = {
             'user': UserSerializer(user).data,
-            'message': 'Registration successful. Please wait for admin approval.' if not user.is_approved else 'Registration successful.'
+            'message': 'Registration successful!' if user.is_approved else 'Registration successful. Please wait for admin approval to login.'
         }
         
         return Response(response_data, status=status.HTTP_201_CREATED)
@@ -47,11 +49,14 @@ class LoginView(APIView):
             )
         
         refresh = RefreshToken.for_user(user)
+        user_data = UserSerializer(user).data
         return Response({
             'refresh': str(refresh),
             'access': str(refresh.access_token),
             'user_type': user.user_type,
-            'user': UserSerializer(user).data
+            'is_superuser': user.is_superuser,
+            'is_staff': user.is_staff,
+            'user': user_data
         })
 
 class ProfileView(generics.RetrieveUpdateAPIView):
@@ -66,7 +71,7 @@ class PendingUsersView(generics.ListAPIView):
     serializer_class = PendingUserSerializer
     
     def get_queryset(self):
-        return User.objects.filter(is_approved=False).exclude(user_type='student').order_by('-date_joined')
+        return User.objects.filter(is_approved=False, is_superuser=False).order_by('-date_joined')
 
 class ApproveUserView(APIView):
     permission_classes = [IsAdminUser]

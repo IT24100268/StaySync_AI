@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'rooms',
     'bookings',
     'restaurants',
+    'restaurant',
     'orders',
     'tracking',
 ]
@@ -63,8 +64,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'staysync_db',
+        'USER': 'root',
+        'PASSWORD': 'Thamil2003',
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
 
@@ -113,6 +118,8 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
 ]
 
 CHANNEL_LAYERS = {

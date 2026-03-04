@@ -101,7 +101,7 @@ function Sidebar() {
           startIcon={<LogoutRoundedIcon />}
           onClick={() => {
             logout()
-            navigate('/login')
+            window.location.href = 'http://localhost:5173'
           }}
           sx={{ mt: 1, borderRadius: '999px' }}
         >

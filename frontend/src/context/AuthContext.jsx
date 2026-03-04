@@ -18,19 +18,21 @@ export const AuthProvider = ({ children }) => {
         const { data } = await api.get('/auth/profile/');
         setUser(data);
       } catch (error) {
-        localStorage.clear();
+        // Don't clear tokens on error, user might be delivery partner
+        console.error('Auth check failed:', error);
       }
     }
     setLoading(false);
   };
 
   const login = async (username, password) => {
-    const { data } = await api.post('/auth/login/', { username, password });
-    localStorage.setItem('access_token', data.access);
-    localStorage.setItem('refresh_token', data.refresh);
-    localStorage.setItem('user_type', data.user_type);
+    const response = await api.post('/auth/login/', { username, password });
+    const loginData = response.data.data || response.data;
+    localStorage.setItem('access_token', loginData.access);
+    localStorage.setItem('refresh_token', loginData.refresh);
+    localStorage.setItem('user_type', loginData.user_type);
     await checkAuth();
-    return data;
+    return loginData;
   };
 
   const register = async (userData) => {

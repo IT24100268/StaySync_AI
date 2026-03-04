@@ -6,6 +6,7 @@ import Jobs from './pages/Jobs'
 import Deliveries from './pages/Deliveries'
 import Earnings from './pages/Earnings'
 import Activity from './pages/Activity'
+import AuthRedirect from './pages/AuthRedirect'
 import RequireAuth from './auth/RequireAuth'
 import { useAuth } from './auth/AuthProvider'
 import AppLayout from './components/AppLayout'
@@ -44,6 +45,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/auth-redirect" element={<AuthRedirect />} />
 
       <Route element={<ProtectedLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />

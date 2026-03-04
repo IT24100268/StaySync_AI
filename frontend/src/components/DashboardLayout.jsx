@@ -16,13 +16,13 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const navigation = [
-  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
-  { label: 'Menu Items', to: '/menu', icon: UtensilsCrossed },
-  { label: 'Orders', to: '/orders', icon: ChartNoAxesColumn, badge: '0' },
-  { label: 'Reservations', to: '/reservations', icon: MessageSquare },
-  { label: 'Earnings', to: '/earnings', icon: CircleDollarSign },
-  { label: 'Reviews', to: '/reviews', icon: Star },
-  { label: 'Settings', to: '/settings', icon: Settings },
+  { label: 'Dashboard', to: '/restaurant/dashboard', icon: LayoutDashboard },
+  { label: 'Menu Items', to: '/restaurant/menu', icon: UtensilsCrossed },
+  { label: 'Orders', to: '/restaurant/orders', icon: ChartNoAxesColumn, badge: '0' },
+  { label: 'Reservations', to: '/restaurant/reservations', icon: MessageSquare },
+  { label: 'Earnings', to: '/restaurant/earnings', icon: CircleDollarSign },
+  { label: 'Reviews', to: '/restaurant/reviews', icon: Star },
+  { label: 'Settings', to: '/restaurant/settings', icon: Settings },
 ];
 
 function SidebarContent() {

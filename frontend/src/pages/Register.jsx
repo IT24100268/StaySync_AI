@@ -33,6 +33,30 @@ const Register = () => {
     setError('');
     setSuccess('');
 
+    // Client-side validation
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+
+    if (formData.username.length < 3) {
+      setError('Username must be at least 3 characters long');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    // Validate phone number
+    const phone = profileData.phone_number;
+    if (phone && !/^[0-9+\-\s()]+$/.test(phone)) {
+      setError('Please enter a valid phone number');
+      return;
+    }
+
     try {
       const payload = {
         ...formData,
@@ -41,16 +65,32 @@ const Register = () => {
       };
 
       await register(payload);
-      
-      if (userType === 'student') {
-        setSuccess('Registration successful! Redirecting to login...');
-        setTimeout(() => navigate('/login'), 2000);
-      } else {
-        setSuccess('Registration submitted! Please wait for admin approval.');
-      }
+      setSuccess('Registration successful! Redirecting to login...');
+      setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
       console.error('Registration error:', err);
-      setError(err.response?.data?.detail || err.response?.data?.email?.[0] || err.response?.data?.username?.[0] || 'Registration failed');
+      const errorData = err.response?.data;
+      let errorMsg = 'Registration failed';
+      
+      if (errorData) {
+        if (typeof errorData === 'string') {
+          errorMsg = errorData;
+        } else if (errorData.detail) {
+          errorMsg = errorData.detail;
+        } else if (errorData.email) {
+          errorMsg = `Email: ${errorData.email[0]}`;
+        } else if (errorData.username) {
+          errorMsg = `Username: ${errorData.username[0]}`;
+        } else if (errorData.password) {
+          errorMsg = `Password: ${errorData.password[0]}`;
+        } else {
+          errorMsg = JSON.stringify(errorData);
+        }
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      
+      setError(errorMsg);
     }
   };
 
@@ -331,8 +371,8 @@ const styles = {
     marginBottom: '12px',
     borderRadius: '12px',
     border: '1px solid rgba(255,255,255,0.3)',
-    background: 'rgba(255,255,255,0.25)',
-    color: 'white',
+    background: 'rgba(255,255,255,0.9)',
+    color: '#1f2937',
     fontSize: '15px',
     outline: 'none',
     boxSizing: 'border-box',

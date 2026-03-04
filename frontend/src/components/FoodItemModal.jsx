@@ -37,6 +37,19 @@ export default function FoodItemModal({ open, item, onClose, onSubmit }) {
     const { name, value, type, checked, files } = event.target;
     if (type === 'file') {
       const file = files?.[0] || null;
+      
+      // Validate file
+      if (file) {
+        if (file.size > 5 * 1024 * 1024) {
+          alert('Image size must be less than 5MB');
+          return;
+        }
+        if (!file.type.startsWith('image/')) {
+          alert('Please upload a valid image file');
+          return;
+        }
+      }
+      
       setFormData((previous) => ({ ...previous, image: file }));
       setPreview(file ? URL.createObjectURL(file) : item?.image_url || '');
       return;
@@ -50,9 +63,31 @@ export default function FoodItemModal({ open, item, onClose, onSubmit }) {
 
   const handleSubmit = (event) => {
     event.preventDefault();
+
+    // Validation
+    if (!formData.name || formData.name.trim().length < 3) {
+      alert('Item name must be at least 3 characters');
+      return;
+    }
+
+    if (!formData.price || parseFloat(formData.price) < 0) {
+      alert('Price must be a positive number');
+      return;
+    }
+
+    if (parseFloat(formData.price) > 100000) {
+      alert('Price seems too high. Please check.');
+      return;
+    }
+
+    if (!item && !formData.image) {
+      alert('Please upload an image for the menu item');
+      return;
+    }
+
     const payload = new FormData();
-    payload.append('name', formData.name);
-    payload.append('description', formData.description);
+    payload.append('name', formData.name.trim());
+    payload.append('description', formData.description.trim());
     payload.append('price', formData.price);
     payload.append('is_available', String(formData.is_available));
     if (formData.image) {
