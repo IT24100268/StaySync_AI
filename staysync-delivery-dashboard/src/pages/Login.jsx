@@ -35,7 +35,7 @@ function Login() {
       setError(result.message)
       return
     }
-    navigate(redirectTo, { replace: true })
+    navigate('/dashboard', { replace: true })
   }
 
   return (
