@@ -8,17 +8,23 @@ from .serializers import RoomSerializer, FavoriteSerializer
 from .filters import RoomFilter
 
 class RoomListView(generics.ListAPIView):
-    queryset = Room.objects.all()
     serializer_class = RoomSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = RoomFilter
     ordering_fields = ['price', 'distance_from_university', 'created_at']
     permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        # Only show APPROVED rooms to students
+        return Room.objects.filter(status='APPROVED')
 
 class RoomDetailView(generics.RetrieveAPIView):
-    queryset = Room.objects.all()
     serializer_class = RoomSerializer
     permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        # Only show APPROVED rooms
+        return Room.objects.filter(status='APPROVED')
 
 class FavoriteToggleView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]

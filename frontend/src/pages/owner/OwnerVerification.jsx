@@ -1,258 +1,233 @@
-import { useState, useEffect } from 'react';
-import { Upload, CheckCircle, XCircle, Clock } from 'lucide-react';
-import ownerApi from '../../api/ownerApi';
+import { useState, useEffect } from "react";
+import { Upload, CheckCircle, XCircle, Clock, ShieldCheck, FileText } from "lucide-react";
+import ownerApi from "../../api/ownerApi";
 
 export default function OwnerVerification() {
   const [verification, setVerification] = useState({
-    nicPassport: '',
-    addressProof: '',
-    businessReg: '',
-    status: 'pending',
+    nicPassport: "",
+    addressProof: "",
+    businessReg: "",
+    status: "pending",
   });
+
   const [files, setFiles] = useState({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchVerification();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchVerification = async () => {
     try {
-      const { data } = await ownerApi.get('/owner/me');
-      if (data.verification) {
-        setVerification(data.verification);
-      }
+      const { data } = await ownerApi.get("/owner/me");
+      if (data?.verification) setVerification(data.verification);
     } catch (error) {
-      console.error('Failed to fetch verification:', error);
+      console.error("Failed to fetch verification:", error);
     }
   };
 
   const handleFileChange = (field, file) => {
     if (!file) return;
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB');
-      return;
-    }
+    if (file.size > 5 * 1024 * 1024) return alert("File size must be less than 5MB");
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
-    if (!allowedTypes.includes(file.type)) {
-      alert('Only JPG, PNG, and PDF files are allowed');
-      return;
-    }
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) return alert("Only JPG, PNG, and PDF files are allowed");
 
-    setFiles({ ...files, [field]: file });
+    setFiles((prev) => ({ ...prev, [field]: file }));
+  };
+
+  const statusBadge = () => {
+    switch (verification.status) {
+      case "approved":
+        return (
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-100 text-emerald-700 font-bold">
+            <CheckCircle size={18} />
+            Verified
+          </span>
+        );
+      case "rejected":
+        return (
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-red-100 text-red-700 font-bold">
+            <XCircle size={18} />
+            Rejected
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-100 text-amber-700 font-bold">
+            <Clock size={18} />
+            Pending Review
+          </span>
+        );
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    // Validation
     if (!verification.nicPassport || verification.nicPassport.length < 5) {
-      alert('Please enter a valid NIC/Passport number');
       setLoading(false);
-      return;
+      return alert("Please enter a valid NIC/Passport number");
     }
-
     if (!verification.addressProof || verification.addressProof.length < 10) {
-      alert('Please enter a valid address');
       setLoading(false);
-      return;
+      return alert("Please enter a valid address");
     }
-
     if (!files.nicDoc) {
-      alert('Please upload NIC/Passport document');
       setLoading(false);
-      return;
+      return alert("Please upload NIC/Passport document");
     }
-
     if (!files.addressDoc) {
-      alert('Please upload address proof document');
       setLoading(false);
-      return;
+      return alert("Please upload address proof document");
     }
 
     try {
-      // Upload documents
-      const formData = new FormData();
-      Object.entries(files).forEach(([key, file]) => {
-        if (file) formData.append(key, file);
-      });
+      const fd = new FormData();
+      Object.entries(files).forEach(([key, file]) => file && fd.append(key, file));
 
       if (Object.keys(files).length > 0) {
-        await ownerApi.post('/owner/verification/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
+        await ownerApi.post("/owner/verification/upload", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
         });
       }
 
-      // Update verification info
-      await ownerApi.put('/owner/verification', verification);
-      
-      alert('Verification submitted successfully!');
+      await ownerApi.put("/owner/verification", verification);
+
+      alert("Verification submitted successfully!");
       fetchVerification();
     } catch (error) {
-      console.error('Failed to submit verification:', error);
-      alert('Failed to submit verification');
+      console.error("Failed to submit verification:", error);
+      alert("Failed to submit verification");
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusBadge = () => {
-    switch (verification.status) {
-      case 'approved':
-        return (
-          <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg">
-            <CheckCircle size={20} />
-            <span className="font-semibold">Verified</span>
-          </div>
-        );
-      case 'rejected':
-        return (
-          <div className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-700 rounded-lg">
-            <XCircle size={20} />
-            <span className="font-semibold">Rejected</span>
-          </div>
-        );
-      default:
-        return (
-          <div className="flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg">
-            <Clock size={20} />
-            <span className="font-semibold">Pending Review</span>
-          </div>
-        );
-    }
-  };
+  const UploadBox = ({ id, label, field }) => (
+    <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 bg-slate-50">
+      <input
+        type="file"
+        accept="image/*,application/pdf"
+        onChange={(e) => handleFileChange(field, e.target.files[0])}
+        className="hidden"
+        id={id}
+      />
+      <label htmlFor={id} className="flex items-center gap-4 cursor-pointer">
+        <div className="h-12 w-12 rounded-2xl bg-white border border-slate-200 grid place-items-center">
+          <Upload size={20} className="text-slate-700" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-extrabold text-slate-900">{label}</p>
+          <p className="text-sm text-slate-500 truncate">
+            {files[field] ? files[field].name : "Click to upload (JPG/PNG/PDF)"}
+          </p>
+        </div>
+      </label>
+    </div>
+  );
 
   return (
-    <div className="max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Profile Verification</h1>
-        {getStatusBadge()}
+    <div className="max-w-4xl space-y-6">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-900">Profile Verification</h1>
+          <p className="text-slate-600">
+            Verify your identity to build trust and get better visibility.
+          </p>
+        </div>
+        {statusBadge()}
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <p className="text-blue-900 font-semibold mb-2">Why verify your profile?</p>
-        <ul className="text-blue-800 text-sm space-y-1">
-          <li>• Build trust with potential tenants</li>
-          <li>• Get priority in search results</li>
-          <li>• Access premium features</li>
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="h-10 w-10 rounded-2xl bg-slate-900 text-white grid place-items-center">
+            <ShieldCheck size={18} />
+          </div>
+          <div>
+            <p className="font-extrabold text-slate-900">Why verify?</p>
+            <p className="text-sm text-slate-600">More trust = more enquiries.</p>
+          </div>
+        </div>
+
+        <ul className="text-sm text-slate-700 space-y-1">
+          <li>• Builds trust with potential tenants</li>
+          <li>• Helps you rank higher in search</li>
+          <li>• Unlocks premium features later</li>
         </ul>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-6 space-y-6">
-        <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-2">
-            NIC / Passport Number *
-          </label>
-          <input
-            type="text"
-            required
-            value={verification.nicPassport}
-            onChange={(e) => setVerification({ ...verification, nicPassport: e.target.value })}
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-2">
-            Upload NIC/Passport Copy *
-          </label>
-          <div className="border-2 border-dashed border-slate-300 rounded-lg p-6">
-            <input
-              type="file"
-              accept="image/*,application/pdf"
-              onChange={(e) => handleFileChange('nicDoc', e.target.files[0])}
-              className="hidden"
-              id="nic-upload"
-            />
-            <label htmlFor="nic-upload" className="flex flex-col items-center cursor-pointer">
-              <Upload size={32} className="text-slate-400 mb-2" />
-              <p className="text-slate-600 text-sm">
-                {files.nicDoc ? files.nicDoc.name : 'Click to upload'}
-              </p>
+      <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <label className="block text-sm font-extrabold text-slate-700 mb-2">
+              NIC / Passport Number *
             </label>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-2">
-            Address Proof (Utility Bill) *
-          </label>
-          <input
-            type="text"
-            required
-            value={verification.addressProof}
-            onChange={(e) => setVerification({ ...verification, addressProof: e.target.value })}
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Enter address"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-2">
-            Upload Address Proof *
-          </label>
-          <div className="border-2 border-dashed border-slate-300 rounded-lg p-6">
             <input
-              type="file"
-              accept="image/*,application/pdf"
-              onChange={(e) => handleFileChange('addressDoc', e.target.files[0])}
-              className="hidden"
-              id="address-upload"
+              type="text"
+              value={verification.nicPassport}
+              onChange={(e) => setVerification({ ...verification, nicPassport: e.target.value })}
+              className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              required
             />
-            <label htmlFor="address-upload" className="flex flex-col items-center cursor-pointer">
-              <Upload size={32} className="text-slate-400 mb-2" />
-              <p className="text-slate-600 text-sm">
-                {files.addressDoc ? files.addressDoc.name : 'Click to upload'}
-              </p>
-            </label>
           </div>
-        </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-2">
-            Business Registration (Optional)
-          </label>
-          <input
-            type="text"
-            value={verification.businessReg}
-            onChange={(e) => setVerification({ ...verification, businessReg: e.target.value })}
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Registration number"
-          />
-        </div>
+          <div className="md:col-span-2">
+            <UploadBox id="nic-upload" label="Upload NIC/Passport Copy *" field="nicDoc" />
+          </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-2">
-            Upload Business Registration (Optional)
-          </label>
-          <div className="border-2 border-dashed border-slate-300 rounded-lg p-6">
+          <div className="md:col-span-2">
+            <label className="block text-sm font-extrabold text-slate-700 mb-2">
+              Address Proof (Utility Bill) *
+            </label>
             <input
-              type="file"
-              accept="image/*,application/pdf"
-              onChange={(e) => handleFileChange('businessDoc', e.target.files[0])}
-              className="hidden"
+              type="text"
+              value={verification.addressProof}
+              onChange={(e) => setVerification({ ...verification, addressProof: e.target.value })}
+              className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              placeholder="Enter your address"
+              required
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <UploadBox id="address-upload" label="Upload Address Proof *" field="addressDoc" />
+          </div>
+
+          <div className="md:col-span-2">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText size={18} className="text-slate-400" />
+              <label className="block text-sm font-extrabold text-slate-700">
+                Business Registration (Optional)
+              </label>
+            </div>
+            <input
+              type="text"
+              value={verification.businessReg}
+              onChange={(e) => setVerification({ ...verification, businessReg: e.target.value })}
+              className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              placeholder="Registration number"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <UploadBox
               id="business-upload"
+              label="Upload Business Registration (Optional)"
+              field="businessDoc"
             />
-            <label htmlFor="business-upload" className="flex flex-col items-center cursor-pointer">
-              <Upload size={32} className="text-slate-400 mb-2" />
-              <p className="text-slate-600 text-sm">
-                {files.businessDoc ? files.businessDoc.name : 'Click to upload'}
-              </p>
-            </label>
           </div>
         </div>
 
         <button
           type="submit"
-          disabled={loading || verification.status === 'approved'}
-          className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+          disabled={loading || verification.status === "approved"}
+          className="w-full px-6 py-3 rounded-2xl bg-slate-900 text-white font-extrabold hover:bg-slate-800 transition disabled:opacity-50"
         >
-          {loading ? 'Submitting...' : 'Submit for Verification'}
+          {loading ? "Submitting..." : "Submit for Verification"}
         </button>
       </form>
     </div>

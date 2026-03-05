@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 
 /**
  * StaySync AI - Student Dashboard (Mock) - Blue Theme
+ * ✅ UPDATED: Navbar removed (because you use separate Navbar component globally)
  * - Uses placeholder images (no local assets required)
  * - Includes AI Smart Package: best room + nearby food analysis + monthly meal package
  */
@@ -100,8 +101,7 @@ const StudentDashboardMockBlue = () => {
     []
   );
 
-  // ✅ Your AI feature (Updated)
-  // Under budget -> find best room + analyze nearby providers -> build monthly food package
+  // ✅ AI feature (Mock)
   const ai = useMemo(() => {
     const budget = 50000;
 
@@ -109,7 +109,12 @@ const StudentDashboardMockBlue = () => {
       name: "Greenview Hostel",
       price: 28000,
       location: "Near SLIIT (Malabe)",
-      reasons: ["Best value under budget", "Short distance to food providers", "Wi-Fi included", "Safe area"],
+      reasons: [
+        "Best value under budget",
+        "Short distance to food providers",
+        "Wi-Fi included",
+        "Safe area",
+      ],
     };
 
     const providers = [
@@ -118,7 +123,6 @@ const StudentDashboardMockBlue = () => {
       { name: "Healthy Lunch Packs", type: "Home Food", distanceKm: 1.6, meals: "Breakfast + Lunch", from: 300 },
     ];
 
-    // Simple mock monthly package (you can adjust)
     const foodBudget = 18000;
 
     const packagePlan = {
@@ -160,31 +164,11 @@ const StudentDashboardMockBlue = () => {
   const onSearch = (e) => {
     e.preventDefault();
     // Mock search: no backend call
-    // You can show a toast later
   };
 
   return (
     <div style={styles.page}>
-      {/* Top Bar (like your screenshot) */}
-      <div style={styles.topbar}>
-        <div style={styles.brand}>
-          <div style={styles.logoDot} />
-          <div style={styles.brandText}>StaySync AI</div>
-        </div>
-
-        <div style={styles.navLinks}>
-          <Link to="/rooms" style={styles.navLink}>Room Search</Link>
-          <Link to="/restaurants" style={styles.navLink}>Restaurants</Link>
-          <Link to="/orders" style={styles.navLink}>My Orders</Link>
-        </div>
-
-        <div style={styles.userChip}>
-          <div style={styles.avatarCircle}>
-            {(user?.first_name?.[0] || user?.username?.[0] || "S").toUpperCase()}
-          </div>
-          <div style={styles.userName}>{user?.first_name || user?.username || "Student"}</div>
-        </div>
-      </div>
+      {/* ✅ Navbar removed — you will use <Navbar /> from separate file */}
 
       {/* Welcome line */}
       <div style={styles.welcomeRow}>
@@ -192,7 +176,15 @@ const StudentDashboardMockBlue = () => {
           <h1 style={styles.welcomeTitle}>
             Welcome, {user?.first_name || user?.username || "Student"}!
           </h1>
-          <p style={styles.welcomeSub}>Explore & find your perfect room — and let AI build your monthly plan.</p>
+          <p style={styles.welcomeSub}>
+            Explore & find your perfect room — and let AI build your monthly plan.
+          </p>
+        </div>
+
+        <div style={styles.quickLinks}>
+          <Link to="/rooms" style={styles.quickBtn}>Room Search</Link>
+          <Link to="/restaurants" style={styles.quickBtn}>Restaurants</Link>
+          <Link to="/orders" style={styles.quickBtn}>My Orders</Link>
         </div>
       </div>
 
@@ -258,7 +250,7 @@ const StudentDashboardMockBlue = () => {
         </div>
       </div>
 
-      {/* Main grid like screenshot */}
+      {/* Main grid */}
       <div style={styles.grid2}>
         {/* Recommended Rooms */}
         <div style={styles.card}>
@@ -313,7 +305,7 @@ const StudentDashboardMockBlue = () => {
           </div>
         </div>
 
-        {/* ✅ Saved Rooms */}
+        {/* Saved Rooms */}
         <div style={styles.card}>
           <div style={styles.cardHeader}>
             <div style={styles.cardTitle}>Saved Rooms</div>
@@ -364,7 +356,7 @@ const StudentDashboardMockBlue = () => {
           </div>
         </div>
 
-        {/* ✅ AI Smart Package (Your full AI feature) */}
+        {/* AI Smart Package */}
         <div style={{ ...styles.card, gridColumn: "1 / -1" }}>
           <div style={styles.cardHeader}>
             <div style={styles.cardTitle}>🤖 AI Smart Monthly Package (Room + Food)</div>
@@ -417,25 +409,37 @@ const StudentDashboardMockBlue = () => {
               <div style={styles.mealGrid}>
                 <div style={styles.mealCard}>
                   <div style={styles.mealTitle}>☀️ Breakfast</div>
-                  <div style={styles.mealSub}>{ai.packagePlan.breakfast.label} • Avg/day LKR {ai.packagePlan.breakfast.avgPerDay}</div>
+                  <div style={styles.mealSub}>
+                    {ai.packagePlan.breakfast.label} • Avg/day LKR {ai.packagePlan.breakfast.avgPerDay}
+                  </div>
                   <div style={styles.chips}>
-                    {ai.packagePlan.breakfast.items.map((i) => <span key={i} style={styles.chip}>{i}</span>)}
+                    {ai.packagePlan.breakfast.items.map((i) => (
+                      <span key={i} style={styles.chip}>{i}</span>
+                    ))}
                   </div>
                 </div>
 
                 <div style={styles.mealCard}>
                   <div style={styles.mealTitle}>🍛 Lunch</div>
-                  <div style={styles.mealSub}>{ai.packagePlan.lunch.label} • Avg/day LKR {ai.packagePlan.lunch.avgPerDay}</div>
+                  <div style={styles.mealSub}>
+                    {ai.packagePlan.lunch.label} • Avg/day LKR {ai.packagePlan.lunch.avgPerDay}
+                  </div>
                   <div style={styles.chips}>
-                    {ai.packagePlan.lunch.items.map((i) => <span key={i} style={styles.chip}>{i}</span>)}
+                    {ai.packagePlan.lunch.items.map((i) => (
+                      <span key={i} style={styles.chip}>{i}</span>
+                    ))}
                   </div>
                 </div>
 
                 <div style={styles.mealCard}>
                   <div style={styles.mealTitle}>🌙 Dinner</div>
-                  <div style={styles.mealSub}>{ai.packagePlan.dinner.label} • Avg/day LKR {ai.packagePlan.dinner.avgPerDay}</div>
+                  <div style={styles.mealSub}>
+                    {ai.packagePlan.dinner.label} • Avg/day LKR {ai.packagePlan.dinner.avgPerDay}
+                  </div>
                   <div style={styles.chips}>
-                    {ai.packagePlan.dinner.items.map((i) => <span key={i} style={styles.chip}>{i}</span>)}
+                    {ai.packagePlan.dinner.items.map((i) => (
+                      <span key={i} style={styles.chip}>{i}</span>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -446,10 +450,12 @@ const StudentDashboardMockBlue = () => {
               </div>
             </div>
 
-            {/* Nearby provider analysis */}
+            {/* Provider analysis */}
             <div style={styles.aiBox}>
               <div style={styles.aiLabel}>Nearby Food Provider Analysis</div>
-              <div style={styles.aiHint}>AI checks distance, meal types, and starting prices.</div>
+              <div style={styles.aiHint}>
+                AI checks distance, meal types, and starting prices.
+              </div>
 
               <div style={styles.providerList}>
                 {ai.providers.map((p) => (
@@ -509,64 +515,31 @@ const styles = {
     padding: "18px 18px 40px",
   },
 
-  // Top bar
-  topbar: {
-    height: 64,
-    borderRadius: 14,
-    padding: "0 16px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    background: `linear-gradient(90deg, ${THEME.navy}, ${THEME.navy2})`,
-    color: "#fff",
-    boxShadow: THEME.shadow,
-    position: "sticky",
-    top: 12,
-    zIndex: 20,
-  },
-  brand: { display: "flex", alignItems: "center", gap: 10, fontWeight: 900 },
-  logoDot: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
-    background: "rgba(255,255,255,0.25)",
-    border: "1px solid rgba(255,255,255,0.35)",
-  },
-  brandText: { letterSpacing: 0.2, fontSize: 16 },
-
-  navLinks: { display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" },
-  navLink: {
-    color: "rgba(255,255,255,0.95)",
-    textDecoration: "none",
-    fontWeight: 800,
-    fontSize: 13,
-    padding: "8px 10px",
-    borderRadius: 10,
-    background: "rgba(255,255,255,0.10)",
-    border: "1px solid rgba(255,255,255,0.18)",
-  },
-
-  userChip: { display: "flex", alignItems: "center", gap: 10 },
-  avatarCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 999,
-    display: "grid",
-    placeItems: "center",
-    background: "rgba(255,255,255,0.20)",
-    border: "1px solid rgba(255,255,255,0.30)",
-    fontWeight: 900,
-  },
-  userName: { fontWeight: 900, fontSize: 13 },
-
   // Welcome
   welcomeRow: {
     maxWidth: 1200,
-    margin: "16px auto 0",
+    margin: "10px auto 0",
     padding: "6px 6px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    gap: 12,
+    flexWrap: "wrap",
   },
   welcomeTitle: { margin: 0, fontSize: 28, fontWeight: 900, color: THEME.text },
   welcomeSub: { margin: "6px 0 0", color: THEME.muted, fontWeight: 700 },
+
+  quickLinks: { display: "flex", gap: 10, flexWrap: "wrap" },
+  quickBtn: {
+    color: THEME.navy,
+    textDecoration: "none",
+    fontWeight: 900,
+    fontSize: 13,
+    padding: "10px 12px",
+    borderRadius: 999,
+    background: "rgba(255,255,255,0.85)",
+    border: `1px solid ${THEME.border}`,
+  },
 
   // Search panel
   searchPanel: {
@@ -774,7 +747,6 @@ const styles = {
 
   // Tracking
   trackWrap: { display: "grid", gridTemplateColumns: "1fr 0.55fr", gap: 10, alignItems: "center" },
-  trackLeft: {},
   trackTitle: { fontWeight: 900, fontSize: 18, color: THEME.text },
   trackSub: { marginTop: 6, color: THEME.muted, fontWeight: 800 },
   timeline: { marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" },
@@ -805,17 +777,8 @@ const styles = {
   },
 
   // AI section
-  aiGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 12,
-  },
-  aiBox: {
-    borderRadius: 16,
-    border: `1px solid ${THEME.border}`,
-    background: "rgba(255,255,255,0.90)",
-    padding: 14,
-  },
+  aiGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
+  aiBox: { borderRadius: 16, border: `1px solid ${THEME.border}`, background: "rgba(255,255,255,0.90)", padding: 14 },
   aiLabel: { fontSize: 12, fontWeight: 900, color: THEME.muted },
   aiValue: { marginTop: 6, fontSize: 18, fontWeight: 900, color: THEME.text },
   aiHint: { marginTop: 6, fontSize: 13, fontWeight: 800, color: THEME.muted },
@@ -823,58 +786,25 @@ const styles = {
   barFill: { height: "100%", borderRadius: 999, background: `linear-gradient(90deg, ${THEME.navy}, ${THEME.sky})` },
   list: { marginTop: 10, display: "grid", gap: 6 },
   listItem: { fontSize: 13, fontWeight: 900, color: THEME.text },
-
   aiActions: { marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" },
 
   mealGrid: { marginTop: 10, display: "grid", gap: 10 },
-  mealCard: {
-    borderRadius: 14,
-    border: `1px solid ${THEME.border}`,
-    background: "rgba(31,79,150,0.05)",
-    padding: 12,
-  },
+  mealCard: { borderRadius: 14, border: `1px solid ${THEME.border}`, background: "rgba(31,79,150,0.05)", padding: 12 },
   mealTitle: { fontWeight: 900, color: THEME.text },
   mealSub: { marginTop: 4, fontSize: 12, fontWeight: 800, color: THEME.muted },
   chips: { marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 },
-  chip: {
-    fontSize: 11,
-    fontWeight: 900,
-    padding: "5px 10px",
-    borderRadius: 999,
-    background: "rgba(255,255,255,0.90)",
-    border: `1px solid ${THEME.border}`,
-    color: THEME.text,
-  },
+  chip: { fontSize: 11, fontWeight: 900, padding: "5px 10px", borderRadius: 999, background: "rgba(255,255,255,0.90)", border: `1px solid ${THEME.border}`, color: THEME.text },
 
   providerList: { marginTop: 10, display: "grid", gap: 10 },
-  providerRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 10,
-    padding: 10,
-    borderRadius: 14,
-    border: `1px solid ${THEME.border}`,
-    background: "rgba(255,255,255,0.92)",
-  },
+  providerRow: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, padding: 10, borderRadius: 14, border: `1px solid ${THEME.border}`, background: "rgba(255,255,255,0.92)" },
   providerName: { fontWeight: 900, color: THEME.text },
   providerMeta: { marginTop: 4, fontSize: 12, fontWeight: 800, color: THEME.muted, display: "flex", gap: 8, flexWrap: "wrap" },
   providerRight: { textAlign: "right" },
   providerDist: { fontSize: 12, fontWeight: 900, color: THEME.muted },
   providerFrom: { marginTop: 4, fontSize: 12, fontWeight: 900, color: THEME.navy },
 
-  breakdown: {
-    marginTop: 12,
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: 10,
-  },
-  breakItem: {
-    borderRadius: 14,
-    border: `1px solid ${THEME.border}`,
-    background: "rgba(255,255,255,0.90)",
-    padding: 10,
-  },
+  breakdown: { marginTop: 12, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 },
+  breakItem: { borderRadius: 14, border: `1px solid ${THEME.border}`, background: "rgba(255,255,255,0.90)", padding: 10 },
   breakLabel: { fontSize: 12, fontWeight: 900, color: THEME.muted },
   breakVal: { marginTop: 6, fontSize: 13, fontWeight: 900, color: THEME.text },
 

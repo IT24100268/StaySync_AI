@@ -29,8 +29,17 @@ export function FoodItemsProvider({ children }) {
       setError('');
       try {
         const response = await restaurantApi.getFoodItems();
-        setItems(response.data);
-      } catch {
+        console.log('Food items API response:', response.data);
+        console.log('Response data type:', typeof response.data);
+        console.log('Has results?', 'results' in response.data);
+        console.log('Response.data keys:', Object.keys(response.data));
+        // Handle paginated response
+        const itemsList = response.data.results || response.data;
+        console.log('Food items count:', itemsList.length);
+        console.log('Food items array:', JSON.stringify(itemsList, null, 2));
+        setItems(Array.isArray(itemsList) ? itemsList : []);
+      } catch (err) {
+        console.error('Failed to fetch food items:', err);
         setError('Unable to load menu items.');
       } finally {
         if (silent) {

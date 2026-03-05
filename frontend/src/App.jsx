@@ -7,6 +7,8 @@ import OwnerProtectedRoute from './components/owner/OwnerProtectedRoute';
 import Navbar from './components/Navbar';
 import DashboardLayout from './components/DashboardLayout';
 import OwnerDashboardLayout from './components/owner/OwnerDashboardLayout';
+import RestaurantLayout from './components/layout/RestaurantLayout';
+import AdminLayout from './components/admin/AdminLayout';
 import PublicHome from './pages/PublicHome';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -23,13 +25,22 @@ import Orders from './pages/Orders';
 import Tracking from './pages/Tracking';
 import DeliveryDashboard from './pages/DeliveryDashboard';
 import RestaurantDashboard from './pages/RestaurantDashboard';
-import AdminDashboard from './pages/AdminDashboard';
+import MenuManagementPage from './pages/MenuManagementPage';
+import OrdersPage from './pages/OrdersPage';
+import PlaceholderPage from './pages/PlaceholderPage';
 import OwnerDashboard from './pages/owner/OwnerDashboard';
 import OwnerListings from './pages/owner/OwnerListings';
 import OwnerListingForm from './pages/owner/OwnerListingForm';
 import OwnerEnquiries from './pages/owner/OwnerEnquiries';
 import OwnerAnalytics from './pages/owner/OwnerAnalytics';
 import OwnerVerification from './pages/owner/OwnerVerification';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import RoomApprovals from './pages/admin/RoomApprovals';
+import RestaurantApprovals from './pages/admin/RestaurantApprovals';
+import PartnerApprovals from './pages/admin/PartnerApprovals';
+import UsersManagement from './pages/admin/UsersManagement';
+import ReportsQueue from './pages/admin/ReportsQueue';
+import AdminLogs from './pages/admin/AdminLogs';
 
 const ProtectedLayout = ({ children }) => (
   <>
@@ -74,11 +85,27 @@ function App() {
             
             <Route path="/delivery/dashboard" element={<PrivateRoute><DeliveryDashboard /></PrivateRoute>} />
             
-            <Route path="/restaurant" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
+            <Route path="/restaurant" element={<PrivateRoute><RestaurantLayout /></PrivateRoute>}>
+              <Route index element={<Navigate to="/restaurant/dashboard" replace />} />
               <Route path="dashboard" element={<RestaurantDashboard />} />
+              <Route path="menu" element={<MenuManagementPage />} />
+              <Route path="orders" element={<OrdersPage />} />
+              <Route path="reservations" element={<PlaceholderPage title="Reservations" />} />
+              <Route path="earnings" element={<PlaceholderPage title="Earnings" />} />
+              <Route path="reviews" element={<PlaceholderPage title="Reviews" />} />
+              <Route path="settings" element={<PlaceholderPage title="Settings" />} />
             </Route>
             
-            <Route path="/admin/dashboard" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />
+            <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
+              <Route index element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="rooms" element={<RoomApprovals />} />
+              <Route path="restaurants" element={<RestaurantApprovals />} />
+              <Route path="partners" element={<PartnerApprovals />} />
+              <Route path="users" element={<UsersManagement />} />
+              <Route path="reports" element={<ReportsQueue />} />
+              <Route path="logs" element={<AdminLogs />} />
+            </Route>
             
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
