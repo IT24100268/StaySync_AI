@@ -3,6 +3,14 @@ from users.models import User
 
 
 class Restaurant(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('APPROVED', 'Approved'),
+        ('REJECTED', 'Rejected'),
+        ('NEEDS_CHANGES', 'Needs Changes'),
+        ('SUSPENDED', 'Suspended'),
+    ]
+    
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_restaurants')
     name = models.CharField(max_length=255)
     email = models.EmailField()
@@ -11,6 +19,10 @@ class Restaurant(models.Model):
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
     is_approved = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    review_note = models.TextField(null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_restaurants')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

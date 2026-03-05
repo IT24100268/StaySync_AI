@@ -70,7 +70,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
-    student_name = serializers.CharField(source='student.get_full_name', read_only=True)
+    student_name = serializers.SerializerMethodField()
     items = OrderItemSerializer(many=True, read_only=True)
 
     class Meta:
@@ -86,6 +86,11 @@ class OrderSerializer(serializers.ModelSerializer):
             'items',
         ]
         read_only_fields = ['id', 'student', 'restaurant', 'total_amount', 'created_at', 'items', 'student_name']
+    
+    def get_student_name(self, obj):
+        if hasattr(obj.student, 'first_name') and obj.student.first_name:
+            return f"{obj.student.first_name} {obj.student.last_name}".strip()
+        return obj.student.email or obj.student.username
 
 
 class OrderStatusUpdateSerializer(serializers.ModelSerializer):

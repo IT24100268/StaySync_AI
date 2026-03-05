@@ -1,6 +1,27 @@
-import { useEffect, useState } from 'react';
-import { Eye, MessageSquare, TrendingUp } from 'lucide-react';
-import ownerApi from '../../api/ownerApi';
+import { useEffect, useMemo, useState } from "react";
+import { Eye, MessageSquare, TrendingUp, ArrowUpRight } from "lucide-react";
+import ownerApi from "../../api/ownerApi";
+
+const KPI = ({ title, value, icon: Icon, hint }) => (
+  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+    <div className="flex items-start justify-between">
+      <div>
+        <p className="text-sm font-semibold text-slate-600">{title}</p>
+        <p className="text-3xl font-extrabold text-slate-900 mt-2">{value}</p>
+        {hint ? (
+          <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
+            <ArrowUpRight size={16} />
+            {hint}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="h-11 w-11 rounded-2xl bg-slate-900 text-white grid place-items-center">
+        <Icon size={20} />
+      </div>
+    </div>
+  </div>
+);
 
 export default function OwnerAnalytics() {
   const [summary, setSummary] = useState({ totalViews: 0, totalEnquiries: 0 });
@@ -9,106 +30,152 @@ export default function OwnerAnalytics() {
 
   useEffect(() => {
     fetchAnalytics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchAnalytics = async () => {
     try {
       const [summaryRes, listingsRes] = await Promise.all([
-        ownerApi.get('/owner/analytics/summary'),
-        ownerApi.get('/owner/analytics/listings'),
+        ownerApi.get("/owner/analytics/summary"),
+        ownerApi.get("/owner/analytics/listings"),
       ]);
-      setSummary(summaryRes.data);
-      setListingStats(listingsRes.data);
+
+      // supports your existing shapes
+      setSummary({
+        totalViews: summaryRes.data.totalViews ?? summaryRes.data.views ?? 0,
+        totalEnquiries:
+          summaryRes.data.totalEnquiries ?? summaryRes.data.enquiries ?? 0,
+      });
+
+      setListingStats(Array.isArray(listingsRes.data) ? listingsRes.data : []);
     } catch (error) {
-      console.error('Failed to fetch analytics:', error);
+      console.error("Failed to fetch analytics:", error);
     } finally {
       setLoading(false);
     }
   };
 
+  const maxViews = useMemo(() => {
+    return Math.max(...listingStats.map((l) => Number(l.views || 0)), 1);
+  }, [listingStats]);
+
   if (loading) {
-    return <div className="text-center py-12">Loading...</div>;
+    return (
+      <div className="py-10">
+        <div className="h-7 w-40 bg-slate-200 rounded animate-pulse mb-6" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="h-28 bg-slate-200 rounded-2xl animate-pulse" />
+          <div className="h-28 bg-slate-200 rounded-2xl animate-pulse" />
+        </div>
+        <div className="h-80 bg-slate-200 rounded-2xl animate-pulse mt-6" />
+      </div>
+    );
   }
 
-  const maxViews = Math.max(...listingStats.map((l) => l.views), 1);
-
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-slate-900 mb-6">Analytics</h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
-          <div className="flex items-center justify-between mb-4">
-            <Eye size={32} />
-            <TrendingUp size={20} className="opacity-70" />
-          </div>
-          <p className="text-3xl font-bold mb-1">{summary.totalViews}</p>
-          <p className="text-sm opacity-90">Total Views</p>
-        </div>
-
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
-          <div className="flex items-center justify-between mb-4">
-            <MessageSquare size={32} />
-            <TrendingUp size={20} className="opacity-70" />
-          </div>
-          <p className="text-3xl font-bold mb-1">{summary.totalEnquiries}</p>
-          <p className="text-sm opacity-90">Total Enquiries</p>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-extrabold text-slate-900">Analytics</h1>
+        <p className="text-slate-600">
+          Track views and enquiry conversion per listing.
+        </p>
       </div>
 
-      <div className="bg-white rounded-xl shadow p-6">
-        <h2 className="text-lg font-bold text-slate-900 mb-6">Views & Enquiries by Listing</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <KPI
+          title="Total Views"
+          value={summary.totalViews}
+          icon={Eye}
+          hint="Overall listing visibility"
+        />
+        <KPI
+          title="Total Enquiries"
+          value={summary.totalEnquiries}
+          icon={MessageSquare}
+          hint="Interest from students"
+        />
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-lg font-extrabold text-slate-900">
+              Listings Performance
+            </h2>
+            <p className="text-sm text-slate-600">
+              Conversion = enquiries / views
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <TrendingUp size={18} />
+            Updated
+          </div>
+        </div>
 
         {listingStats.length === 0 ? (
-          <p className="text-slate-600 text-center py-8">No data available</p>
+          <div className="rounded-2xl bg-slate-50 border border-slate-100 p-10 text-center">
+            <p className="font-semibold text-slate-700">No data available</p>
+            <p className="text-sm text-slate-500 mt-1">
+              Add listings and start getting views/enquiries.
+            </p>
+          </div>
         ) : (
-          <div className="space-y-6">
-            <table className="w-full">
-              <thead className="border-b">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Listing</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-slate-700">Views</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-slate-700">Enquiries</th>
-                  <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700">Conversion</th>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px]">
+              <thead className="border-b border-slate-200">
+                <tr className="text-left text-xs font-bold uppercase text-slate-500">
+                  <th className="py-3 pr-4">Listing</th>
+                  <th className="py-3 px-4 text-center">Views</th>
+                  <th className="py-3 px-4 text-center">Enquiries</th>
+                  <th className="py-3 px-4 text-right">Conversion</th>
+                  <th className="py-3 pl-4">Views Trend</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
-                {listingStats.map((listing) => (
-                  <tr key={listing.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-4">
-                      <p className="font-semibold text-slate-900">{listing.title}</p>
-                    </td>
-                    <td className="px-4 py-4 text-center text-slate-900">{listing.views}</td>
-                    <td className="px-4 py-4 text-center text-slate-900">{listing.enquiries}</td>
-                    <td className="px-4 py-4 text-right text-slate-900">
-                      {listing.views > 0
-                        ? `${((listing.enquiries / listing.views) * 100).toFixed(1)}%`
-                        : '0%'}
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-slate-100">
+                {listingStats.map((listing) => {
+                  const views = Number(listing.views || 0);
+                  const enquiries = Number(listing.enquiries || 0);
+                  const conv =
+                    views > 0 ? ((enquiries / views) * 100).toFixed(1) : "0.0";
+
+                  return (
+                    <tr key={listing.id} className="hover:bg-slate-50">
+                      <td className="py-4 pr-4">
+                        <p className="font-bold text-slate-900">
+                          {listing.title}
+                        </p>
+                      </td>
+
+                      <td className="py-4 px-4 text-center font-semibold text-slate-800">
+                        {views}
+                      </td>
+
+                      <td className="py-4 px-4 text-center font-semibold text-slate-800">
+                        {enquiries}
+                      </td>
+
+                      <td className="py-4 px-4 text-right font-bold text-slate-900">
+                        {conv}%
+                      </td>
+
+                      <td className="py-4 pl-4">
+                        <div className="w-full bg-slate-100 rounded-full h-2">
+                          <div
+                            className="h-2 rounded-full bg-slate-900 transition-all"
+                            style={{ width: `${(views / maxViews) * 100}%` }}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 
-            <div className="mt-8">
-              <h3 className="text-sm font-semibold text-slate-700 mb-4">Views Chart</h3>
-              <div className="space-y-3">
-                {listingStats.map((listing) => (
-                  <div key={listing.id}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm text-slate-700">{listing.title}</span>
-                      <span className="text-sm font-semibold text-slate-900">{listing.views}</span>
-                    </div>
-                    <div className="w-full bg-slate-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all"
-                        style={{ width: `${(listing.views / maxViews) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <p className="text-xs text-slate-500 mt-4">
+              Tip: highest views bar is 100%.
+            </p>
           </div>
         )}
       </div>

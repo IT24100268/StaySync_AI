@@ -1,22 +1,51 @@
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from "../context/AuthContext";
+import { STUDENT_LAYOUT, STUDENT_THEME as THEME } from "../styles/studentTheme";
 
 const Profile = () => {
   const { user } = useAuth();
 
-  if (!user) return <div>Loading...</div>;
+  if (!user) {
+    return (
+      <div style={STUDENT_LAYOUT.page}>
+        <div style={STUDENT_LAYOUT.container}>
+          <div style={STUDENT_LAYOUT.card}>Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  const row = (label, value) => (
+    <div style={styles.row}>
+      <div style={styles.k}>{label}</div>
+      <div style={styles.v}>{value || "—"}</div>
+    </div>
+  );
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2>My Profile</h2>
-        <div style={styles.info}>
-          <p><strong>Name:</strong> {user.first_name} {user.last_name}</p>
-          <p><strong>Email:</strong> {user.email}</p>
-          <p><strong>Username:</strong> {user.username}</p>
-          <p><strong>University:</strong> {user.profile.university}</p>
-          <p><strong>Phone:</strong> {user.profile.phone_number}</p>
-          <p><strong>Gender Preference:</strong> {user.profile.gender_preference}</p>
-          <p><strong>Budget:</strong> ${user.profile.budget}</p>
+    <div style={STUDENT_LAYOUT.page}>
+      <div style={{ ...STUDENT_LAYOUT.container, maxWidth: 900 }}>
+        <div style={styles.header}>
+          <div>
+            <h1 style={styles.title}>My Profile</h1>
+            <p style={styles.sub}>Your account and preferences.</p>
+          </div>
+          <span style={STUDENT_LAYOUT.pill}>Student</span>
+        </div>
+
+        <div style={STUDENT_LAYOUT.card}>
+          <div style={STUDENT_LAYOUT.cardHeader}>
+            <div style={STUDENT_LAYOUT.cardTitle}>Profile Info</div>
+          </div>
+
+          <div style={styles.grid}>
+            {row("Name", `${user.first_name || ""} ${user.last_name || ""}`.trim())}
+            {row("Email", user.email)}
+            {row("Username", user.username)}
+            {row("University", user.profile?.university)}
+            {row("Phone", user.profile?.phone_number)}
+            {row("Gender Preference", user.profile?.gender_preference)}
+            {row("Budget", user.profile?.budget ? `LKR ${Number(user.profile.budget).toLocaleString()}` : "—")}
+          </div>
         </div>
       </div>
     </div>
@@ -24,9 +53,25 @@ const Profile = () => {
 };
 
 const styles = {
-  container: { maxWidth: '800px', margin: '2rem auto', padding: '0 1rem' },
-  card: { background: 'white', padding: '2rem', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', border: '2px solid #e8f5e9' },
-  info: { marginTop: '1rem', lineHeight: '2' },
+  header: {
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: 12,
+    margin: "6px 0 12px",
+  },
+  title: { margin: 0, fontSize: 26, fontWeight: 900, color: THEME.text },
+  sub: { margin: "6px 0 0", color: THEME.muted, fontWeight: 800 },
+
+  grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+  row: {
+    borderRadius: 14,
+    border: `1px solid ${THEME.border}`,
+    background: "rgba(255,255,255,0.92)",
+    padding: 12,
+  },
+  k: { fontSize: 12, fontWeight: 900, color: THEME.muted },
+  v: { marginTop: 6, fontSize: 13, fontWeight: 900, color: THEME.text },
 };
 
 export default Profile;

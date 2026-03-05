@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../services/api";
+import { STUDENT_LAYOUT, STUDENT_THEME as THEME } from "../styles/studentTheme";
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
@@ -12,61 +13,124 @@ const Orders = () => {
 
   const fetchOrders = async () => {
     try {
-      const { data } = await api.get('/orders/');
+      const { data } = await api.get("/orders/");
       setOrders(data.results || data);
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error("Error fetching orders:", error);
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'delivered': return '#2e7d32';
-      case 'on_the_way': return '#1b5e20';
-      case 'preparing': return '#f57c00';
-      default: return '#757575';
-    }
+  const statusPill = (status) => {
+    const s = String(status || "").toLowerCase();
+    const map = {
+      delivered: { bg: "rgba(34,197,94,0.14)", text: "#15803d", label: "DELIVERED" },
+      on_the_way: { bg: "rgba(59,130,246,0.14)", text: "#1d4ed8", label: "ON THE WAY" },
+      preparing: { bg: "rgba(245,158,11,0.16)", text: "#b45309", label: "PREPARING" },
+    };
+    const v = map[s] || { bg: "rgba(100,116,139,0.14)", text: "#334155", label: s.toUpperCase() || "UNKNOWN" };
+
+    return (
+      <span
+        style={{
+          padding: "6px 10px",
+          borderRadius: 999,
+          background: v.bg,
+          color: v.text,
+          fontWeight: 900,
+          fontSize: 12,
+          border: `1px solid ${THEME.border}`,
+        }}
+      >
+        {v.label}
+      </span>
+    );
   };
 
   return (
-    <div style={styles.container}>
-      <h1>My Orders</h1>
-      {orders.length === 0 ? (
-        <p>No orders yet.</p>
-      ) : (
-        <div style={styles.list}>
-          {orders.map((order) => (
-            <div key={order.id} style={styles.card}>
-              <div style={styles.header}>
-                <h3>Order #{order.id}</h3>
-                <span style={{ ...styles.status, background: getStatusColor(order.status) }}>
-                  {order.status.replace('_', ' ').toUpperCase()}
-                </span>
-              </div>
-              <p><strong>Restaurant:</strong> {order.restaurant.name}</p>
-              <p><strong>Total:</strong> ${order.total_price}</p>
-              <p><strong>Items:</strong> {order.items.length}</p>
-              <p><strong>Ordered:</strong> {new Date(order.created_at).toLocaleString()}</p>
-              {order.status === 'on_the_way' && (
-                <button onClick={() => navigate(`/tracking/${order.id}`)} style={styles.trackButton}>
-                  Track Order
-                </button>
-              )}
-            </div>
-          ))}
+    <div style={STUDENT_LAYOUT.page}>
+      <div style={{ ...STUDENT_LAYOUT.container, maxWidth: 1000 }}>
+        <div style={styles.header}>
+          <div>
+            <h1 style={styles.title}>My Orders</h1>
+            <p style={styles.sub}>Your food orders and live tracking.</p>
+          </div>
+          <span style={STUDENT_LAYOUT.pill}>{orders.length} orders</span>
         </div>
-      )}
+
+        {orders.length === 0 ? (
+          <div style={STUDENT_LAYOUT.card}>No orders yet.</div>
+        ) : (
+          <div style={styles.list}>
+            {orders.map((order) => (
+              <div key={order.id} style={STUDENT_LAYOUT.card}>
+                <div style={styles.rowTop}>
+                  <div style={styles.orderTitle}>Order #{order.id}</div>
+                  {statusPill(order.status)}
+                </div>
+
+                <div style={styles.grid}>
+                  <div style={styles.kv}>
+                    <div style={styles.k}>Restaurant</div>
+                    <div style={styles.v}>{order.restaurant.name}</div>
+                  </div>
+                  <div style={styles.kv}>
+                    <div style={styles.k}>Total</div>
+                    <div style={styles.v}>LKR {Number(order.total_price).toLocaleString()}</div>
+                  </div>
+                  <div style={styles.kv}>
+                    <div style={styles.k}>Items</div>
+                    <div style={styles.v}>{order.items.length}</div>
+                  </div>
+                  <div style={styles.kv}>
+                    <div style={styles.k}>Ordered</div>
+                    <div style={styles.v}>{new Date(order.created_at).toLocaleString()}</div>
+                  </div>
+                </div>
+
+                {order.status === "on_the_way" && (
+                  <div style={{ marginTop: 12 }}>
+                    <button
+                      onClick={() => navigate(`/tracking/${order.id}`)}
+                      style={STUDENT_LAYOUT.primaryBtn}
+                    >
+                      Track Order
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 const styles = {
-  container: { maxWidth: '900px', margin: '2rem auto', padding: '0 1rem' },
-  list: { display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '2rem' },
-  card: { background: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', border: '2px solid #e8f5e9' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' },
-  status: { padding: '0.5rem 1rem', color: 'white', borderRadius: '4px', fontSize: '0.9rem' },
-  trackButton: { marginTop: '1rem', padding: '0.5rem 1rem', background: '#2e7d32', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' },
+  header: {
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: 12,
+    margin: "6px 0 12px",
+  },
+  title: { margin: 0, fontSize: 26, fontWeight: 900, color: THEME.text },
+  sub: { margin: "6px 0 0", color: THEME.muted, fontWeight: 800 },
+
+  list: { display: "flex", flexDirection: "column", gap: 12 },
+
+  rowTop: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 },
+  orderTitle: { fontWeight: 900, color: THEME.text, fontSize: 16 },
+
+  grid: { marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+  kv: {
+    borderRadius: 14,
+    border: `1px solid ${THEME.border}`,
+    background: "rgba(255,255,255,0.90)",
+    padding: 10,
+  },
+  k: { fontSize: 12, fontWeight: 900, color: THEME.muted },
+  v: { marginTop: 6, fontSize: 13, fontWeight: 900, color: THEME.text },
 };
 
 export default Orders;

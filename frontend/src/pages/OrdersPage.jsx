@@ -21,8 +21,13 @@ export default function OrdersPage() {
     try {
       const response = await restaurantApi.getOrders(status);
       setOrders(response.data);
-    } catch {
-      setError('Unable to load orders.');
+      setError('');
+    } catch (err) {
+      if (err.response?.status === 404) {
+        setError('Restaurant orders endpoint not found. Please ensure you are logged in as a restaurant owner.');
+      } else {
+        setError('Unable to load orders.');
+      }
     }
   };
 
@@ -49,7 +54,7 @@ export default function OrdersPage() {
         <select
           value={statusFilter}
           onChange={(event) => setStatusFilter(event.target.value)}
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none ring-emerald-200 focus:ring-2"
+          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none ring-blue-200 focus:ring-2"
         >
           <option value="">All Statuses</option>
           {ORDER_STATUSES.map((status) => (
@@ -62,7 +67,7 @@ export default function OrdersPage() {
 
       {error ? <div className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</div> : null}
 
-      <section className="overflow-hidden rounded-2xl bg-white p-4 shadow-sm">
+      <section className="overflow-hidden rounded-2xl bg-white p-4 shadow-sm border border-slate-100">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left">
             <thead>
@@ -84,7 +89,9 @@ export default function OrdersPage() {
                       <td className="px-2 py-3 text-sm font-semibold text-slate-700">#{order.id}</td>
                       <td className="px-2 py-3 text-sm text-slate-700">{order.student_name || order.student}</td>
                       <td className="px-2 py-3 text-sm text-slate-600">{order.items?.length || 0}</td>
-                      <td className="px-2 py-3 text-sm font-medium text-slate-700">LKR {Number(order.total_amount).toLocaleString()}</td>
+                      <td className="px-2 py-3 text-sm font-medium text-slate-700">
+                        LKR {Number(order.total_amount).toLocaleString()}
+                      </td>
                       <td className="px-2 py-3">
                         <StatusBadge status={order.status} />
                       </td>
@@ -92,7 +99,7 @@ export default function OrdersPage() {
                         {action ? (
                           <button
                             type="button"
-                            className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                            className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                             onClick={() => updateStatus(order.id, action.status)}
                           >
                             {action.label}

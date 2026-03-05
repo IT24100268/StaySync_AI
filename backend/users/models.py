@@ -12,6 +12,9 @@ class User(AbstractUser):
     email = models.EmailField(unique=True)
     user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES, default='student')
     is_approved = models.BooleanField(default=True)
+    is_blocked = models.BooleanField(default=False)
+    block_reason = models.TextField(null=True, blank=True)
+    warnings_count = models.IntegerField(default=0)
     
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['email']

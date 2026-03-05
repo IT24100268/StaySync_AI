@@ -19,9 +19,21 @@ class UserProfile(models.Model):
 
 
 class DeliveryPartner(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('APPROVED', 'Approved'),
+        ('REJECTED', 'Rejected'),
+        ('NEEDS_CHANGES', 'Needs Changes'),
+        ('SUSPENDED', 'Suspended'),
+    ]
+    
     user = models.OneToOneField(User, on_delete=models.CASCADE, db_index=True)
     is_online = models.BooleanField(default=False)
     rating = models.FloatField(default=5.0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    review_note = models.TextField(null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_partners')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

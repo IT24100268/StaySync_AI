@@ -26,10 +26,10 @@ const reviewItems = [
 
 function KpiCard({ label, value, detail, gradient }) {
   return (
-    <article className={`rounded-2xl bg-gradient-to-br ${gradient} p-5 shadow-soft`}>
+    <article className={`rounded-2xl bg-gradient-to-br ${gradient} p-5 shadow-sm border border-slate-100`}>
       <p className="text-sm font-medium text-slate-500">{label}</p>
       <p className="mt-2 text-3xl font-semibold text-slate-900">{value}</p>
-      <div className="mt-2 flex items-center gap-1 text-xs font-medium text-emerald-700">
+      <div className="mt-2 flex items-center gap-1 text-xs font-medium text-blue-700">
         <ArrowUpRight size={14} />
         <span>{detail}</span>
       </div>
@@ -48,7 +48,7 @@ function OrderCustomer({ order }) {
 
   return (
     <div className="flex items-center gap-3">
-      <div className="grid h-8 w-8 place-items-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-700">{initials}</div>
+      <div className="grid h-8 w-8 place-items-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">{initials}</div>
       <span className="text-sm font-medium text-slate-700">{label}</span>
     </div>
   );
@@ -80,7 +80,7 @@ export default function RestaurantDashboard() {
     (data?.recent_orders || []).forEach((order) => {
       orderCounts[order.status] = (orderCounts[order.status] || 0) + 1;
     });
-    const palette = ['#f59e0b', '#3b82f6', '#22c55e', '#8b5cf6', '#10b981'];
+    const palette = ['#f59e0b', '#3b82f6', '#22c55e', '#8b5cf6', '#ef4444'];
     return Object.entries(orderCounts).map(([status, count], index) => ({
       name: status.replaceAll('_', ' '),
       value: count,
@@ -90,30 +90,10 @@ export default function RestaurantDashboard() {
 
   const kpis = data
     ? [
-        {
-          label: "Today's Orders",
-          value: data.todays_orders_count,
-          detail: '+8.4% from yesterday',
-          gradient: 'from-emerald-50 to-white',
-        },
-        {
-          label: 'Revenue (LKR)',
-          value: `LKR ${Number(data.total_revenue).toLocaleString()}`,
-          detail: '+12.1% weekly growth',
-          gradient: 'from-sky-50 to-white',
-        },
-        {
-          label: 'Active Orders',
-          value: data.active_orders,
-          detail: '+3 live now',
-          gradient: 'from-violet-50 to-white',
-        },
-        {
-          label: 'Ratings',
-          value: `${data.ratings} / 5`,
-          detail: 'Based on 0 reviews',
-          gradient: 'from-amber-50 to-white',
-        },
+        { label: "Today's Orders", value: data.todays_orders_count, detail: '+8.4% from yesterday', gradient: 'from-blue-50 to-white' },
+        { label: 'Revenue (LKR)', value: `LKR ${Number(data.total_revenue).toLocaleString()}`, detail: '+12.1% weekly growth', gradient: 'from-slate-50 to-white' },
+        { label: 'Active Orders', value: data.active_orders, detail: '+3 live now', gradient: 'from-violet-50 to-white' },
+        { label: 'Ratings', value: `${data.ratings} / 5`, detail: 'Based on 0 reviews', gradient: 'from-amber-50 to-white' },
       ]
     : [];
 
@@ -144,13 +124,12 @@ export default function RestaurantDashboard() {
       return;
     }
     const confirmed = window.confirm(`Delete ${item.name}? This cannot be undone.`);
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
+
     try {
       await deleteItem(item.id);
       addToast({ title: 'Item deleted', message: `${item.name} removed from the menu.`, variant: 'success' });
-    } catch (error) {
+    } catch {
       addToast({ title: 'Error', message: 'Failed to delete item.', variant: 'error' });
     }
   };
@@ -160,9 +139,8 @@ export default function RestaurantDashboard() {
       addToast({ title: 'Error', message: 'Invalid item selected.', variant: 'error' });
       return;
     }
-    if (!window.confirm(`Mark ${item.name} as ${item.is_available ? 'out of stock' : 'available'}?`)) {
-      return;
-    }
+    if (!window.confirm(`Mark ${item.name} as ${item.is_available ? 'out of stock' : 'available'}?`)) return;
+
     try {
       await toggleAvailability(item.id);
       addToast({
@@ -170,18 +148,13 @@ export default function RestaurantDashboard() {
         message: `${item.name} is now ${item.is_available ? 'out of stock' : 'available'}.`,
         variant: 'info',
       });
-    } catch (error) {
+    } catch {
       addToast({ title: 'Error', message: 'Failed to update availability.', variant: 'error' });
     }
   };
 
-  if (error) {
-    return <div className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</div>;
-  }
-
-  if (!data) {
-    return <div className="rounded-2xl bg-white p-6 text-sm text-slate-500 shadow-sm">Loading dashboard metrics...</div>;
-  }
+  if (error) return <div className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</div>;
+  if (!data) return <div className="rounded-2xl bg-white p-6 text-sm text-slate-500 shadow-sm">Loading dashboard metrics...</div>;
 
   return (
     <div className="space-y-6">
@@ -192,11 +165,11 @@ export default function RestaurantDashboard() {
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <section className="rounded-2xl bg-white p-5 shadow-sm">
+        <section className="rounded-2xl bg-white p-5 shadow-sm border border-slate-100">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <h3 className="text-lg font-semibold text-slate-900">Recent Orders</h3>
-              <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+              <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700">
                 {data.recent_orders.length} new orders
               </span>
             </div>
@@ -250,7 +223,7 @@ export default function RestaurantDashboard() {
         </section>
 
         <aside className="space-y-6">
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
+          <section className="rounded-2xl bg-white p-5 shadow-sm border border-slate-100">
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-base font-semibold text-slate-900">Today's Revenue</h3>
@@ -260,15 +233,17 @@ export default function RestaurantDashboard() {
                 <MoreHorizontal size={18} />
               </button>
             </div>
+
             <div className="mt-4 h-44">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={revenueSeries} margin={{ top: 8, right: 0, left: -16, bottom: 0 }}>
                   <defs>
                     <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#34d399" stopOpacity={0.45} />
-                      <stop offset="95%" stopColor="#34d399" stopOpacity={0.04} />
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.45} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.04} />
                     </linearGradient>
                   </defs>
+
                   <XAxis
                     dataKey="time"
                     axisLine={false}
@@ -285,22 +260,27 @@ export default function RestaurantDashboard() {
                     tickFormatter={(value) => `${value / 1000}k`}
                     tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 600 }}
                   />
-                  <Tooltip formatter={(value) => [`LKR ${Number(value).toLocaleString()}`, 'Revenue']} labelFormatter={(label) => `Time ${label}`} />
+
+                  <Tooltip
+                    formatter={(value) => [`LKR ${Number(value).toLocaleString()}`, 'Revenue']}
+                    labelFormatter={(label) => `Time ${label}`}
+                  />
+
                   <Area
                     type="monotone"
                     dataKey="value"
-                    stroke="#10b981"
+                    stroke="#2563eb"
                     strokeWidth={3}
                     fill="url(#revenueFill)"
-                    dot={{ r: 3, fill: '#ffffff', stroke: '#10b981', strokeWidth: 2 }}
-                    activeDot={{ r: 5, fill: '#10b981', stroke: '#ffffff', strokeWidth: 2 }}
+                    dot={{ r: 3, fill: '#ffffff', stroke: '#2563eb', strokeWidth: 2 }}
+                    activeDot={{ r: 5, fill: '#2563eb', stroke: '#ffffff', strokeWidth: 2 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </section>
 
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
+          <section className="rounded-2xl bg-white p-5 shadow-sm border border-slate-100">
             <h3 className="text-base font-semibold text-slate-900">Order Status</h3>
             <div className="mt-4 h-48">
               <ResponsiveContainer width="100%" height="100%">
@@ -314,6 +294,7 @@ export default function RestaurantDashboard() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
+
             <div className="mt-2 space-y-2">
               {statusData.map((entry) => (
                 <div key={entry.name} className="flex items-center justify-between text-xs">
@@ -327,7 +308,7 @@ export default function RestaurantDashboard() {
             </div>
           </section>
 
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
+          <section className="rounded-2xl bg-white p-5 shadow-sm border border-slate-100">
             <h3 className="text-base font-semibold text-slate-900">Customer Reviews</h3>
             <div className="mt-4 space-y-4">
               {reviewItems.map((review) => (
