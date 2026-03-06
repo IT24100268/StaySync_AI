@@ -8,6 +8,8 @@ const initialState = {
   image: null,
 };
 
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
 export default function FoodItemModal({ open, item, onClose, onSubmit }) {
   const [formData, setFormData] = useState(initialState);
   const [preview, setPreview] = useState('');
@@ -44,14 +46,29 @@ export default function FoodItemModal({ open, item, onClose, onSubmit }) {
           alert('Image size must be less than 5MB');
           return;
         }
-        if (!file.type.startsWith('image/')) {
-          alert('Please upload a valid image file');
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+          alert('Only JPG, PNG, or WEBP images are supported.');
           return;
         }
       }
       
-      setFormData((previous) => ({ ...previous, image: file }));
-      setPreview(file ? URL.createObjectURL(file) : item?.image_url || '');
+      if (!file) {
+        setFormData((previous) => ({ ...previous, image: null }));
+        setPreview(item?.image_url || '');
+        return;
+      }
+
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        setFormData((previous) => ({ ...previous, image: file }));
+        setPreview(objectUrl);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        alert('Image file appears corrupted. Please choose another image.');
+      };
+      img.src = objectUrl;
       return;
     }
 
@@ -135,7 +152,7 @@ export default function FoodItemModal({ open, item, onClose, onSubmit }) {
           <input
             name="image"
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             onChange={handleChange}
             className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-xs"
           />

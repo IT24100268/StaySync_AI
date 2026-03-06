@@ -23,12 +23,13 @@ function Topbar() {
     const loadStatus = async () => {
       setLoadingStatus(true)
       try {
-        const response = await api.get('/api/dashboard/summary/')
+        const response = await api.get('/api/delivery/dashboard/summary/')
         const backendStatus = Boolean(response?.data?.data?.partner?.is_online)
         if (mounted) {
           setIsOnline(backendStatus)
         }
-      } catch {
+      } catch (err) {
+        // Silently handle errors (403 if not a delivery partner)
         if (mounted) {
           setIsOnline(false)
         }
@@ -51,7 +52,7 @@ function Topbar() {
     setIsOnline(nextStatus)
     setUpdatingStatus(true)
     try {
-      await api.patch('/api/partner/status/', { is_online: nextStatus })
+      await api.patch('/api/delivery/partner/status/', { is_online: nextStatus })
     } catch {
       setIsOnline(prevStatus)
     } finally {

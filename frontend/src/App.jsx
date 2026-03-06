@@ -12,6 +12,7 @@ import AdminLayout from './components/admin/AdminLayout';
 import PublicHome from './pages/PublicHome';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import Rooms from './pages/Rooms';
@@ -59,6 +60,7 @@ function App() {
             <Route path="/" element={<PublicHome />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             
             {/* Owner Routes - No separate login/register */}
             <Route path="/owner" element={<OwnerProtectedRoute><OwnerDashboardLayout /></OwnerProtectedRoute>}>

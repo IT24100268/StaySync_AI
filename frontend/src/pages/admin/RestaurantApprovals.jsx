@@ -5,6 +5,7 @@ import GlassCard from "./components/GlassCard";
 
 export default function RestaurantApprovals() {
   const [restaurants, setRestaurants] = useState([]);
+  const [pendingOwners, setPendingOwners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("PENDING");
   const [selected, setSelected] = useState(null);
@@ -20,12 +21,26 @@ export default function RestaurantApprovals() {
   const fetchRestaurants = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/admin/restaurants/?status=${filter}`);
-      setRestaurants(data.results || data || []);
+      const [{ data: restaurantsData }, { data: pendingOwnersData }] = await Promise.all([
+        api.get(`/admin/restaurants/?status=${filter}`),
+        api.get(`/admin/users/?is_approved=false&user_type=restaurant_owner`),
+      ]);
+      setRestaurants(restaurantsData.results || restaurantsData || []);
+      setPendingOwners(pendingOwnersData.results || pendingOwnersData || []);
     } catch (e) {
       console.error("Failed to fetch restaurants:", e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const approveOwnerAccount = async (userId) => {
+    try {
+      await api.patch(`/admin/users/${userId}/approve/`);
+      fetchRestaurants();
+    } catch (e) {
+      console.error("Failed to approve restaurant owner:", e);
+      alert("Failed to approve owner account");
     }
   };
 
@@ -95,6 +110,41 @@ export default function RestaurantApprovals() {
           />
         </div>
       </GlassCard>
+
+      {pendingOwners.length > 0 && (
+        <GlassCard className="p-6">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h2 className="text-xl font-extrabold text-slate-900">Pending Restaurant Owner Accounts</h2>
+            <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-sm font-bold">
+              {pendingOwners.length} Pending
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {pendingOwners.map((owner) => (
+              <div key={owner.id} className="p-4 rounded-3xl bg-white/50 border border-white/40">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-extrabold text-slate-900">
+                      {owner.profile?.restaurant_name || owner.username}
+                    </p>
+                    <p className="text-sm text-slate-600">{owner.email}</p>
+                    <p className="text-sm text-slate-700 mt-1">{owner.profile?.phone_number || "No phone"}</p>
+                    <p className="text-xs text-slate-500 mt-2">{owner.profile?.address || "No address"}</p>
+                  </div>
+
+                  <button
+                    onClick={() => approveOwnerAccount(owner.id)}
+                    className="px-4 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 transition text-white font-bold"
+                  >
+                    Approve
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-12">

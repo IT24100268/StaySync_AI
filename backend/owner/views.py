@@ -10,14 +10,37 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_owner_contact(user):
-    """Get owner contact from profile or email"""
+def get_owner_contacts(user):
+    """Get all likely owner-contact values used in room records."""
+    contacts = []
+
     try:
-        if hasattr(user, 'hostel_profile'):
-            return user.hostel_profile.phone_number
-    except:
+        phone = (user.hostel_profile.phone_number or '').strip()
+        if phone:
+            contacts.append(phone)
+    except Exception:
         pass
-    return user.email
+
+    email = (user.email or '').strip()
+    if email:
+        contacts.append(email)
+
+    # owner_contact is max_length=20, so include truncated variants too.
+    normalized = []
+    for contact in contacts:
+        normalized.append(contact)
+        normalized.append(contact[:20])
+
+    deduped = []
+    for contact in normalized:
+        if contact and contact not in deduped:
+            deduped.append(contact)
+    return deduped
+
+
+def get_primary_owner_contact(user):
+    contacts = get_owner_contacts(user)
+    return contacts[0] if contacts else ''
 
 
 class OwnerRoomViewSet(viewsets.ModelViewSet):
@@ -26,8 +49,8 @@ class OwnerRoomViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         # Owner sees only their own rooms
-        owner_contact = get_owner_contact(self.request.user)
-        return Room.objects.filter(owner_contact=owner_contact).order_by('-created_at')
+        owner_contacts = get_owner_contacts(self.request.user)
+        return Room.objects.filter(owner_contact__in=owner_contacts).order_by('-created_at')
     
     def create(self, request, *args, **kwargs):
         try:
@@ -55,15 +78,14 @@ class OwnerRoomViewSet(viewsets.ModelViewSet):
             if 'address' not in data:
                 data['address'] = ''
             
-            # Set owner contact and status
-            data['owner_contact'] = get_owner_contact(request.user)
-            data['status'] = 'PENDING'
-            
             logger.info(f"Processed data: {data}")
             
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
+            serializer.save(
+                owner_contact=get_primary_owner_contact(request.user),
+                status='PENDING'
+            )
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except Exception as e:
@@ -113,11 +135,29 @@ class OwnerRoomViewSet(viewsets.ModelViewSet):
     def availability(self, request, pk=None):
         room = self.get_object()
         available = request.data.get('available', True)
-        # Toggle between APPROVED and SUSPENDED
+
+        # Owner can toggle only between APPROVED <-> SUSPENDED.
+        # PENDING/REJECTED/NEEDS_CHANGES require admin review, so do not auto-approve here.
         if available:
-            room.status = 'APPROVED' if room.status == 'SUSPENDED' else room.status
+            if room.status == 'SUSPENDED':
+                room.status = 'APPROVED'
+            elif room.status != 'APPROVED':
+                return Response(
+                    {
+                        'error': f'Cannot mark as available while room status is {room.status}. '
+                                 'Wait for admin approval or update based on review notes.'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         else:
-            room.status = 'SUSPENDED'
+            if room.status == 'APPROVED':
+                room.status = 'SUSPENDED'
+            elif room.status != 'SUSPENDED':
+                return Response(
+                    {'error': f'Room is currently {room.status}; availability toggle is only for approved listings.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         room.save()
         return Response(self.get_serializer(room).data)
     
@@ -135,8 +175,8 @@ class OwnerRoomViewSet(viewsets.ModelViewSet):
 def upload_room_photos(request, pk):
     """Upload photos for a room listing"""
     try:
-        owner_contact = get_owner_contact(request.user)
-        room = Room.objects.get(pk=pk, owner_contact=owner_contact)
+        owner_contacts = get_owner_contacts(request.user)
+        room = Room.objects.get(pk=pk, owner_contact__in=owner_contacts)
         
         photos = request.FILES.getlist('photos')
         for photo in photos:
@@ -151,8 +191,8 @@ def upload_room_photos(request, pk):
 @permission_classes([IsAuthenticated])
 def owner_analytics_summary(request):
     """Get owner dashboard analytics"""
-    owner_contact = get_owner_contact(request.user)
-    rooms = Room.objects.filter(owner_contact=owner_contact)
+    owner_contacts = get_owner_contacts(request.user)
+    rooms = Room.objects.filter(owner_contact__in=owner_contacts)
     
     return Response({
         'listings': rooms.count(),
@@ -166,8 +206,8 @@ def owner_analytics_summary(request):
 @permission_classes([IsAuthenticated])
 def owner_enquiries(request):
     """Get bookings/enquiries for owner's rooms"""
-    owner_contact = get_owner_contact(request.user)
-    rooms = Room.objects.filter(owner_contact=owner_contact)
+    owner_contacts = get_owner_contacts(request.user)
+    rooms = Room.objects.filter(owner_contact__in=owner_contacts)
     room_ids = list(rooms.values_list('id', flat=True))
     
     bookings = Booking.objects.filter(room_id__in=room_ids).select_related('student', 'room').order_by('-created_at')
@@ -193,8 +233,8 @@ def owner_enquiries(request):
 def update_booking_status(request, booking_id):
     """Approve or reject a booking"""
     try:
-        owner_contact = get_owner_contact(request.user)
-        rooms = Room.objects.filter(owner_contact=owner_contact)
+        owner_contacts = get_owner_contacts(request.user)
+        rooms = Room.objects.filter(owner_contact__in=owner_contacts)
         room_ids = list(rooms.values_list('id', flat=True))
         
         booking = Booking.objects.get(id=booking_id, room_id__in=room_ids)

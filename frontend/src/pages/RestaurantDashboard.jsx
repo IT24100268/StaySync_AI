@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, MoreHorizontal, Star } from 'lucide-react';
 import { Area, AreaChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import api from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import MenuItemModal from '../components/menu/MenuItemModal';
 import MenuItemsSection from '../components/menu/MenuItemsSection';
 import { useFoodItems } from '../context/FoodItemsContext';
 import { useToast } from '../context/ToastContext';
-import { restaurantApi } from '../services/restaurantApi';
 
 const revenueSeries = [
   { time: '8AM', value: 6500 },
@@ -59,15 +59,46 @@ export default function RestaurantDashboard() {
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [acceptModalOpen, setAcceptModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [prepTime, setPrepTime] = useState('');
   const { items, loading: itemsLoading, error: itemsError, createItem, updateItem, deleteItem, toggleAvailability } = useFoodItems();
   const { addToast } = useToast();
 
   useEffect(() => {
     const fetchOverview = async () => {
       try {
-        const response = await restaurantApi.getDashboardOverview();
-        setData(response.data);
-      } catch {
+        console.log('Fetching restaurant orders...');
+        // Fetch orders from new endpoint
+        const ordersResponse = await api.get('/orders/restaurant/orders/');
+        console.log('Orders response:', ordersResponse.data);
+        const orders = Array.isArray(ordersResponse.data) ? ordersResponse.data : (ordersResponse.data.results || []);
+        console.log('Orders array:', orders);
+        
+        // Calculate stats
+        const todays_orders_count = orders.filter(o => {
+          const today = new Date().toDateString();
+          return new Date(o.created_at).toDateString() === today;
+        }).length;
+        
+        const total_revenue = orders
+          .filter(o => o.status === 'delivered')
+          .reduce((sum, o) => sum + Number(o.total_price || 0), 0);
+        
+        const active_orders = orders.filter(o => 
+          ['pending', 'accepted', 'preparing', 'ready'].includes(o.status)
+        ).length;
+        
+        setData({
+          todays_orders_count,
+          total_revenue,
+          active_orders,
+          ratings: 4.8,
+          recent_orders: orders.slice(0, 10)
+        });
+      } catch (err) {
+        console.error('Failed to load orders:', err);
+        console.error('Error details:', err.response?.data);
         setError('Failed to load dashboard overview.');
       }
     };
@@ -153,6 +184,78 @@ export default function RestaurantDashboard() {
     }
   };
 
+  const handleAcceptOrder = (order) => {
+    // If takeaway, accept immediately without prep time
+    if (order.order_type === 'takeaway') {
+      acceptOrderDirectly(order);
+    } else {
+      // If delivery, ask for prep time
+      setSelectedOrder(order);
+      setAcceptModalOpen(true);
+    }
+  };
+
+  const acceptOrderDirectly = async (order) => {
+    try {
+      await api.post(`/orders/restaurant/${order.id}/accept/`, { preparation_time: 0 });
+      addToast({ 
+        title: 'Order Accepted', 
+        message: `Takeaway order #${order.id} accepted.`, 
+        variant: 'success' 
+      });
+      // Refresh orders
+      const ordersResponse = await api.get('/orders/restaurant/orders/');
+      const orders = ordersResponse.data.results || [];
+      setData(prev => ({ ...prev, recent_orders: orders.slice(0, 10) }));
+    } catch (err) {
+      console.error('Accept error:', err);
+      addToast({ title: 'Error', message: 'Failed to accept order.', variant: 'error' });
+    }
+  };
+
+  const handleRejectOrder = async (order) => {
+    const reason = prompt('Reason for rejection (optional):');
+    if (reason === null) return;
+
+    try {
+      await api.post(`/orders/restaurant/${order.id}/reject/`, { reason });
+      addToast({ title: 'Order Rejected', message: `Order #${order.id} has been rejected.`, variant: 'info' });
+      // Refresh orders
+      const ordersResponse = await api.get('/orders/restaurant/orders/');
+      const orders = ordersResponse.data.results || [];
+      setData(prev => ({ ...prev, recent_orders: orders.slice(0, 10) }));
+    } catch (err) {
+      console.error('Reject error:', err);
+      addToast({ title: 'Error', message: 'Failed to reject order.', variant: 'error' });
+    }
+  };
+
+  const confirmAcceptOrder = async () => {
+    if (!prepTime || prepTime < 1) {
+      alert('Please enter preparation time (minimum 1 minute)');
+      return;
+    }
+
+    try {
+      await api.post(`/orders/restaurant/${selectedOrder.id}/accept/`, { preparation_time: prepTime });
+      addToast({ 
+        title: 'Order Accepted', 
+        message: `Order #${selectedOrder.id} accepted. Prep time: ${prepTime} mins`, 
+        variant: 'success' 
+      });
+      setAcceptModalOpen(false);
+      setPrepTime('');
+      setSelectedOrder(null);
+      // Refresh orders
+      const ordersResponse = await api.get('/orders/restaurant/orders/');
+      const orders = ordersResponse.data.results || [];
+      setData(prev => ({ ...prev, recent_orders: orders.slice(0, 10) }));
+    } catch (err) {
+      console.error('Accept error:', err);
+      addToast({ title: 'Error', message: 'Failed to accept order.', variant: 'error' });
+    }
+  };
+
   if (error) return <div className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</div>;
   if (!data) return <div className="rounded-2xl bg-white p-6 text-sm text-slate-500 shadow-sm">Loading dashboard metrics...</div>;
 
@@ -199,14 +302,33 @@ export default function RestaurantDashboard() {
                         <OrderCustomer order={order} />
                       </td>
                       <td className="px-2 py-3 text-sm text-slate-600">{order.items?.length || 0} items</td>
-                      <td className="px-2 py-3 text-sm font-medium text-slate-700">LKR {Number(order.total_amount).toLocaleString()}</td>
+                      <td className="px-2 py-3 text-sm font-medium text-slate-700">LKR {Number(order.total_price || order.total_amount || 0).toLocaleString()}</td>
                       <td className="px-2 py-3">
                         <StatusBadge status={order.status} />
                       </td>
                       <td className="px-2 py-3">
-                        <button type="button" className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200">
-                          Track
-                        </button>
+                        {order.status === 'pending' ? (
+                          <div className="flex gap-1">
+                            <button 
+                              type="button" 
+                              onClick={() => handleAcceptOrder(order)}
+                              className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                            >
+                              Accept
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={() => handleRejectOrder(order)}
+                              className="rounded-xl bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        ) : (
+                          <button type="button" className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200">
+                            View
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -347,6 +469,45 @@ export default function RestaurantDashboard() {
         }}
         onSave={handleSave}
       />
+
+      {/* Accept Order Modal - Only for Delivery */}
+      {acceptModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setAcceptModalOpen(false)}>
+          <div className="rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400, width: '90%' }}>
+            <h3 className="text-xl font-semibold text-slate-900">Accept Delivery Order #{selectedOrder?.id}</h3>
+            <p className="mt-2 text-sm text-slate-600">How many minutes for food preparation?</p>
+            <input
+              type="number"
+              min="1"
+              value={prepTime}
+              onChange={(e) => setPrepTime(e.target.value)}
+              placeholder="e.g., 15"
+              className="mt-3 w-full rounded-xl border border-slate-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            />
+            <p className="mt-2 text-xs text-slate-500">
+              Estimated delivery: Prep time + 30 mins delivery
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={confirmAcceptOrder}
+                className="flex-1 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                Confirm Accept
+              </button>
+              <button
+                onClick={() => {
+                  setAcceptModalOpen(false);
+                  setPrepTime('');
+                  setSelectedOrder(null);
+                }}
+                className="flex-1 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

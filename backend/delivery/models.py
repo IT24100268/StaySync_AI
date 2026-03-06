@@ -28,6 +28,9 @@ class DeliveryPartner(models.Model):
     ]
     
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_index=True)
+    phone = models.CharField(max_length=20, null=True, blank=True)
+    vehicle_type = models.CharField(max_length=50, null=True, blank=True)
+    vehicle_number = models.CharField(max_length=50, null=True, blank=True)
     is_online = models.BooleanField(default=False)
     rating = models.FloatField(default=5.0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')

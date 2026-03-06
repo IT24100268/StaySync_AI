@@ -12,10 +12,11 @@ function Jobs() {
     setLoading(true)
     setError('')
     try {
-      const response = await api.get('/api/jobs/available/')
+      const response = await api.get('/api/orders/delivery/available/')
       const list = Array.isArray(response.data) ? response.data : response?.data?.results || []
       setJobs(list)
     } catch (err) {
+      console.error('Fetch jobs error:', err)
       setError(err?.response?.data?.detail || 'Failed to load jobs')
     } finally {
       setLoading(false)
@@ -31,7 +32,7 @@ function Jobs() {
       return
     }
     try {
-      await api.post(`/api/jobs/${id}/accept/`)
+      await api.post(`/api/orders/delivery/${id}/accept/`)
       await fetchJobs()
       setError('')
     } catch (err) {
@@ -60,7 +61,7 @@ function Jobs() {
                 <Box className="glass-card" sx={{ p: 1.2 }}>
                   <Box sx={{ color: '#566c95', fontSize: 15 }}>High Pay Jobs</Box>
                   <Box sx={{ color: '#243c73', fontWeight: 700, fontSize: 30 }}>
-                    {jobs.filter((j) => Number(j?.payout || 0) > 200).length || 3}
+                    {jobs.filter((j) => Number(j?.total_price || 0) > 500).length || 3}
                   </Box>
                 </Box>
               </Grid>
@@ -82,14 +83,31 @@ function Jobs() {
               <Box key={job.id} className="glass-card" sx={{ p: 1.3 }}>
                 <Grid container spacing={1} alignItems="center">
                   <Grid size={{ xs: 12, md: 8 }}>
-                    <Box sx={{ color: '#2d477d', fontSize: 20, fontWeight: 700 }}>{job?.title || 'SpiceHub Restaurant'}</Box>
+                    <Box sx={{ color: '#2d477d', fontSize: 20, fontWeight: 700 }}>
+                      {job?.restaurant_name || 'Restaurant'}
+                    </Box>
                     <Box sx={{ color: '#243b70', fontSize: 35, fontWeight: 700 }}>#ORD{job?.id || 12}</Box>
-                    <Box sx={{ color: '#243b70', fontSize: 44, fontWeight: 700 }}>LKR {job?.payout || 220}</Box>
-                    <Box sx={{ color: '#5a6f98', fontSize: 15 }}>Posted 2 mins ago</Box>
+                    <Box sx={{ color: '#5a6f98', fontSize: 14, mb: 0.5 }}>
+                      Pickup: {job?.restaurant_address || 'Restaurant Address'}
+                    </Box>
+                    <Box sx={{ color: '#5a6f98', fontSize: 14, mb: 0.5 }}>
+                      Drop: {job?.delivery_address || 'Customer Address'}
+                    </Box>
+                    <Box sx={{ color: '#5a6f98', fontSize: 14 }}>
+                      Contact: {job?.restaurant_contact || 'N/A'}
+                    </Box>
+                    <Box sx={{ color: '#243b70', fontSize: 44, fontWeight: 700, mt: 1 }}>
+                      LKR {Number(job?.total_price || 0).toLocaleString()}
+                    </Box>
+                    <Box sx={{ color: '#5a6f98', fontSize: 13 }}>
+                      Food: LKR {Number(job?.food_price || 0).toLocaleString()} | Delivery: LKR {Number(job?.delivery_charge || 200).toLocaleString()}
+                    </Box>
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
                     <Box sx={{ color: '#334f83', fontWeight: 700, fontSize: 28 }}>{job?.distance || '2.4 km'}</Box>
-                    <Box sx={{ color: '#334f83', fontWeight: 700, fontSize: 34 }}>{job?.eta || '10 - 14 mins'}</Box>
+                    <Box sx={{ color: '#334f83', fontWeight: 700, fontSize: 34 }}>
+                      {job?.estimated_delivery_time ? `${job.estimated_delivery_time} mins` : '30 mins'}
+                    </Box>
                     <Button className="top-pill top-pill-green" variant="contained" onClick={() => acceptJob(job.id)}>
                       Accept Job
                     </Button>

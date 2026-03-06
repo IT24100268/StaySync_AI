@@ -70,6 +70,16 @@ export default function UsersManagement() {
     }
   };
 
+  const approveUser = async (userId) => {
+    try {
+      await api.patch(`/admin/users/${userId}/approve/`);
+      fetchUsers();
+    } catch (e) {
+      console.error("Failed to approve user:", e);
+      alert("Approve failed");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <GlassCard className="p-6">
@@ -135,7 +145,11 @@ export default function UsersManagement() {
                     </td>
 
                     <td className="px-6 py-4">
-                      {u.is_blocked ? (
+                      {!u.is_approved ? (
+                        <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-extrabold">
+                          Pending Approval
+                        </span>
+                      ) : u.is_blocked ? (
                         <span className="px-3 py-1 rounded-full bg-rose-100 text-rose-700 text-xs font-extrabold">
                           Blocked
                         </span>
@@ -152,6 +166,15 @@ export default function UsersManagement() {
 
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
+                        {!u.is_approved && (
+                          <button
+                            onClick={() => approveUser(u.id)}
+                            className="px-3 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 transition text-white text-xs font-extrabold"
+                            title="Approve user"
+                          >
+                            Approve
+                          </button>
+                        )}
                         {u.is_blocked ? (
                           <button
                             onClick={() => openAction(u, "unblock")}

@@ -5,6 +5,7 @@ import GlassCard from "./components/GlassCard";
 
 export default function PartnerApprovals() {
   const [partners, setPartners] = useState([]);
+  const [pendingDeliveryUsers, setPendingDeliveryUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("PENDING");
   const [selected, setSelected] = useState(null);
@@ -20,12 +21,26 @@ export default function PartnerApprovals() {
   const fetchPartners = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/admin/partners/?status=${filter}`);
-      setPartners(data.results || data || []);
+      const [{ data: partnersData }, { data: usersData }] = await Promise.all([
+        api.get(`/admin/partners/?status=${filter}`),
+        api.get(`/admin/users/?is_approved=false&user_type=delivery`),
+      ]);
+      setPartners(partnersData.results || partnersData || []);
+      setPendingDeliveryUsers(usersData.results || usersData || []);
     } catch (e) {
       console.error("Failed to fetch partners:", e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const approveDeliveryUser = async (userId) => {
+    try {
+      await api.patch(`/admin/users/${userId}/approve/`);
+      fetchPartners();
+    } catch (e) {
+      console.error("Failed to approve delivery user:", e);
+      alert("Failed to approve delivery account");
     }
   };
 
@@ -98,6 +113,41 @@ export default function PartnerApprovals() {
           />
         </div>
       </GlassCard>
+
+      {pendingDeliveryUsers.length > 0 && (
+        <GlassCard className="p-6">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h2 className="text-xl font-extrabold text-slate-900">Pending Delivery Accounts</h2>
+            <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-sm font-bold">
+              {pendingDeliveryUsers.length} Pending
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {pendingDeliveryUsers.map((u) => (
+              <div key={u.id} className="p-4 rounded-3xl bg-white/50 border border-white/40">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-extrabold text-slate-900">{u.username}</p>
+                    <p className="text-sm text-slate-600">{u.email}</p>
+                    <p className="text-sm text-slate-700 mt-1">{u.profile?.phone_number || "No phone"}</p>
+                    <p className="text-xs text-slate-500 mt-2">
+                      {u.profile?.vehicle_type || "No vehicle type"} {u.profile?.license_no ? `• ${u.profile.license_no}` : ""}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => approveDeliveryUser(u.id)}
+                    className="px-4 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 transition text-white font-bold"
+                  >
+                    Approve
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-12">

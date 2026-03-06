@@ -3,15 +3,31 @@ import { Link } from "react-router-dom";
 import { Plus, Edit, Eye, ToggleLeft, ToggleRight, MapPin, BadgeCheck } from "lucide-react";
 import ownerApi from "../../api/ownerApi";
 
-function StatusPill({ available }) {
+function StatusPill({ status, available }) {
+  const normalized = String(status || "").toUpperCase();
+  const stylesByStatus = {
+    APPROVED: "bg-emerald-100 text-emerald-700",
+    PENDING: "bg-amber-100 text-amber-700",
+    REJECTED: "bg-red-100 text-red-700",
+    NEEDS_CHANGES: "bg-orange-100 text-orange-700",
+    SUSPENDED: "bg-slate-200 text-slate-700",
+  };
+  const labelByStatus = {
+    APPROVED: available ? "Available" : "Unavailable",
+    PENDING: "Pending Approval",
+    REJECTED: "Rejected",
+    NEEDS_CHANGES: "Needs Changes",
+    SUSPENDED: "Unavailable",
+  };
+
   return (
     <span
       className={[
         "px-3 py-1 rounded-full text-xs font-bold",
-        available ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700",
+        stylesByStatus[normalized] || "bg-slate-100 text-slate-700",
       ].join(" ")}
     >
-      {available ? "Available" : "Unavailable"}
+      {labelByStatus[normalized] || (available ? "Available" : "Unavailable")}
     </span>
   );
 }
@@ -40,19 +56,19 @@ export default function OwnerListings() {
     }
   };
 
-  const toggleAvailability = async (id, currentStatus) => {
-    const newStatusText = !currentStatus ? "available" : "unavailable";
+  const toggleAvailability = async (id, currentAvailable) => {
+    const newStatusText = !currentAvailable ? "available" : "unavailable";
     if (!window.confirm(`Mark this listing as ${newStatusText}?`)) return;
 
     try {
       await ownerApi.patch(`/owner/listings/${id}/availability/`, {
-        available: !currentStatus,
+        available: !currentAvailable,
       });
       await fetchListings();
       alert(`Listing marked as ${newStatusText}!`);
     } catch (error) {
       console.error("Failed to toggle availability:", error);
-      alert("Failed to update availability. Please try again.");
+      alert(error.response?.data?.error || "Failed to update availability. Please try again.");
     }
   };
 
@@ -145,7 +161,7 @@ export default function OwnerListings() {
                     </td>
 
                     <td className="px-6 py-4">
-                      <StatusPill available={listing.available} />
+                      <StatusPill status={listing.status} available={listing.available} />
                     </td>
 
                     <td className="px-6 py-4 text-slate-700 font-semibold">

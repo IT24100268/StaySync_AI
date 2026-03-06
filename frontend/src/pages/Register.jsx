@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 
 const Register = () => {
   const [step, setStep] = useState(1);
@@ -11,6 +12,11 @@ const Register = () => {
     password: '',
   });
   const [profileData, setProfileData] = useState({});
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const { register } = useAuth();
@@ -28,10 +34,67 @@ const Register = () => {
     setStep(2);
   };
 
+  const sendOTP = async () => {
+    if (!formData.email) {
+      setError('Please enter your email');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    setSendingOtp(true);
+    setError('');
+    try {
+      await axios.post('http://localhost:8000/api/auth/send-otp/', {
+        email: formData.email,
+        purpose: 'registration'
+      });
+      setOtpSent(true);
+      setSuccess('OTP sent to your email!');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to send OTP');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const verifyOTP = async () => {
+    if (!otpCode) {
+      setError('Please enter OTP code');
+      return;
+    }
+
+    setVerifyingOtp(true);
+    setError('');
+    try {
+      await axios.post('http://localhost:8000/api/auth/verify-otp/', {
+        email: formData.email,
+        otp_code: otpCode,
+        purpose: 'registration'
+      });
+      setOtpVerified(true);
+      setSuccess('Email verified successfully!');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Invalid OTP');
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    // Check if OTP is verified
+    if (!otpVerified) {
+      setError('Please verify your email with OTP first');
+      return;
+    }
 
     // Client-side validation
     if (formData.password.length < 8) {
@@ -41,12 +104,6 @@ const Register = () => {
 
     if (formData.username.length < 3) {
       setError('Username must be at least 3 characters long');
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError('Please enter a valid email address');
       return;
     }
 
@@ -260,10 +317,50 @@ const Register = () => {
               name="email"
               type="email"
               placeholder="Email"
+              value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
+              disabled={otpVerified}
               style={styles.input}
             />
+            
+            {!otpVerified && (
+              <>
+                <button 
+                  type="button" 
+                  onClick={sendOTP} 
+                  disabled={sendingOtp || otpSent}
+                  style={{...styles.button, marginTop: 0, marginBottom: '12px', background: otpSent ? '#10b981' : 'linear-gradient(90deg,#3b82f6,#60a5fa)'}}
+                >
+                  {sendingOtp ? 'Sending...' : otpSent ? '✓ OTP Sent' : 'Send OTP'}
+                </button>
+                
+                {otpSent && (
+                  <>
+                    <input
+                      type="text"
+                      placeholder="Enter 6-digit OTP"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value)}
+                      maxLength="6"
+                      style={styles.input}
+                    />
+                    <button 
+                      type="button" 
+                      onClick={verifyOTP} 
+                      disabled={verifyingOtp}
+                      style={{...styles.button, marginTop: 0, marginBottom: '12px'}}
+                    >
+                      {verifyingOtp ? 'Verifying...' : 'Verify OTP'}
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+            
+            {otpVerified && (
+              <div style={{...styles.success, marginBottom: '12px'}}>✓ Email Verified</div>
+            )}
             <input
               name="username"
               placeholder="Username"

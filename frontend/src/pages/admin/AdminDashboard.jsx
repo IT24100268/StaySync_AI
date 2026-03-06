@@ -40,7 +40,7 @@ export default function AdminDashboard() {
       const { data: logsData } = await api.get("/admin/logs/?limit=8");
       setRecentLogs(logsData.results || logsData || []);
 
-      const { data: usersData } = await api.get("/auth/pending-users/");
+      const { data: usersData } = await api.get("/admin/users/?is_approved=false");
       setPendingUsers(Array.isArray(usersData) ? usersData : usersData.results || []);
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
@@ -52,7 +52,7 @@ export default function AdminDashboard() {
   const approveUser = async (userId) => {
     if (!window.confirm("Approve this user?")) return;
     try {
-      await api.patch(`/auth/approve-user/${userId}/`);
+      await api.patch(`/admin/users/${userId}/approve/`);
       fetchData();
     } catch (error) {
       console.error("Failed to approve user:", error);

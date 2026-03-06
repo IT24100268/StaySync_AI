@@ -68,21 +68,48 @@ def register_view(request):
     )
 
 
-@api_view(["GET"])
+@api_view(["GET", "PUT"])
 @permission_classes([IsAuthenticated])
 def profile_view(request):
-    user_type = 'student'  # default
-    if hasattr(request.user, 'profile'):
-        user_type = request.user.profile.user_type
-    elif hasattr(request.user, 'deliverypartner'):
-        user_type = 'delivery'
+    if request.method == "GET":
+        user_type = 'student'  # default
+        if hasattr(request.user, 'profile'):
+            user_type = request.user.profile.user_type
+        elif hasattr(request.user, 'deliverypartner'):
+            user_type = 'delivery'
+        
+        return api_response(
+            message="Profile retrieved",
+            data={
+                'user': UserSerializer(request.user).data,
+                'user_type': user_type
+            }
+        )
+    
+    # PUT method - update profile
+    user = request.user
+    email = request.data.get('email')
+    phone = request.data.get('phone')
+    vehicle_type = request.data.get('vehicle_type')
+    vehicle_number = request.data.get('vehicle_number')
+    
+    if email is not None:
+        user.email = email
+        user.save()
+    
+    if hasattr(user, 'deliverypartner'):
+        partner = user.deliverypartner
+        if phone is not None:
+            partner.phone = phone
+        if vehicle_type is not None:
+            partner.vehicle_type = vehicle_type
+        if vehicle_number is not None:
+            partner.vehicle_number = vehicle_number
+        partner.save()
     
     return api_response(
-        message="Profile retrieved",
-        data={
-            'user': UserSerializer(request.user).data,
-            'user_type': user_type
-        }
+        message="Profile updated successfully",
+        data=UserSerializer(user).data
     )
 
 
@@ -368,9 +395,17 @@ def my_deliveries(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, DeliveryPartnerOnly])
+@permission_classes([IsAuthenticated])
 def dashboard_summary(request):
-    partner = DeliveryPartner.objects.get(user=request.user)
+    # Check if user is a delivery partner
+    try:
+        partner = DeliveryPartner.objects.get(user=request.user)
+    except DeliveryPartner.DoesNotExist:
+        return api_response(
+            success=False,
+            message="Not a delivery partner",
+            status=403
+        )
     now = timezone.now()
     
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)

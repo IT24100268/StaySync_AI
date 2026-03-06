@@ -14,6 +14,7 @@ import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded'
 import PaidRoundedIcon from '@mui/icons-material/PaidRounded'
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
+import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import WorkRoundedIcon from '@mui/icons-material/WorkRounded'
 import CurrencyExchangeRoundedIcon from '@mui/icons-material/CurrencyExchangeRounded'
@@ -26,6 +27,7 @@ const items = [
   { label: 'My Deliveries', path: '/deliveries', icon: <LocalShippingRoundedIcon /> },
   { label: 'Earnings', path: '/earnings', icon: <PaidRoundedIcon /> },
   { label: 'Activity Log', path: '/activity', icon: <HistoryRoundedIcon /> },
+  { label: 'Profile', path: '/profile', icon: <PersonRoundedIcon /> },
 ]
 
 function Sidebar() {

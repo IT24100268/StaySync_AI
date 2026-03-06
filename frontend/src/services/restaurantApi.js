@@ -5,10 +5,10 @@ export const restaurantApi = {
   updateProfile: (payload) => api.put('restaurant/profile/', payload),
   getDashboardOverview: () => api.get('restaurant/dashboard/overview/'),
   getFoodItems: () => api.get('restaurant/foods/'),
-  createFoodItem: (payload) => api.post('restaurant/foods/', payload, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  updateFoodItem: (id, payload) => api.put(`restaurant/foods/${id}/`, payload, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
+  // Do not manually set multipart/form-data for FormData payloads.
+  // Browser/axios will inject the correct boundary automatically.
+  createFoodItem: (payload) => api.post('restaurant/foods/', payload),
+  updateFoodItem: (id, payload) => api.put(`restaurant/foods/${id}/`, payload),
   deleteFoodItem: (id) => api.delete(`restaurant/foods/${id}/`),
   toggleFoodAvailability: (id) => api.patch(`restaurant/foods/${id}/toggle-availability/`),
   getOrders: (status = '') =>
