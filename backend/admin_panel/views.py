@@ -160,6 +160,34 @@ class UserAdminViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = UserAdminSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        is_approved = self.request.query_params.get('is_approved')
+        user_type = self.request.query_params.get('user_type')
+
+        if is_approved in ['true', 'false']:
+            queryset = queryset.filter(is_approved=(is_approved == 'true'))
+        if user_type:
+            queryset = queryset.filter(user_type=user_type)
+        return queryset
+
+    @action(detail=True, methods=['patch'])
+    def approve(self, request, pk=None):
+        user = self.get_object()
+        user.is_approved = True
+        user.save(update_fields=['is_approved'])
+
+        create_admin_log(
+            admin=request.user,
+            action='User approved',
+            target_type='USER',
+            target_id=user.id,
+            details={'is_approved': True}
+        )
+
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
     
     @action(detail=True, methods=['patch'])
     def block(self, request, pk=None):

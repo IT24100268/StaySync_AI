@@ -6,6 +6,7 @@ import Jobs from './pages/Jobs'
 import Deliveries from './pages/Deliveries'
 import Earnings from './pages/Earnings'
 import Activity from './pages/Activity'
+import Profile from './pages/Profile'
 import AuthRedirect from './pages/AuthRedirect'
 import RequireAuth from './auth/RequireAuth'
 import { useAuth } from './auth/AuthProvider'
@@ -20,6 +21,7 @@ function ProtectedLayout() {
     '/deliveries': 'My Deliveries',
     '/earnings': 'Earnings',
     '/activity': 'Activity Log',
+    '/profile': 'Profile Settings',
   }
 
   const subtitleMap = {
@@ -28,6 +30,7 @@ function ProtectedLayout() {
     '/deliveries': 'Track and manage all your deliveries.',
     '/earnings': 'Track your delivery earnings and performance.',
     '/activity': 'View your recent activities and delivery history.',
+    '/profile': 'Update your personal and vehicle information.',
   }
 
   return (
@@ -53,6 +56,7 @@ function App() {
         <Route path="/deliveries" element={<Deliveries />} />
         <Route path="/earnings" element={<Earnings />} />
         <Route path="/activity" element={<Activity />} />
+        <Route path="/profile" element={<Profile />} />
       </Route>
 
       <Route path="/" element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />} />

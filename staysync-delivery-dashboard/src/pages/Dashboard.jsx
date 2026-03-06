@@ -21,7 +21,7 @@ function Dashboard() {
     setTableLoading(true)
     try {
       const statusForApi = selectedTab === 'canceled' ? 'all' : selectedTab
-      const response = await api.get(`/api/my/deliveries/?status=${statusForApi}`)
+      const response = await api.get(`/api/orders/delivery/my-deliveries/?status=${statusForApi}`)
       const rows = response?.data?.data || []
 
       if (selectedTab === 'canceled') {
@@ -52,12 +52,16 @@ function Dashboard() {
     setLoading(true)
     setError('')
     try {
-      const [summaryResponse, jobsResponse] = await Promise.all([
-        api.get('/api/dashboard/summary/'),
-        api.get('/api/jobs/available/?page_size=10'),
-      ])
-      setSummary(summaryResponse?.data?.data || {})
-      setAvailableJobs(jobsResponse?.data?.data || [])
+      const jobsResponse = await api.get('/api/orders/delivery/available/')
+      const list = Array.isArray(jobsResponse.data) ? jobsResponse.data : jobsResponse?.data?.results || []
+      setAvailableJobs(list)
+      // Mock summary data
+      setSummary({
+        counts: { available_jobs: list.length, active_deliveries: 0, completed_today: 0 },
+        partner: { username: currentUsername },
+        earnings: { today: 0, this_week: 0, this_month: 0 },
+        active_delivery: null
+      })
     } catch (err) {
       // Use mock data if API fails
       const mockSummary = {
@@ -182,7 +186,7 @@ function Dashboard() {
   const acceptJobFromDashboard = async (orderId) => {
     setAcceptingJobId(orderId)
     try {
-      await api.post(`/api/jobs/${orderId}/accept/`)
+      await api.post(`/api/orders/delivery/${orderId}/accept/`)
       await fetchSummary()
       await fetchDeliveriesByTab(tab)
     } catch (err) {
@@ -287,9 +291,9 @@ function Dashboard() {
                     {!tableLoading && filteredDeliveries.slice(0, 10).map((delivery) => (
                       <tr key={delivery.id}>
                         <td style={{ padding: 10 }}>#ORD{String(delivery?.order || '').padStart(3, '0')}</td>
-                        <td>{delivery?.restaurant_name || delivery?.order_details?.restaurant_name || '-'}</td>
-                        <td>{delivery?.drop_address || delivery?.order_details?.drop_address || '-'}</td>
-                        <td>LKR {delivery?.earning_amount || delivery?.order_details?.total_price || '-'}</td>
+                        <td>{delivery?.restaurant_name || '-'}</td>
+                        <td>{delivery?.delivery_address || '-'}</td>
+                        <td>LKR {delivery?.delivery_charge || '-'}</td>
                         <td>{renderStatusPill(delivery?.status)}</td>
                       </tr>
                     ))}

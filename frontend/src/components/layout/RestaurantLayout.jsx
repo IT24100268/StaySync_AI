@@ -95,20 +95,25 @@ function SidebarContent() {
 }
 
 function TopNavbar() {
-  const { restaurant, logout } = useAuth();
+  const auth = useAuth() || {};
+  const { user, logout } = auth;
 
   const profile = useMemo(
     () => ({
-      name: restaurant?.name || 'Restaurant Admin',
+      name:
+        user?.profile?.restaurant_name ||
+        user?.username ||
+        user?.email ||
+        'Restaurant Admin',
       role: 'Owner',
-      initials: (restaurant?.name || 'RA')
+      initials: (user?.profile?.restaurant_name || user?.username || 'RA')
         .split(' ')
         .slice(0, 2)
         .map((segment) => segment[0])
         .join('')
         .toUpperCase(),
     }),
-    [restaurant]
+    [user]
   );
 
   return (
@@ -145,7 +150,7 @@ function TopNavbar() {
               <p className="text-sm font-semibold">{profile.name}</p>
               <p className="text-xs text-slate-500">{profile.role}</p>
             </div>
-            <button type="button" onClick={logout} className="text-xs font-medium text-slate-500 hover:text-slate-700">
+            <button type="button" onClick={() => logout?.()} className="text-xs font-medium text-slate-500 hover:text-slate-700">
               Logout
             </button>
           </div>

@@ -23,9 +23,13 @@ const Orders = () => {
   const statusPill = (status) => {
     const s = String(status || "").toLowerCase();
     const map = {
+      pending: { bg: "rgba(245,158,11,0.16)", text: "#b45309", label: "PENDING" },
+      accepted: { bg: "rgba(34,197,94,0.14)", text: "#15803d", label: "ACCEPTED" },
+      rejected: { bg: "rgba(239,68,68,0.16)", text: "#b91c1c", label: "REJECTED" },
+      preparing: { bg: "rgba(59,130,246,0.14)", text: "#1d4ed8", label: "PREPARING" },
+      ready: { bg: "rgba(168,85,247,0.14)", text: "#7c3aed", label: "READY" },
+      out_for_delivery: { bg: "rgba(59,130,246,0.14)", text: "#1d4ed8", label: "OUT FOR DELIVERY" },
       delivered: { bg: "rgba(34,197,94,0.14)", text: "#15803d", label: "DELIVERED" },
-      on_the_way: { bg: "rgba(59,130,246,0.14)", text: "#1d4ed8", label: "ON THE WAY" },
-      preparing: { bg: "rgba(245,158,11,0.16)", text: "#b45309", label: "PREPARING" },
     };
     const v = map[s] || { bg: "rgba(100,116,139,0.14)", text: "#334155", label: s.toUpperCase() || "UNKNOWN" };
 
@@ -71,23 +75,50 @@ const Orders = () => {
                 <div style={styles.grid}>
                   <div style={styles.kv}>
                     <div style={styles.k}>Restaurant</div>
-                    <div style={styles.v}>{order.restaurant.name}</div>
+                    <div style={styles.v}>{order.restaurant?.name || 'N/A'}</div>
                   </div>
                   <div style={styles.kv}>
+                    <div style={styles.k}>Order Type</div>
+                    <div style={styles.v}>{order.order_type === 'delivery' ? 'Delivery' : 'Takeaway'}</div>
+                  </div>
+                  <div style={styles.kv}>
+                    <div style={styles.k}>Food Price</div>
+                    <div style={styles.v}>LKR {Number(order.food_price || 0).toLocaleString()}</div>
+                  </div>
+                  {order.order_type === 'delivery' && (
+                    <div style={styles.kv}>
+                      <div style={styles.k}>Delivery Charge</div>
+                      <div style={styles.v}>LKR {Number(order.delivery_charge || 0).toLocaleString()}</div>
+                    </div>
+                  )}
+                  <div style={styles.kv}>
                     <div style={styles.k}>Total</div>
-                    <div style={styles.v}>LKR {Number(order.total_price).toLocaleString()}</div>
+                    <div style={styles.v}>LKR {Number(order.total_price || 0).toLocaleString()}</div>
                   </div>
                   <div style={styles.kv}>
                     <div style={styles.k}>Items</div>
-                    <div style={styles.v}>{order.items.length}</div>
+                    <div style={styles.v}>{order.items?.length || 0}</div>
                   </div>
+                  {order.estimated_delivery_time && (
+                    <div style={styles.kv}>
+                      <div style={styles.k}>Estimated Time</div>
+                      <div style={styles.v}>{order.estimated_delivery_time} mins</div>
+                    </div>
+                  )}
                   <div style={styles.kv}>
                     <div style={styles.k}>Ordered</div>
                     <div style={styles.v}>{new Date(order.created_at).toLocaleString()}</div>
                   </div>
                 </div>
 
-                {order.status === "on_the_way" && (
+                {order.status === 'rejected' && order.rejection_reason && (
+                  <div style={{...styles.kv, marginTop: 10, background: 'rgba(239,68,68,0.1)'}}>
+                    <div style={styles.k}>Rejection Reason</div>
+                    <div style={styles.v}>{order.rejection_reason}</div>
+                  </div>
+                )}
+
+                {order.status === "out_for_delivery" && (
                   <div style={{ marginTop: 12 }}>
                     <button
                       onClick={() => navigate(`/tracking/${order.id}`)}

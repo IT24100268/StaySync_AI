@@ -71,6 +71,23 @@ class RestaurantScopedMixin:
     permission_classes = [IsAuthenticated]
 
     def get_restaurant(self):
+        restaurant = Restaurant.objects.filter(owner=self.request.user).first()
+        if restaurant:
+            return restaurant
+
+        # Backfill compatibility: some restaurant_owner users only have users.restaurant_profile
+        # and no record in restaurant.Restaurant yet.
+        user = self.request.user
+        if getattr(user, 'user_type', None) == 'restaurant_owner' and hasattr(user, 'restaurant_profile'):
+            profile = user.restaurant_profile
+            return Restaurant.objects.create(
+                owner=user,
+                name=(profile.restaurant_name or user.username or 'Restaurant').strip()[:255],
+                email=(user.email or '').strip(),
+                phone=(profile.phone_number or '').strip()[:32],
+                address=(profile.address or '').strip(),
+            )
+
         return generics.get_object_or_404(Restaurant, owner=self.request.user)
 
 

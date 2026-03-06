@@ -20,9 +20,15 @@ export default function MenuManagementPage() {
   const loadItems = async () => {
     try {
       const response = await restaurantApi.getFoodItems();
-      setItems(response.data);
-    } catch {
-      setError('Unable to load food items.');
+      const list = response.data?.results || response.data;
+      setItems(Array.isArray(list) ? list : []);
+    } catch (err) {
+      const details = err?.response?.data;
+      const detailText =
+        typeof details === 'string'
+          ? details
+          : details?.detail || details?.error || JSON.stringify(details || {});
+      setError(`Unable to load food items. ${detailText}`);
     }
   };
 
@@ -50,8 +56,13 @@ export default function MenuManagementPage() {
       setModalOpen(false);
       setEditingItem(null);
       loadItems();
-    } catch {
-      setError('Failed to save food item. Please verify inputs and try again.');
+    } catch (err) {
+      const details = err?.response?.data;
+      const detailText =
+        typeof details === 'string'
+          ? details
+          : details?.detail || details?.error || JSON.stringify(details || {});
+      setError(`Failed to save food item. ${detailText}`);
     }
   };
 

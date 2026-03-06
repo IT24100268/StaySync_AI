@@ -8,6 +8,10 @@ const Checkout = () => {
   const navigate = useNavigate();
   const { cart, restaurant, totalPrice } = location.state || {};
   const [address, setAddress] = useState("");
+  const [orderType, setOrderType] = useState("delivery");
+
+  const deliveryCharge = orderType === "delivery" ? 200 : 0;
+  const finalTotal = Number(totalPrice) + deliveryCharge;
 
   const handleOrder = async () => {
     if (!address || address.trim().length < 10) {
@@ -22,14 +26,17 @@ const Checkout = () => {
       alert("Invalid order total");
       return;
     }
-    if (!window.confirm(`Confirm order for LKR ${totalPrice}?`)) return;
+    if (!window.confirm(`Confirm ${orderType} order for LKR ${finalTotal}?`)) return;
 
     try {
       const orderData = {
         restaurant_id: restaurant.id,
         delivery_address: address,
         payment_method: "cod",
-        total_price: totalPrice,
+        order_type: orderType,
+        food_price: totalPrice,
+        delivery_charge: deliveryCharge,
+        total_price: finalTotal,
         items: cart.map((item) => ({
           menu_item_id: item.id,
           quantity: item.quantity,
@@ -38,8 +45,8 @@ const Checkout = () => {
       };
       console.log("Sending order:", orderData);
       const { data } = await api.post("/orders/create/", orderData);
-      alert("Order placed successfully!");
-      navigate(`/tracking/${data.id}`);
+      alert("Order placed successfully! Waiting for restaurant confirmation.");
+      navigate(`/orders`);
     } catch (error) {
       console.error("Order error:", error.response?.data || error);
       alert(`Error: ${JSON.stringify(error.response?.data || "Failed to place order")}`);
@@ -64,7 +71,7 @@ const Checkout = () => {
             <h1 style={styles.title}>Checkout</h1>
             <p style={styles.sub}>{restaurant?.name ? `From ${restaurant.name}` : "Order Summary"}</p>
           </div>
-          <span style={STUDENT_LAYOUT.pill}>LKR {Number(totalPrice).toLocaleString()}</span>
+          <span style={STUDENT_LAYOUT.pill}>LKR {finalTotal.toLocaleString()}</span>
         </div>
 
         <div style={STUDENT_LAYOUT.card}>
@@ -89,12 +96,52 @@ const Checkout = () => {
           </div>
 
           <div style={styles.total}>
-            <div style={styles.totalLabel}>Total</div>
+            <div style={styles.totalLabel}>Food Total</div>
             <div style={styles.totalValue}>LKR {Number(totalPrice).toLocaleString()}</div>
+          </div>
+          
+          {orderType === "delivery" && (
+            <div style={styles.total}>
+              <div style={styles.totalLabel}>Delivery Charge</div>
+              <div style={styles.totalValue}>LKR {deliveryCharge}</div>
+            </div>
+          )}
+          
+          <div style={{...styles.total, borderTop: `2px solid ${THEME.navy}`, paddingTop: 12}}>
+            <div style={{...styles.totalLabel, fontSize: 16, fontWeight: 900}}>Grand Total</div>
+            <div style={{...styles.totalValue, fontSize: 18, color: THEME.navy}}>LKR {finalTotal.toLocaleString()}</div>
           </div>
 
           <div style={styles.form}>
-            <div style={{ fontWeight: 900, color: THEME.text }}>Delivery Details</div>
+            <div style={{ fontWeight: 900, color: THEME.text }}>Order Type</div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setOrderType("delivery")}
+                style={{
+                  ...STUDENT_LAYOUT.primaryBtn,
+                  flex: 1,
+                  background: orderType === "delivery" ? THEME.navy : "white",
+                  color: orderType === "delivery" ? "white" : THEME.navy,
+                  border: `2px solid ${THEME.navy}`,
+                }}
+              >
+                Delivery (+LKR 200)
+              </button>
+              <button
+                onClick={() => setOrderType("takeaway")}
+                style={{
+                  ...STUDENT_LAYOUT.primaryBtn,
+                  flex: 1,
+                  background: orderType === "takeaway" ? THEME.navy : "white",
+                  color: orderType === "takeaway" ? "white" : THEME.navy,
+                  border: `2px solid ${THEME.navy}`,
+                }}
+              >
+                Takeaway
+              </button>
+            </div>
+            
+            <div style={{ fontWeight: 900, color: THEME.text, marginTop: 10 }}>Delivery Details</div>
             <textarea
               placeholder="Enter your delivery address"
               value={address}

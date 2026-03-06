@@ -16,13 +16,20 @@ class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     restaurant = RestaurantSerializer(read_only=True)
     restaurant_id = serializers.IntegerField(write_only=True)
-    student = serializers.StringRelatedField(read_only=True)
+    student_name = serializers.CharField(source='student.username', read_only=True)
+    restaurant_name = serializers.CharField(source='restaurant.name', read_only=True)
+    restaurant_address = serializers.CharField(source='restaurant.address', read_only=True)
+    restaurant_contact = serializers.CharField(source='restaurant.contact_number', read_only=True)
     
     class Meta:
         model = Order
-        fields = ['id', 'student', 'restaurant', 'restaurant_id', 'items', 'total_price', 
-                  'payment_method', 'status', 'delivery_address', 'created_at', 'updated_at']
-        read_only_fields = ['student', 'restaurant', 'status', 'created_at', 'updated_at', 'items']
+        fields = ['id', 'student', 'student_name', 'restaurant', 'restaurant_id', 'restaurant_name', 
+                  'restaurant_address', 'restaurant_contact', 'items', 'order_type', 'food_price', 
+                  'delivery_charge', 'total_price', 'payment_method', 'status', 'delivery_address', 
+                  'preparation_time', 'estimated_delivery_time', 'rejection_reason', 
+                  'created_at', 'updated_at']
+        read_only_fields = ['student', 'restaurant', 'status', 'created_at', 'updated_at', 'items', 
+                           'delivery_charge', 'estimated_delivery_time']
     
     def validate_restaurant_id(self, value):
         if not Restaurant.objects.filter(id=value).exists():
@@ -38,68 +45,28 @@ class OrderSerializer(serializers.ModelSerializer):
         return value
     
     def create(self, validated_data):
-        items_data = validated_data.pop('items')
+        items_data = validated_data.pop('items', [])
         restaurant_id = validated_data.pop('restaurant_id')
+        order_type = validated_data.get('order_type', 'delivery')
+        food_price = validated_data.get('food_price', 0)
+        delivery_charge = validated_data.get('delivery_charge', 0)
         
         # Create order in orders app
         order = Order.objects.create(
             student=validated_data['student'],
             restaurant_id=restaurant_id,
-            total_price=validated_data['total_price'],
-            payment_method=validated_data['payment_method'],
-            delivery_address=validated_data['delivery_address']
+            order_type=order_type,
+            food_price=food_price,
+            delivery_charge=delivery_charge,
+            total_price=validated_data.get('total_price', food_price + delivery_charge),
+            payment_method=validated_data.get('payment_method', 'cod'),
+            delivery_address=validated_data.get('delivery_address', ''),
+            status='pending'
         )
         
         total_amount = 0
         for item_data in items_data:
             OrderItem.objects.create(order=order, **item_data)
             total_amount += item_data['price'] * item_data['quantity']
-        
-        # Also create in restaurant app for dashboard
-        try:
-            from restaurant.models import Restaurant as RestaurantModel
-            restaurant = RestaurantModel.objects.filter(id=restaurant_id).first()
-            if restaurant:
-                restaurant_order = RestaurantOrder.objects.create(
-                    student=validated_data['student'],
-                    restaurant=restaurant,
-                    total_amount=total_amount,
-                    status='PENDING'
-                )
-                
-                # Create order items
-                for item_data in items_data:
-                    menu_item = Menu.objects.get(id=item_data['menu_item_id'])
-                    # Try to find matching FoodItem - try exact match first, then partial
-                    food_item = FoodItem.objects.filter(
-                        restaurant=restaurant,
-                        name__iexact=menu_item.name
-                    ).first()
-                    
-                    if not food_item:
-                        # Try partial match on first word
-                        first_word = menu_item.name.split()[0].lower()
-                        food_item = FoodItem.objects.filter(
-                            restaurant=restaurant,
-                            name__icontains=first_word
-                        ).first()
-                    
-                    if not food_item:
-                        # Create a FoodItem if it doesn't exist
-                        food_item = FoodItem.objects.create(
-                            restaurant=restaurant,
-                            name=menu_item.name,
-                            price=item_data['price'],
-                            is_available=True
-                        )
-                    
-                    RestaurantOrderItem.objects.create(
-                        order=restaurant_order,
-                        food_item=food_item,
-                        quantity=item_data['quantity'],
-                        subtotal=item_data['price'] * item_data['quantity']
-                    )
-        except Exception as e:
-            print(f"Failed to create restaurant order: {e}")
         
         return order

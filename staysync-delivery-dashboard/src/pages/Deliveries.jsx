@@ -13,10 +13,11 @@ function Deliveries() {
     setLoading(true)
     setError('')
     try {
-      const response = await api.get(`/api/my/deliveries/?status=${status}`)
+      const response = await api.get(`/api/orders/delivery/my-deliveries/?status=${status}`)
       const items = Array.isArray(response.data) ? response.data : response?.data?.results || []
       setList(items)
     } catch (err) {
+      console.error('Fetch deliveries error:', err)
       setError(err?.response?.data?.detail || 'Failed to load deliveries')
     } finally {
       setLoading(false)
@@ -74,9 +75,9 @@ function Deliveries() {
                     {(list.length ? list : [{ id: 6 }, { id: 5 }, { id: 4 }]).map((d) => (
                       <tr key={d.id}>
                         <td style={{ padding: 10 }}>#ORD{String(d.id).padStart(3, '0')}</td>
-                        <td>{d.restaurant || 'Veggie Delight'}</td>
-                        <td>{d.address || 'Greenview Hostel'}</td>
-                        <td>LKR {d.payout || 170}</td>
+                        <td>{d.restaurant_name || 'Veggie Delight'}</td>
+                        <td>{d.delivery_address || 'Greenview Hostel'}</td>
+                        <td>LKR {d.delivery_charge || 170}</td>
                         <td>{d.status || 'Delivered'}</td>
                       </tr>
                     ))}

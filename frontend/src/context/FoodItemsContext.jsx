@@ -14,10 +14,12 @@ export function FoodItemsProvider({ children }) {
   const fetchItems = useCallback(
     async (options = {}) => {
       const { silent = false } = options;
-      if (!user) {
+      const isRestaurantOwner = user?.user_type === 'restaurant_owner';
+      if (!user || !isRestaurantOwner) {
         setItems([]);
         setLoading(false);
         setRefreshing(false);
+        setError('');
         return;
       }
 
@@ -29,14 +31,8 @@ export function FoodItemsProvider({ children }) {
       setError('');
       try {
         const response = await restaurantApi.getFoodItems();
-        console.log('Food items API response:', response.data);
-        console.log('Response data type:', typeof response.data);
-        console.log('Has results?', 'results' in response.data);
-        console.log('Response.data keys:', Object.keys(response.data));
         // Handle paginated response
         const itemsList = response.data.results || response.data;
-        console.log('Food items count:', itemsList.length);
-        console.log('Food items array:', JSON.stringify(itemsList, null, 2));
         setItems(Array.isArray(itemsList) ? itemsList : []);
       } catch (err) {
         console.error('Failed to fetch food items:', err);
@@ -53,11 +49,13 @@ export function FoodItemsProvider({ children }) {
   );
 
   useEffect(() => {
-    if (user) {
+    if (user?.user_type === 'restaurant_owner') {
       fetchItems();
     } else {
       setItems([]);
       setLoading(false);
+      setRefreshing(false);
+      setError('');
     }
   }, [user, fetchItems]);
 
