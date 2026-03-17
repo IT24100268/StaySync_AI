@@ -1,22 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Upload, X, MapPin, Home, ShieldCheck } from "lucide-react";
+import { Upload, X, MapPin, Home, ShieldCheck, ImagePlus } from "lucide-react";
 import ownerApi from "../../api/ownerApi";
+import { cardCls, cardStyle, inputCls, btnGold, btnGhost, PageHeader } from "./ownerTheme.jsx";
 
-/** ✅ Move Section OUTSIDE so it doesn't remount on each keypress */
 function Section({ title, icon: Icon, children }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="h-10 w-10 rounded-2xl bg-slate-900 text-white grid place-items-center">
-          <Icon size={18} />
+    <div className={cardCls("p-6")} style={cardStyle()}>
+      <div className="mb-5 flex items-center gap-3">
+        <div
+          className="grid h-10 w-10 place-items-center rounded-[12px]"
+          style={{ background: "#fff8e8", border: "1px solid #eadab1" }}
+        >
+          <Icon size={15} className="text-[#b98b1f]" />
         </div>
-        <div>
-          <p className="text-lg font-extrabold text-slate-900">{title}</p>
-          <p className="text-sm text-slate-600">
-            Fill carefully for better conversions.
-          </p>
-        </div>
+        <p className="text-[15px] font-extrabold text-[#1e1d1a]">{title}</p>
       </div>
       {children}
     </div>
@@ -26,11 +24,9 @@ function Section({ title, icon: Icon, children }) {
 export default function OwnerListingForm() {
   const { id } = useParams();
   const navigate = useNavigate();
-
   const [loading, setLoading] = useState(false);
   const [photos, setPhotos] = useState([]);
   const [error, setError] = useState("");
-
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -50,7 +46,6 @@ export default function OwnerListingForm() {
 
   useEffect(() => {
     if (id) fetchListing();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchListing = async () => {
@@ -68,35 +63,28 @@ export default function OwnerListingForm() {
         address: data.address || "",
       });
       setPhotos(data.photos || []);
-    } catch (err) {
-      console.error("Failed to fetch listing:", err);
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  const toggleFacility = (facility) => {
-    setFormData((prev) => ({
-      ...prev,
-      facilities: prev.facilities.includes(facility)
-        ? prev.facilities.filter((f) => f !== facility)
-        : [...prev.facilities, facility],
+  const toggleFacility = (f) =>
+    setFormData((p) => ({
+      ...p,
+      facilities: p.facilities.includes(f)
+        ? p.facilities.filter((x) => x !== f)
+        : [...p.facilities, f],
     }));
-  };
 
-  const handlePhotoChange = (e) => {
-    const files = Array.from(e.target.files || []);
-    setPhotos((prev) => [...prev, ...files]);
-  };
+  const handlePhotoChange = (e) => setPhotos((p) => [...p, ...Array.from(e.target.files || [])]);
+  const removePhoto = (i) => setPhotos((p) => p.filter((_, idx) => idx !== i));
 
-  const removePhoto = (index) => {
-    setPhotos((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const uploadPhotos = async (listingId) => {
+  const uploadPhotos = async (lid) => {
     const fd = new FormData();
-    photos.forEach((photo) => {
-      if (photo instanceof File) fd.append("photos", photo);
+    photos.forEach((p) => {
+      if (p instanceof File) fd.append("photos", p);
     });
-    await ownerApi.post(`/owner/listings/${listingId}/photos/`, fd, {
+    await ownerApi.post(`/owner/listings/${lid}/photos/`, fd, {
       headers: { "Content-Type": "multipart/form-data" },
     });
   };
@@ -105,134 +93,117 @@ export default function OwnerListingForm() {
     e.preventDefault();
     setError("");
 
-    if (!formData.title || formData.title.length < 5)
-      return setError("Title must be at least 5 characters");
-    if (!formData.description || formData.description.length < 20)
-      return setError("Description must be at least 20 characters");
-    if (!formData.rent || Number(formData.rent) < 1000)
-      return setError("Rent must be at least LKR 1,000");
-    if (Number(formData.deposit) < 0)
-      return setError("Deposit cannot be negative");
-    if (!formData.address || formData.address.length < 10)
-      return setError("Please provide a complete address");
-    if (formData.facilities.length === 0)
-      return setError("Please select at least one facility");
+    if (!formData.title || formData.title.length < 5) return setError("Title must be at least 5 characters");
+    if (!formData.description || formData.description.length < 20) return setError("Description must be at least 20 characters");
+    if (!formData.rent || Number(formData.rent) < 1000) return setError("Rent must be at least LKR 1,000");
+    if (Number(formData.deposit) < 0) return setError("Deposit cannot be negative");
+    if (!formData.address || formData.address.length < 10) return setError("Please provide a complete address");
+    if (formData.facilities.length === 0) return setError("Please select at least one facility");
 
     setLoading(true);
+
     try {
-      let listingId = id;
-      
+      let lid = id;
+
       if (id) {
         await ownerApi.put(`/owner/listings/${id}/`, formData);
       } else {
         const { data } = await ownerApi.post("/owner/listings/", formData);
-        listingId = data.id;
+        lid = data.id;
       }
-      
-      const newPhotos = photos.filter(p => p instanceof File);
-      if (newPhotos.length > 0 && listingId) {
+
+      if (photos.filter((p) => p instanceof File).length > 0 && lid) {
         try {
-          await uploadPhotos(listingId);
-        } catch (photoErr) {
-          console.error('Photo upload failed:', photoErr);
+          await uploadPhotos(lid);
+        } catch (e) {
+          console.error("Photo upload failed:", e);
         }
       }
-      
+
       navigate("/owner/listings");
-    } catch (err) {
-      console.error('Submit error:', err);
-      setError(err.response?.data?.message || "Failed to save listing");
+    } catch (e) {
+      setError(e.response?.data?.message || "Failed to save listing");
     } finally {
       setLoading(false);
     }
   };
 
+  const label = (text, required = false) => (
+    <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.12em] text-[#6f6a5f]">
+      {text}
+      {required && <span className="ml-1 text-[#b98b1f]">*</span>}
+    </label>
+  );
+
   return (
-    <div className="max-w-5xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-slate-900">
-          {id ? "Edit Listing" : "Create New Listing"}
-        </h1>
-        <p className="text-slate-600">Modern form layout like admin dashboards.</p>
-      </div>
+    <div className="max-w-4xl space-y-6">
+      <PageHeader
+        icon={Home}
+        title={id ? "Edit Listing" : "Create New Listing"}
+        subtitle="Fill in the details carefully for better conversion and trust."
+      />
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
+        <div className="rounded-[14px] border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-semibold text-red-700">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <Section title="Basic Information" icon={Home}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="md:col-span-2">
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                Title
-              </label>
+              {label("Title", true)}
               <input
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                placeholder="Ex: Single room near University"
+                className={inputCls}
+                placeholder="Ex: Premium single room near university"
                 required
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                Description
-              </label>
+              {label("Description", true)}
               <textarea
                 rows={5}
                 value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                placeholder="Explain room type, rules, distance, facilities..."
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className={`${inputCls} resize-none`}
+                placeholder="Explain room type, rules, distance to campus, facilities…"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                Monthly Rent (LKR)
-              </label>
+              {label("Monthly Rent (LKR)", true)}
               <input
                 type="number"
                 value={formData.rent}
                 onChange={(e) => setFormData({ ...formData, rent: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                className={inputCls}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                Deposit (LKR)
-              </label>
+              {label("Deposit (LKR)", true)}
               <input
                 type="number"
                 value={formData.deposit}
-                onChange={(e) =>
-                  setFormData({ ...formData, deposit: e.target.value })
-                }
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                onChange={(e) => setFormData({ ...formData, deposit: e.target.value })}
+                className={inputCls}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                Gender Allowed
-              </label>
+              {label("Gender Allowed")}
               <select
                 value={formData.genderAllowed}
-                onChange={(e) =>
-                  setFormData({ ...formData, genderAllowed: e.target.value })
-                }
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                onChange={(e) => setFormData({ ...formData, genderAllowed: e.target.value })}
+                className={inputCls}
               >
                 <option value="any">Any</option>
                 <option value="male">Male Only</option>
@@ -244,77 +215,64 @@ export default function OwnerListingForm() {
 
         <Section title="Facilities" icon={ShieldCheck}>
           <div className="flex flex-wrap gap-2">
-            {facilityOptions.map((facility) => {
-              const active = formData.facilities.includes(facility);
+            {facilityOptions.map((f) => {
+              const active = formData.facilities.includes(f);
               return (
                 <button
-                  key={facility}
+                  key={f}
                   type="button"
-                  onClick={() => toggleFacility(facility)}
-                  className={[
-                    "px-4 py-2 rounded-xl font-bold transition",
+                  onClick={() => toggleFacility(f)}
+                  className={`rounded-[12px] border px-4 py-2 text-[12px] font-bold transition-all ${
                     active
-                      ? "bg-slate-900 text-white"
-                      : "bg-slate-100 text-slate-800 hover:bg-slate-200",
-                  ].join(" ")}
+                      ? "border-[#dcc89a] bg-[#fff8e8] text-[#b98b1f]"
+                      : "border-[#ebe4d8] bg-white text-[#6f6a5f] hover:bg-[#faf7f1]"
+                  }`}
                 >
-                  {facility}
+                  {f}
                 </button>
               );
             })}
           </div>
-          <p className="text-xs text-slate-500 mt-3">Select at least one.</p>
+          <p className="mt-3 text-[11px] text-[#8b8578]">Select at least one facility.</p>
         </Section>
 
         <Section title="Location" icon={MapPin}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="md:col-span-2">
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                Address
-              </label>
+              {label("Address", true)}
               <input
                 type="text"
                 value={formData.address}
-                onChange={(e) =>
-                  setFormData({ ...formData, address: e.target.value })
-                }
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className={inputCls}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                Latitude
-              </label>
+              {label("Latitude")}
               <input
                 type="text"
                 value={formData.latitude}
-                onChange={(e) =>
-                  setFormData({ ...formData, latitude: e.target.value })
-                }
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                className={inputCls}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                Longitude
-              </label>
+              {label("Longitude")}
               <input
                 type="text"
                 value={formData.longitude}
-                onChange={(e) =>
-                  setFormData({ ...formData, longitude: e.target.value })
-                }
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                className={inputCls}
               />
             </div>
           </div>
         </Section>
 
-        <Section title="Photos" icon={Upload}>
-          <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 bg-slate-50">
+        <Section title="Photos" icon={ImagePlus}>
+          <div className="rounded-[16px] border-2 border-dashed border-[#eadfc7] bg-[#fffaf2] p-8 transition hover:border-[#dcc89a]">
             <input
               id="photo-upload"
               type="file"
@@ -323,34 +281,33 @@ export default function OwnerListingForm() {
               onChange={handlePhotoChange}
               className="hidden"
             />
-            <label
-              htmlFor="photo-upload"
-              className="cursor-pointer flex flex-col items-center"
-            >
-              <div className="h-14 w-14 rounded-2xl bg-white border border-slate-200 grid place-items-center">
-                <Upload size={24} className="text-slate-600" />
+            <label htmlFor="photo-upload" className="flex cursor-pointer flex-col items-center text-center">
+              <div
+                className="grid h-14 w-14 place-items-center rounded-[16px]"
+                style={{ background: "#fff8e8", border: "1px solid #eadab1" }}
+              >
+                <Upload size={20} className="text-[#b98b1f]" />
               </div>
-              <p className="mt-3 font-bold text-slate-800">Click to upload photos</p>
-              <p className="text-sm text-slate-500">JPG/PNG recommended.</p>
+              <p className="mt-3 text-[13px] font-bold text-[#2b2823]">Click to upload photos</p>
+              <p className="text-[11px] text-[#8b8578]">JPG / PNG recommended</p>
             </label>
           </div>
 
           {photos.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-              {photos.map((photo, index) => (
-                <div key={index} className="relative">
+            <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+              {photos.map((p, i) => (
+                <div key={i} className="relative">
                   <img
-                    src={photo instanceof File ? URL.createObjectURL(photo) : photo.url}
-                    alt={`Photo ${index + 1}`}
-                    className="w-full h-28 object-cover rounded-2xl border border-slate-100"
+                    src={p instanceof File ? URL.createObjectURL(p) : p.url}
+                    alt={`Photo ${i + 1}`}
+                    className="h-28 w-full rounded-[14px] border border-[#eadfc7] object-cover"
                   />
                   <button
                     type="button"
-                    onClick={() => removePhoto(index)}
-                    className="absolute top-2 right-2 bg-black/70 text-white rounded-full p-1.5 hover:bg-black transition"
-                    aria-label="Remove photo"
+                    onClick={() => removePhoto(i)}
+                    className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-black/80 text-white transition hover:bg-black"
                   >
-                    <X size={16} />
+                    <X size={12} />
                   </button>
                 </div>
               ))}
@@ -358,20 +315,20 @@ export default function OwnerListingForm() {
           )}
         </Section>
 
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 px-6 py-3 rounded-2xl bg-slate-900 text-white font-extrabold hover:bg-slate-800 transition disabled:opacity-50"
+            className={`flex-1 ${btnGold}`}
+            style={{
+              background: "linear-gradient(135deg,#c9a84c,#a07830)",
+              boxShadow: "0 6px 20px rgba(201,168,76,0.22)",
+            }}
           >
-            {loading ? "Saving..." : id ? "Update Listing" : "Create Listing"}
+            {loading ? "Saving…" : id ? "Update Listing" : "Create Listing"}
           </button>
 
-          <button
-            type="button"
-            onClick={() => navigate("/owner/listings")}
-            className="px-6 py-3 rounded-2xl border border-slate-200 bg-white font-extrabold text-slate-700 hover:bg-slate-50 transition"
-          >
+          <button type="button" onClick={() => navigate("/owner/listings")} className={btnGhost}>
             Cancel
           </button>
         </div>

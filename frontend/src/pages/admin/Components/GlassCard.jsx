@@ -2,8 +2,8 @@ export default function GlassCard({ className = "", children }) {
   return (
     <div
       className={[
-        "rounded-3xl bg-white/55 backdrop-blur-xl border border-white/40",
-        "shadow-[0_10px_30px_rgba(15,23,42,0.10)]",
+        "rounded-[28px] border border-[#dfe7f3] bg-white",
+        "shadow-[0_12px_30px_rgba(148,163,184,0.12)]",
         className,
       ].join(" ")}
     >

@@ -1,34 +1,35 @@
 import { TrendingUp } from "lucide-react";
 
-const gradients = {
-  blue: "from-blue-600 to-indigo-600",
-  red: "from-rose-600 to-red-600",
-  orange: "from-orange-500 to-amber-500",
-  green: "from-emerald-600 to-green-600",
-  purple: "from-violet-600 to-purple-600",
-  yellow: "from-amber-500 to-yellow-500",
-  indigo: "from-indigo-600 to-blue-600",
-  pink: "from-pink-600 to-rose-600",
+const ICON_STYLES = {
+  blue: "bg-blue-100 text-blue-700",
+  red: "bg-rose-100 text-rose-700",
+  orange: "bg-orange-100 text-orange-700",
+  green: "bg-emerald-100 text-emerald-700",
+  purple: "bg-violet-100 text-violet-700",
+  yellow: "bg-amber-100 text-amber-700",
+  indigo: "bg-indigo-100 text-indigo-700",
+  pink: "bg-pink-100 text-pink-700",
 };
 
 export default function StatCard({ icon: Icon, label, value, color = "blue" }) {
   return (
-    <div
-      className={[
-        "rounded-3xl p-6 text-white shadow-[0_18px_40px_rgba(2,6,23,0.18)]",
-        "bg-gradient-to-br",
-        gradients[color] || gradients.blue,
-      ].join(" ")}
-    >
-      <div className="flex items-center justify-between mb-4">
-        <div className="w-11 h-11 rounded-2xl bg-white/15 border border-white/20 grid place-items-center">
-          <Icon size={22} />
+    <div className="rounded-[26px] border border-[#e3eaf5] bg-white p-5 shadow-[0_10px_24px_rgba(148,163,184,0.10)]">
+      <div className="flex items-center justify-between">
+        <div
+          className={[
+            "grid h-11 w-11 place-items-center rounded-2xl",
+            ICON_STYLES[color] || ICON_STYLES.blue,
+          ].join(" ")}
+        >
+          <Icon size={20} />
         </div>
-        <TrendingUp size={18} className="opacity-80" />
+        <TrendingUp size={17} className="text-slate-400" />
       </div>
 
-      <div className="text-3xl font-extrabold leading-8">{value}</div>
-      <div className="text-sm opacity-90 mt-1 font-semibold">{label}</div>
+      <div className="mt-4">
+        <p className="text-3xl font-extrabold text-slate-900">{value}</p>
+        <p className="mt-1 text-sm font-semibold text-slate-500">{label}</p>
+      </div>
     </div>
   );
 }

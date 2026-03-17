@@ -27,11 +27,11 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     const response = await api.post('/auth/login/', { username, password });
-    const loginData = response.data.data || response.data;
+    const loginData = response.data;
     localStorage.setItem('access_token', loginData.access);
     localStorage.setItem('refresh_token', loginData.refresh);
     localStorage.setItem('user_type', loginData.user_type);
-    await checkAuth();
+    setUser(loginData.user);
     return loginData;
   };
 

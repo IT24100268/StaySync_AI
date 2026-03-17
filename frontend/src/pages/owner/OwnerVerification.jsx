@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Upload, CheckCircle, XCircle, Clock, ShieldCheck, FileText } from "lucide-react";
+import { Upload, CheckCircle, XCircle, Clock, ShieldCheck, FileText, BadgeCheck } from "lucide-react";
 import ownerApi from "../../api/ownerApi";
+import { cardCls, cardStyle, inputCls, btnGold, PageHeader } from "./ownerTheme.jsx";
 
 export default function OwnerVerification() {
   const [verification, setVerification] = useState({
@@ -9,59 +10,47 @@ export default function OwnerVerification() {
     businessReg: "",
     status: "pending",
   });
-
   const [files, setFiles] = useState({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchVerification();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchVerification = async () => {
     try {
       const { data } = await ownerApi.get("/owner/me");
       if (data?.verification) setVerification(data.verification);
-    } catch (error) {
-      console.error("Failed to fetch verification:", error);
+    } catch (e) {
+      console.error(e);
     }
   };
 
   const handleFileChange = (field, file) => {
     if (!file) return;
-
     if (file.size > 5 * 1024 * 1024) return alert("File size must be less than 5MB");
-
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "application/pdf"];
-    if (!allowedTypes.includes(file.type)) return alert("Only JPG, PNG, and PDF files are allowed");
-
-    setFiles((prev) => ({ ...prev, [field]: file }));
+    const allowed = ["image/jpeg", "image/jpg", "image/png", "application/pdf"];
+    if (!allowed.includes(file.type)) return alert("Only JPG, PNG, and PDF files are allowed");
+    setFiles((p) => ({ ...p, [field]: file }));
   };
 
-  const statusBadge = () => {
-    switch (verification.status) {
-      case "approved":
-        return (
-          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-100 text-emerald-700 font-bold">
-            <CheckCircle size={18} />
-            Verified
-          </span>
-        );
-      case "rejected":
-        return (
-          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-red-100 text-red-700 font-bold">
-            <XCircle size={18} />
-            Rejected
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-100 text-amber-700 font-bold">
-            <Clock size={18} />
-            Pending Review
-          </span>
-        );
-    }
+  const statusMap = {
+    approved: {
+      cls: "border-green-200 bg-green-50 text-green-700",
+      icon: <CheckCircle size={15} />,
+      label: "Verified",
+    },
+    rejected: {
+      cls: "border-red-200 bg-red-50 text-red-700",
+      icon: <XCircle size={15} />,
+      label: "Rejected",
+    },
+  };
+
+  const s = statusMap[verification.status] || {
+    cls: "border-[#eadab1] bg-[#fff8e8] text-[#9a6a00]",
+    icon: <Clock size={15} />,
+    label: "Pending Review",
   };
 
   const handleSubmit = async (e) => {
@@ -87,7 +76,7 @@ export default function OwnerVerification() {
 
     try {
       const fd = new FormData();
-      Object.entries(files).forEach(([key, file]) => file && fd.append(key, file));
+      Object.entries(files).forEach(([k, f]) => f && fd.append(k, f));
 
       if (Object.keys(files).length > 0) {
         await ownerApi.post("/owner/verification/upload", fd, {
@@ -96,11 +85,10 @@ export default function OwnerVerification() {
       }
 
       await ownerApi.put("/owner/verification", verification);
-
       alert("Verification submitted successfully!");
       fetchVerification();
-    } catch (error) {
-      console.error("Failed to submit verification:", error);
+    } catch (e) {
+      console.error(e);
       alert("Failed to submit verification");
     } finally {
       setLoading(false);
@@ -108,7 +96,7 @@ export default function OwnerVerification() {
   };
 
   const UploadBox = ({ id, label, field }) => (
-    <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 bg-slate-50">
+    <div className="rounded-[16px] border-2 border-dashed border-[#eadfc7] bg-[#fffaf2] p-5 transition hover:border-[#dcc89a]">
       <input
         type="file"
         accept="image/*,application/pdf"
@@ -116,14 +104,17 @@ export default function OwnerVerification() {
         className="hidden"
         id={id}
       />
-      <label htmlFor={id} className="flex items-center gap-4 cursor-pointer">
-        <div className="h-12 w-12 rounded-2xl bg-white border border-slate-200 grid place-items-center">
-          <Upload size={20} className="text-slate-700" />
+      <label htmlFor={id} className="flex cursor-pointer items-center gap-4">
+        <div
+          className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-[12px]"
+          style={{ background: "#fff8e8", border: "1px solid #eadab1" }}
+        >
+          <Upload size={16} className="text-[#b98b1f]" />
         </div>
-        <div className="min-w-0">
-          <p className="font-extrabold text-slate-900">{label}</p>
-          <p className="text-sm text-slate-500 truncate">
-            {files[field] ? files[field].name : "Click to upload (JPG/PNG/PDF)"}
+        <div>
+          <p className="text-[13px] font-bold text-[#2b2823]">{label}</p>
+          <p className="mt-0.5 text-[11px] text-[#6f6a5f]">
+            {files[field] ? files[field].name : "Click to upload · JPG / PNG / PDF"}
           </p>
         </div>
       </label>
@@ -132,62 +123,72 @@ export default function OwnerVerification() {
 
   return (
     <div className="max-w-4xl space-y-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900">Profile Verification</h1>
-          <p className="text-slate-600">
-            Verify your identity to build trust and get better visibility.
-          </p>
-        </div>
-        {statusBadge()}
-      </div>
+      <PageHeader
+        icon={BadgeCheck}
+        title="Profile Verification"
+        subtitle="Verify your identity to build trust and improve listing credibility."
+        action={
+          <span className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[12px] font-bold ${s.cls}`}>
+            {s.icon} {s.label}
+          </span>
+        }
+      />
 
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="h-10 w-10 rounded-2xl bg-slate-900 text-white grid place-items-center">
-            <ShieldCheck size={18} />
+      <div className={cardCls("p-5")} style={cardStyle()}>
+        <div className="mb-3 flex items-center gap-3">
+          <div
+            className="grid h-10 w-10 place-items-center rounded-[12px]"
+            style={{ background: "#fff8e8", border: "1px solid #eadab1" }}
+          >
+            <ShieldCheck size={15} className="text-[#b98b1f]" />
           </div>
           <div>
-            <p className="font-extrabold text-slate-900">Why verify?</p>
-            <p className="text-sm text-slate-600">More trust = more enquiries.</p>
+            <p className="text-[13px] font-extrabold text-[#2b2823]">Why verify?</p>
+            <p className="text-[11px] text-[#6f6a5f]">More trust usually means more enquiries.</p>
           </div>
         </div>
 
-        <ul className="text-sm text-slate-700 space-y-1">
-          <li>• Builds trust with potential tenants</li>
-          <li>• Helps you rank higher in search</li>
-          <li>• Unlocks premium features later</li>
+        <ul className="space-y-1.5 text-[12px] text-[#6f6a5f]">
+          {[
+            "Builds trust with students and parents",
+            "Helps improve property credibility",
+            "Supports better visibility for your listings",
+          ].map((t) => (
+            <li key={t} className="flex items-center gap-2">
+              <span className="h-1 w-1 rounded-full bg-[#b98b1f] flex-shrink-0" /> {t}
+            </li>
+          ))}
         </ul>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <form onSubmit={handleSubmit} className={cardCls("p-6 space-y-5")} style={cardStyle()}>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div className="md:col-span-2">
-            <label className="block text-sm font-extrabold text-slate-700 mb-2">
+            <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.12em] text-[#6f6a5f]">
               NIC / Passport Number *
             </label>
             <input
               type="text"
               value={verification.nicPassport}
               onChange={(e) => setVerification({ ...verification, nicPassport: e.target.value })}
-              className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              className={inputCls}
               required
             />
           </div>
 
           <div className="md:col-span-2">
-            <UploadBox id="nic-upload" label="Upload NIC/Passport Copy *" field="nicDoc" />
+            <UploadBox id="nic-upload" label="Upload NIC / Passport Copy *" field="nicDoc" />
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-sm font-extrabold text-slate-700 mb-2">
+            <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.12em] text-[#6f6a5f]">
               Address Proof (Utility Bill) *
             </label>
             <input
               type="text"
               value={verification.addressProof}
               onChange={(e) => setVerification({ ...verification, addressProof: e.target.value })}
-              className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              className={inputCls}
               placeholder="Enter your address"
               required
             />
@@ -198,36 +199,33 @@ export default function OwnerVerification() {
           </div>
 
           <div className="md:col-span-2">
-            <div className="flex items-center gap-2 mb-2">
-              <FileText size={18} className="text-slate-400" />
-              <label className="block text-sm font-extrabold text-slate-700">
-                Business Registration (Optional)
-              </label>
-            </div>
+            <label className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#6f6a5f]">
+              <FileText size={11} className="text-[#b98b1f]" /> Business Registration (Optional)
+            </label>
             <input
               type="text"
               value={verification.businessReg}
               onChange={(e) => setVerification({ ...verification, businessReg: e.target.value })}
-              className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              className={inputCls}
               placeholder="Registration number"
             />
           </div>
 
           <div className="md:col-span-2">
-            <UploadBox
-              id="business-upload"
-              label="Upload Business Registration (Optional)"
-              field="businessDoc"
-            />
+            <UploadBox id="business-upload" label="Upload Business Registration (Optional)" field="businessDoc" />
           </div>
         </div>
 
         <button
           type="submit"
           disabled={loading || verification.status === "approved"}
-          className="w-full px-6 py-3 rounded-2xl bg-slate-900 text-white font-extrabold hover:bg-slate-800 transition disabled:opacity-50"
+          className={`w-full ${btnGold}`}
+          style={{
+            background: "linear-gradient(135deg,#c9a84c,#a07830)",
+            boxShadow: "0 6px 20px rgba(201,168,76,0.22)",
+          }}
         >
-          {loading ? "Submitting..." : "Submit for Verification"}
+          {loading ? "Submitting…" : "Submit for Verification"}
         </button>
       </form>
     </div>

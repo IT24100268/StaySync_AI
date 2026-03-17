@@ -35,13 +35,25 @@ import OwnerListingForm from './pages/owner/OwnerListingForm';
 import OwnerEnquiries from './pages/owner/OwnerEnquiries';
 import OwnerAnalytics from './pages/owner/OwnerAnalytics';
 import OwnerVerification from './pages/owner/OwnerVerification';
+import OwnerProfile from './pages/owner/OwnerProfile';
+import OwnerBookings from './pages/owner/OwnerBookings';
+import OwnerSettings from './pages/owner/OwnerSettings';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminHome from './pages/admin/AdminHome';
+import AdminHome2 from './pages/admin/AdminHome2';
 import RoomApprovals from './pages/admin/RoomApprovals';
 import RestaurantApprovals from './pages/admin/RestaurantApprovals';
 import PartnerApprovals from './pages/admin/PartnerApprovals';
 import UsersManagement from './pages/admin/UsersManagement';
 import ReportsQueue from './pages/admin/ReportsQueue';
 import AdminLogs from './pages/admin/AdminLogs';
+import AdminProfile from './pages/admin/AdminProfile';
+import RestaurantProfile from './pages/RestaurantProfile';
+import RestaurantReviews from './pages/RestaurantReviews';
+import OwnerReviews from './pages/owner/OwnerReviews';
+import StudentReviews from './pages/StudentReviews';
+import EarningsPage from './pages/EarningsPage';
+import SettingsPage from './pages/SettingsPage';
 
 const ProtectedLayout = ({ children }) => (
   <>
@@ -71,6 +83,10 @@ function App() {
               <Route path="enquiries" element={<OwnerEnquiries />} />
               <Route path="analytics" element={<OwnerAnalytics />} />
               <Route path="verification" element={<OwnerVerification />} />
+              <Route path="reviews" element={<OwnerReviews />} />
+              <Route path="profile" element={<OwnerProfile />} />
+              <Route path="bookings" element={<OwnerBookings />} />
+              <Route path="settings" element={<OwnerSettings />} />
             </Route>
             
             <Route path="/student/dashboard" element={<PrivateRoute><ProtectedLayout><Dashboard /></ProtectedLayout></PrivateRoute>} />
@@ -83,6 +99,7 @@ function App() {
             <Route path="/restaurants/:id" element={<PrivateRoute><ProtectedLayout><RestaurantMenu /></ProtectedLayout></PrivateRoute>} />
             <Route path="/checkout" element={<PrivateRoute><ProtectedLayout><Checkout /></ProtectedLayout></PrivateRoute>} />
             <Route path="/orders" element={<PrivateRoute><ProtectedLayout><Orders /></ProtectedLayout></PrivateRoute>} />
+            <Route path="/reviews" element={<PrivateRoute><ProtectedLayout><StudentReviews /></ProtectedLayout></PrivateRoute>} />
             <Route path="/tracking/:orderId" element={<PrivateRoute><ProtectedLayout><Tracking /></ProtectedLayout></PrivateRoute>} />
             
             <Route path="/delivery/dashboard" element={<PrivateRoute><DeliveryDashboard /></PrivateRoute>} />
@@ -93,20 +110,24 @@ function App() {
               <Route path="menu" element={<MenuManagementPage />} />
               <Route path="orders" element={<OrdersPage />} />
               <Route path="reservations" element={<PlaceholderPage title="Reservations" />} />
-              <Route path="earnings" element={<PlaceholderPage title="Earnings" />} />
-              <Route path="reviews" element={<PlaceholderPage title="Reviews" />} />
-              <Route path="settings" element={<PlaceholderPage title="Settings" />} />
+              <Route path="earnings" element={<EarningsPage />} />
+              <Route path="reviews" element={<RestaurantReviews />} />
+              <Route path="profile" element={<RestaurantProfile />} />
+              <Route path="settings" element={<SettingsPage />} />
             </Route>
             
             <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
-              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="dashboard" element={<AdminHome2 />} />
               <Route path="rooms" element={<RoomApprovals />} />
               <Route path="restaurants" element={<RestaurantApprovals />} />
               <Route path="partners" element={<PartnerApprovals />} />
               <Route path="users" element={<UsersManagement />} />
               <Route path="reports" element={<ReportsQueue />} />
               <Route path="logs" element={<AdminLogs />} />
+              <Route path="orders" element={<PlaceholderPage title="Orders Monitor" />} />
+              <Route path="analytics" element={<PlaceholderPage title="Analytics" />} />
+              <Route path="profile" element={<AdminProfile />} />
             </Route>
             
             <Route path="*" element={<Navigate to="/" />} />

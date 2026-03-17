@@ -1,26 +1,134 @@
-import { useEffect, useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronDown, Grid2X2, Pencil, Plus, Star, Trash2 } from 'lucide-react';
 import FoodItemModal from '../components/FoodItemModal';
 import { restaurantApi } from '../services/restaurantApi';
 
-function AvailabilityBadge({ available }) {
+const fallbackCategories = ['All', 'Pizzas', 'Burgers', 'Pasta', 'Salads', 'Drinks'];
+
+function getCategoryFromName(name = '') {
+  const lower = name.toLowerCase();
+
+  if (lower.includes('pizza')) return 'Pizzas';
+  if (lower.includes('burger')) return 'Burgers';
+  if (lower.includes('pasta') || lower.includes('spaghetti') || lower.includes('noodle')) return 'Pasta';
+  if (lower.includes('salad')) return 'Salads';
+  if (lower.includes('juice') || lower.includes('drink') || lower.includes('coffee') || lower.includes('tea')) return 'Drinks';
+
+  return 'Other';
+}
+
+function MenuSkeletonCard() {
   return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${available ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-      {available ? 'Available' : 'Out of Stock'}
-    </span>
+    <article className="restaurant-menu-card restaurant-menu-card--skeleton">
+      <div className="restaurant-menu-card__image skeleton-block" />
+      <div className="restaurant-menu-card__body">
+        <div className="skeleton-line skeleton-line--lg" />
+        <div className="skeleton-line skeleton-line--md" />
+        <div className="skeleton-line skeleton-line--sm" />
+        <div className="restaurant-menu-card__footer">
+          <div className="skeleton-pill" />
+          <div className="skeleton-pill" />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function AvailabilityPill({ available, onClick }) {
+  return (
+    <button
+      type="button"
+      className={`restaurant-availability-pill ${available ? 'is-available' : 'is-unavailable'}`}
+      onClick={onClick}
+    >
+      <span>{available ? 'Available' : 'Unavailable'}</span>
+      <ChevronDown size={14} />
+    </button>
+  );
+}
+
+function MenuCard({ item, onEdit, onDelete, onToggleAvailability }) {
+  const rating = item.rating || 4.6;
+  const ordersToday = item.orders_today || item.order_count || 7;
+
+  return (
+    <article className="restaurant-menu-card">
+      <div className="restaurant-menu-card__image-wrap">
+        {item.image_url ? (
+          <img src={item.image_url} alt={item.name} className="restaurant-menu-card__image" />
+        ) : (
+          <div className="restaurant-menu-card__image restaurant-menu-card__image--empty">
+            No image
+          </div>
+        )}
+      </div>
+
+      <div className="restaurant-menu-card__body">
+        <h4>{item.name}</h4>
+
+        <p className="restaurant-menu-card__price">
+          LKR {Number(item.price || 0).toLocaleString()}
+          <span>
+            <Star size={14} fill="currentColor" />
+            {rating}
+          </span>
+        </p>
+
+        <p className="restaurant-menu-card__orders">{ordersToday} Orders Today</p>
+
+        <div className="restaurant-menu-card__footer">
+          <div className="restaurant-menu-card__rating">
+            <Star size={14} fill="currentColor" />
+            <span>{rating}</span>
+          </div>
+
+          <div className="restaurant-menu-card__actions">
+            <AvailabilityPill
+              available={item.is_available}
+              onClick={() => onToggleAvailability(item.id)}
+            />
+
+            <button
+              type="button"
+              className="restaurant-icon-action"
+              onClick={() => onEdit(item)}
+              title="Edit item"
+            >
+              <Pencil size={15} />
+            </button>
+
+            <button
+              type="button"
+              className="restaurant-icon-action restaurant-icon-action--danger"
+              onClick={() => onDelete(item.id)}
+              title="Delete item"
+            >
+              <Trash2 size={15} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
   );
 }
 
 export default function MenuManagementPage() {
   const [items, setItems] = useState([]);
+  const [filteredText, setFilteredText] = useState('');
+  const [activeCategory, setActiveCategory] = useState('All');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const loadItems = async () => {
     try {
+      setLoading(true);
+      setError('');
+
       const response = await restaurantApi.getFoodItems();
       const list = response.data?.results || response.data;
+
       setItems(Array.isArray(list) ? list : []);
     } catch (err) {
       const details = err?.response?.data;
@@ -29,12 +137,57 @@ export default function MenuManagementPage() {
           ? details
           : details?.detail || details?.error || JSON.stringify(details || {});
       setError(`Unable to load food items. ${detailText}`);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     loadItems();
   }, []);
+
+  const categorizedItems = useMemo(() => {
+    return items.map((item) => ({
+      ...item,
+      derivedCategory: getCategoryFromName(item.name),
+    }));
+  }, [items]);
+
+  const categories = useMemo(() => {
+    const counts = categorizedItems.reduce((acc, item) => {
+      acc[item.derivedCategory] = (acc[item.derivedCategory] || 0) + 1;
+      return acc;
+    }, {});
+
+    const ordered = fallbackCategories
+      .filter((name) => name === 'All' || counts[name])
+      .map((name) => ({
+        name,
+        count: name === 'All' ? categorizedItems.length : counts[name] || 0,
+      }));
+
+    const extras = Object.entries(counts)
+      .filter(([name]) => !fallbackCategories.includes(name))
+      .map(([name, count]) => ({ name, count }));
+
+    return [...ordered, ...extras];
+  }, [categorizedItems]);
+
+  const visibleItems = useMemo(() => {
+    return categorizedItems.filter((item) => {
+      const matchesCategory =
+        activeCategory === 'All' ? true : item.derivedCategory === activeCategory;
+
+      const search = filteredText.trim().toLowerCase();
+      const matchesSearch =
+        !search ||
+        item.name?.toLowerCase().includes(search) ||
+        item.description?.toLowerCase().includes(search) ||
+        item.derivedCategory?.toLowerCase().includes(search);
+
+      return matchesCategory && matchesSearch;
+    });
+  }, [categorizedItems, activeCategory, filteredText]);
 
   const onAddNew = () => {
     setEditingItem(null);
@@ -53,6 +206,7 @@ export default function MenuManagementPage() {
       } else {
         await restaurantApi.createFoodItem(payload);
       }
+
       setModalOpen(false);
       setEditingItem(null);
       loadItems();
@@ -67,6 +221,10 @@ export default function MenuManagementPage() {
   };
 
   const onDelete = async (id) => {
+    const selected = items.find((item) => item.id === id);
+    const confirmed = window.confirm(`Delete ${selected?.name || 'this item'}? This cannot be undone.`);
+    if (!confirmed) return;
+
     try {
       await restaurantApi.deleteFoodItem(id);
       loadItems();
@@ -85,76 +243,88 @@ export default function MenuManagementPage() {
   };
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="text-2xl font-semibold text-slate-900">Menu Items</h3>
-          <p className="text-sm text-slate-500">Manage pricing, availability, and visuals for each dish.</p>
+    <div className="restaurant-menu-page">
+      <section className="restaurant-menu-section">
+        <div className="restaurant-menu-section__top">
+          <div>
+            <h3>Menu Items</h3>
+            <p>Manage your restaurant&apos;s menu items and their availability.</p>
+          </div>
+
+          <button
+            type="button"
+            className="restaurant-add-item-btn"
+            onClick={onAddNew}
+          >
+            <Plus size={18} />
+            <span>Add Item</span>
+          </button>
         </div>
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
-          onClick={onAddNew}
-        >
-          <Plus size={16} />
-          Add Item
-        </button>
-      </div>
 
-      {error ? <div className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</div> : null}
+        <div className="restaurant-category-bar">
+          <div className="restaurant-category-bar__scroll">
+            {(categories.length ? categories : [{ name: 'All', count: 0 }]).map((category) => (
+              <button
+                key={category.name}
+                type="button"
+                className={`restaurant-category-chip ${activeCategory === category.name ? 'active' : ''}`}
+                onClick={() => setActiveCategory(category.name)}
+              >
+                {category.name} ({category.count})
+              </button>
+            ))}
+          </div>
 
-      <section className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-        {items.length ? (
-          items.map((item) => (
-            <article key={item.id} className="overflow-hidden rounded-2xl bg-white shadow-sm">
-              {item.image_url ? (
-                <img src={item.image_url} alt={item.name} className="h-44 w-full object-cover" />
-              ) : (
-                <div className="grid h-44 place-items-center bg-slate-100 text-sm text-slate-500">No image available</div>
-              )}
+          <button type="button" className="restaurant-category-filter-btn">
+            <Grid2X2 size={16} />
+            <span>All Categories</span>
+            <ChevronDown size={15} />
+          </button>
+        </div>
 
-              <div className="space-y-3 p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h4 className="text-base font-semibold text-slate-900">{item.name}</h4>
-                    <p className="mt-1 text-sm text-slate-500">{item.description || 'No description available.'}</p>
-                  </div>
-                  <AvailabilityBadge available={item.is_available} />
-                </div>
+        <div className="restaurant-menu-grid">
+          {loading ? (
+            Array.from({ length: 6 }).map((_, index) => (
+              <MenuSkeletonCard key={`menu-skeleton-${index}`} />
+            ))
+          ) : visibleItems.length ? (
+            visibleItems.map((item) => (
+              <MenuCard
+                key={item.id}
+                item={item}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onToggleAvailability={onToggleAvailability}
+              />
+            ))
+          ) : (
+            <div className="restaurant-menu-message restaurant-menu-message--empty">
+              No menu items found. Add your first item to start taking orders.
+            </div>
+          )}
+        </div>
 
-                <div className="text-lg font-semibold text-slate-800">LKR {Number(item.price).toLocaleString()}</div>
+        {error ? (
+          <div className="restaurant-menu-message restaurant-menu-message--error">
+            {error}
+          </div>
+        ) : null}
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className="rounded-xl border border-slate-200 p-2 text-slate-600 hover:bg-slate-100"
-                    onClick={() => onEdit(item)}
-                    title="Edit item"
-                  >
-                    <Pencil size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-xl border border-rose-200 p-2 text-rose-600 hover:bg-rose-50"
-                    onClick={() => onDelete(item.id)}
-                    title="Delete item"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className="ml-auto rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200"
-                    onClick={() => onToggleAvailability(item.id)}
-                  >
-                    Toggle Availability
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))
-        ) : (
-          <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500 shadow-sm sm:col-span-2 2xl:col-span-3">
-            No menu items found. Add your first item to start taking orders.
+        {!loading && (
+          <div className="restaurant-menu-footer">
+            <p>
+              Showing <strong>{visibleItems.length}</strong> out of{' '}
+              <strong>{categorizedItems.length}</strong> items
+            </p>
+
+            <div className="restaurant-pagination">
+              <button type="button" className="active">1</button>
+              <button type="button">2</button>
+              <button type="button">3</button>
+              <button type="button" className="restaurant-pagination__next">
+                Next
+              </button>
+            </div>
           </div>
         )}
       </section>
