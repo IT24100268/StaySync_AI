@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ImagePlus, Package, X } from 'lucide-react';
 
 const initialState = {
   name: '',
@@ -22,12 +23,13 @@ export default function MenuItemModal({ open, item, onClose, onSave }) {
     }
 
     setFormData({
-      name: item.name,
+      name: item.name || '',
       description: item.description || '',
-      price: item.price,
-      is_available: item.is_available,
+      price: item.price || '',
+      is_available: Boolean(item.is_available),
       image: null,
     });
+
     setPreview(item.image_url || '');
   }, [item]);
 
@@ -59,7 +61,10 @@ export default function MenuItemModal({ open, item, onClose, onSave }) {
     payload.append('description', formData.description);
     payload.append('price', formData.price);
     payload.append('is_available', String(formData.is_available));
-    if (formData.image) payload.append('image', formData.image);
+
+    if (formData.image) {
+      payload.append('image', formData.image);
+    }
 
     try {
       await onSave(payload);
@@ -72,62 +77,129 @@ export default function MenuItemModal({ open, item, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-sm border border-slate-100">
-        <h3 className="text-lg font-semibold text-slate-900">{item ? 'Edit Menu Item' : 'Add Menu Item'}</h3>
+    <div className="menu-modal-overlay" onClick={onClose}>
+      <div
+        className="menu-modal-card"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="menu-modal-header">
+          <div>
+            <p className="menu-modal-kicker">
+              <Package size={15} />
+              Menu Management
+            </p>
+            <h3>{item ? 'Edit Menu Item' : 'Add New Menu Item'}</h3>
+            <span>
+              Fill in the details below to {item ? 'update' : 'create'} your menu item.
+            </span>
+          </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-          <input
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="Item name"
-            required
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none ring-blue-200 focus:ring-2"
-          />
+          <button
+            type="button"
+            className="menu-modal-close"
+            onClick={onClose}
+            disabled={submitting}
+          >
+            <X size={18} />
+          </button>
+        </div>
 
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            placeholder="Description"
-            rows={3}
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none ring-blue-200 focus:ring-2"
-          />
+        <form onSubmit={handleSubmit} className="menu-modal-form">
+          <div className="menu-modal-grid">
+            <div className="menu-modal-field">
+              <label htmlFor="menu-name">Item Name</label>
+              <input
+                id="menu-name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="e.g. Chicken Burger"
+                required
+              />
+            </div>
 
-          <input
-            name="price"
-            value={formData.price}
-            onChange={handleChange}
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="Price"
-            required
-            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none ring-blue-200 focus:ring-2"
-          />
+            <div className="menu-modal-field">
+              <label htmlFor="menu-price">Price (LKR)</label>
+              <input
+                id="menu-price"
+                name="price"
+                value={formData.price}
+                onChange={handleChange}
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="e.g. 950"
+                required
+              />
+            </div>
+          </div>
 
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" name="is_available" checked={formData.is_available} onChange={handleChange} />
-            Available
-          </label>
+          <div className="menu-modal-field">
+            <label htmlFor="menu-description">Description</label>
+            <textarea
+              id="menu-description"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Write a short description for this menu item..."
+              rows={4}
+            />
+          </div>
 
-          <input
-            name="image"
-            type="file"
-            accept="image/*"
-            onChange={handleChange}
-            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-xs"
-          />
+          <div className="menu-modal-grid menu-modal-grid--lower">
+            <div className="menu-modal-field">
+              <label htmlFor="menu-image">Upload Image</label>
+              <label htmlFor="menu-image" className="menu-upload-box">
+                <div className="menu-upload-box__icon">
+                  <ImagePlus size={22} />
+                </div>
+                <div>
+                  <strong>Choose food image</strong>
+                  <p>PNG, JPG, WEBP supported</p>
+                </div>
+              </label>
 
-          {preview ? <img src={preview} alt="Food preview" className="h-40 w-full rounded-xl object-cover" /> : null}
+              <input
+                id="menu-image"
+                name="image"
+                type="file"
+                accept="image/*"
+                onChange={handleChange}
+                className="menu-file-input"
+              />
+            </div>
 
-          {error ? <div className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div> : null}
+            <div className="menu-modal-field">
+              <label>Availability</label>
+              <label className="menu-availability-toggle">
+                <input
+                  type="checkbox"
+                  name="is_available"
+                  checked={formData.is_available}
+                  onChange={handleChange}
+                />
+                <span className="menu-availability-toggle__slider" />
+                <span className="menu-availability-toggle__label">
+                  {formData.is_available ? 'Available' : 'Unavailable'}
+                </span>
+              </label>
+            </div>
+          </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          {preview ? (
+            <div className="menu-preview-wrap">
+              <img src={preview} alt="Food preview" className="menu-preview-image" />
+            </div>
+          ) : null}
+
+          {error ? (
+            <div className="menu-modal-error">{error}</div>
+          ) : null}
+
+          <div className="menu-modal-actions">
             <button
               type="button"
-              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              className="menu-btn-secondary"
               onClick={onClose}
               disabled={submitting}
             >
@@ -136,7 +208,7 @@ export default function MenuItemModal({ open, item, onClose, onSave }) {
 
             <button
               type="submit"
-              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-70"
+              className="menu-btn-primary"
               disabled={submitting}
             >
               {submitting ? 'Saving...' : item ? 'Update Item' : 'Add Item'}

@@ -33,9 +33,14 @@ class LoginView(APIView):
         username = request.data.get('username')
         password = request.data.get('password')
         
+        print(f"Login attempt - Username: {username}, Password length: {len(password) if password else 0}")
+        
         user = authenticate(username=username, password=password)
         
+        print(f"Authentication result: {user}")
+        
         if user is None:
+            print("Authentication failed - Invalid credentials")
             return Response(
                 {'detail': 'Invalid credentials'},
                 status=status.HTTP_401_UNAUTHORIZED
@@ -43,11 +48,13 @@ class LoginView(APIView):
         
         # Check if user is approved
         if not user.is_approved:
+            print(f"User {username} not approved")
             return Response(
                 {'detail': 'Account pending admin approval'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
+        print(f"Login successful for {username}")
         refresh = RefreshToken.for_user(user)
         user_data = UserSerializer(user).data
         return Response({
@@ -62,9 +69,50 @@ class LoginView(APIView):
 class ProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = UserSerializer
-    
+
     def get_object(self):
         return self.request.user
+
+    def update(self, request, *args, **kwargs):
+        user = request.user
+        try:
+            update_fields = []
+            for field in ('username', 'email', 'first_name', 'last_name'):
+                if field in request.data:
+                    setattr(user, field, request.data[field])
+                    update_fields.append(field)
+            if update_fields:
+                user.save(update_fields=update_fields)
+
+            profile_data = request.data.get('profile', {})
+            if profile_data and isinstance(profile_data, dict):
+                profile_obj = None
+                profile_fields = []
+                if user.user_type == 'hostel_owner' and hasattr(user, 'hostel_profile'):
+                    profile_obj = user.hostel_profile
+                    allowed = ('hostel_name', 'address', 'phone_number', 'business_reg_no')
+                elif user.user_type == 'restaurant_owner' and hasattr(user, 'restaurant_profile'):
+                    profile_obj = user.restaurant_profile
+                    allowed = ('restaurant_name', 'address', 'phone_number')
+                elif user.user_type == 'student' and hasattr(user, 'student_profile'):
+                    profile_obj = user.student_profile
+                    allowed = ('university', 'gender_preference', 'budget', 'phone_number')
+                elif user.user_type == 'delivery' and hasattr(user, 'delivery_profile'):
+                    profile_obj = user.delivery_profile
+                    allowed = ('vehicle_type', 'license_no', 'phone_number')
+                else:
+                    allowed = ()
+                if profile_obj:
+                    for f in allowed:
+                        if f in profile_data:
+                            setattr(profile_obj, f, profile_data[f])
+                            profile_fields.append(f)
+                    if profile_fields:
+                        profile_obj.save(update_fields=profile_fields)
+
+            return Response(UserSerializer(user).data)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class PendingUsersView(generics.ListAPIView):
     permission_classes = [IsAdminUser]

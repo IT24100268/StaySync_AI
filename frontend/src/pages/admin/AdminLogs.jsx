@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FileText, Search } from "lucide-react";
+import { FileText, Search, RefreshCcw } from "lucide-react";
 import api from "../../services/api";
 import GlassCard from "./components/GlassCard";
 
@@ -19,6 +19,7 @@ export default function AdminLogs() {
       setFiltered(logs);
       return;
     }
+
     const q = query.toLowerCase();
     setFiltered(
       logs.filter(
@@ -48,56 +49,55 @@ export default function AdminLogs() {
   return (
     <div className="space-y-6">
       <GlassCard className="p-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900">
-              Activity Logs
-            </h1>
-            <p className="text-slate-600 mt-1">
-              Track all administrative actions across the platform.
+            <h1 className="text-3xl font-extrabold text-slate-900">Activity Logs</h1>
+            <p className="mt-1 text-slate-500">
+              Track administrative actions across the platform.
             </p>
           </div>
 
           <button
             onClick={fetchLogs}
-            className="px-4 py-2 rounded-2xl bg-white/70 border border-white/50 hover:bg-white/90 transition font-semibold text-slate-800"
+            className="inline-flex items-center gap-2 rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] px-4 py-3 font-semibold text-slate-700 hover:bg-white"
           >
+            <RefreshCcw size={18} />
             Refresh
           </button>
         </div>
 
-        <div className="mt-5 relative">
+        <div className="relative mt-5">
           <Search
             size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
           />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search action, admin, target..."
-            className="w-full pl-10 pr-3 py-3 rounded-2xl bg-white/60 border border-white/50 outline-none focus:ring-2 focus:ring-blue-300"
+            className="w-full rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] px-4 py-3 pl-10 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
           />
         </div>
       </GlassCard>
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600" />
         </div>
       ) : filtered.length === 0 ? (
         <GlassCard className="p-10 text-center">
-          <FileText className="mx-auto mb-3 text-slate-500" size={46} />
-          <p className="text-slate-700 font-semibold">No activity logs found</p>
-          <p className="text-slate-600 text-sm mt-1">
+          <FileText className="mx-auto mb-3 text-slate-400" size={46} />
+          <p className="font-semibold text-slate-700">No activity logs found</p>
+          <p className="mt-1 text-sm text-slate-500">
             Try a different search or perform an admin action.
           </p>
         </GlassCard>
       ) : (
         <GlassCard className="overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-white/50">
-                <tr className="text-left text-xs font-bold text-slate-600 uppercase">
+            <table className="w-full min-w-[980px]">
+              <thead className="border-b border-[#e9eef6] bg-[#f8fbff]">
+                <tr className="text-left text-xs font-bold uppercase tracking-wide text-slate-500">
                   <th className="px-6 py-4">Date & Time</th>
                   <th className="px-6 py-4">Admin</th>
                   <th className="px-6 py-4">Action</th>
@@ -106,36 +106,30 @@ export default function AdminLogs() {
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-white/40">
+              <tbody className="divide-y divide-[#eef3f8]">
                 {filtered.map((log) => (
-                  <tr key={log.id} className="hover:bg-white/40 transition">
-                    <td className="px-6 py-4 text-sm text-slate-700 whitespace-nowrap">
+                  <tr key={log.id} className="transition hover:bg-[#f8fbff]">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500">
                       {new Date(log.created_at).toLocaleString()}
                     </td>
 
                     <td className="px-6 py-4">
-                      <div className="font-bold text-slate-900">
-                        {log.admin_username}
-                      </div>
-                      <div className="text-xs text-slate-600">Administrator</div>
+                      <div className="font-bold text-slate-900">{log.admin_username}</div>
+                      <div className="text-xs text-slate-500">Administrator</div>
                     </td>
 
                     <td className="px-6 py-4">
-                      <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
+                      <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">
                         {log.action}
                       </span>
                     </td>
 
                     <td className="px-6 py-4">
-                      <div className="text-sm font-bold text-slate-900">
-                        {log.target_type}
-                      </div>
-                      <div className="text-xs text-slate-600">
-                        ID: {log.target_id}
-                      </div>
+                      <div className="text-sm font-bold text-slate-900">{log.target_type}</div>
+                      <div className="text-xs text-slate-500">ID: {log.target_id}</div>
                     </td>
 
-                    <td className="px-6 py-4 text-sm text-slate-700 max-w-[480px]">
+                    <td className="max-w-[480px] px-6 py-4 text-sm text-slate-700">
                       <div className="truncate">{String(log.details || "-")}</div>
                     </td>
                   </tr>

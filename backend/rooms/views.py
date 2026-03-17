@@ -1,11 +1,13 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter
 from .models import Room, Favorite
 from .serializers import RoomSerializer, FavoriteSerializer
 from .filters import RoomFilter
+from .geocoding_service import GeocodingService
 
 class RoomListView(generics.ListAPIView):
     serializer_class = RoomSerializer
@@ -47,3 +49,21 @@ class FavoriteListView(generics.ListAPIView):
     
     def get_queryset(self):
         return Favorite.objects.filter(user=self.request.user)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def detect_location(request):
+    """
+    Detect latitude and longitude from address using OpenStreetMap Nominatim
+    """
+    address_data = {
+        'address_line_1': request.data.get('address_line_1', ''),
+        'address_line_2': request.data.get('address_line_2', ''),
+        'area': request.data.get('area', ''),
+        'city': request.data.get('city', ''),
+        'landmark': request.data.get('landmark', ''),
+        'postal_code': request.data.get('postal_code', ''),
+    }
+    
+    result = GeocodingService.geocode_address(address_data)
+    return Response(result)

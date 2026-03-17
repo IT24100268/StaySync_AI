@@ -55,11 +55,15 @@ export default function UsersManagement() {
     setSubmitting(true);
     try {
       if (actionType === "block") {
-        await api.patch(`/admin/users/${selectedUser.id}/block/`, { block_reason: reason });
+        await api.patch(`/admin/users/${selectedUser.id}/block/`, {
+          block_reason: reason,
+        });
       } else if (actionType === "unblock") {
         await api.patch(`/admin/users/${selectedUser.id}/unblock/`);
       } else if (actionType === "warn") {
-        await api.patch(`/admin/users/${selectedUser.id}/warn/`, { warning_note: reason });
+        await api.patch(`/admin/users/${selectedUser.id}/warn/`, {
+          warning_note: reason,
+        });
       }
       closeModal();
       fetchUsers();
@@ -83,45 +87,44 @@ export default function UsersManagement() {
   return (
     <div className="space-y-6">
       <GlassCard className="p-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900">User Management</h1>
-            <p className="text-slate-600 mt-1">Block/unblock users, issue warnings, and manage platform safety.</p>
+            <p className="mt-1 text-slate-500">
+              Block, unblock, warn, and approve platform users.
+            </p>
           </div>
 
           <button
             onClick={fetchUsers}
-            className="px-4 py-3 rounded-2xl bg-white/70 border border-white/50 hover:bg-white/90 transition font-semibold"
-            title="Refresh"
+            className="inline-flex items-center gap-2 rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] px-4 py-3 font-semibold text-slate-700 transition hover:bg-white"
           >
-            <div className="flex items-center gap-2">
-              <RefreshCcw size={18} />
-              Refresh
-            </div>
+            <RefreshCcw size={18} />
+            Refresh
           </button>
         </div>
 
-        <div className="mt-5 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+        <div className="relative mt-5">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by username or email..."
-            className="w-full pl-10 pr-3 py-3 rounded-2xl bg-white/60 border border-white/50 outline-none focus:ring-2 focus:ring-blue-300"
+            className="w-full rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] px-4 py-3 pl-10 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
           />
         </div>
       </GlassCard>
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600" />
         </div>
       ) : (
         <GlassCard className="overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-white/50">
-                <tr className="text-left text-xs font-bold text-slate-600 uppercase">
+            <table className="w-full min-w-[950px]">
+              <thead className="border-b border-[#e9eef6] bg-[#f8fbff]">
+                <tr className="text-left text-xs font-bold uppercase tracking-wide text-slate-500">
                   <th className="px-6 py-4">User</th>
                   <th className="px-6 py-4">Type</th>
                   <th className="px-6 py-4">Status</th>
@@ -130,31 +133,31 @@ export default function UsersManagement() {
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-white/40">
+              <tbody className="divide-y divide-[#eef3f8]">
                 {filteredUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-white/40 transition">
+                  <tr key={u.id} className="transition hover:bg-[#f8fbff]">
                     <td className="px-6 py-4">
                       <div className="font-extrabold text-slate-900">{u.username}</div>
-                      <div className="text-sm text-slate-700">{u.email}</div>
+                      <div className="text-sm text-slate-500">{u.email}</div>
                     </td>
 
                     <td className="px-6 py-4">
-                      <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-extrabold">
-                        {u.user_type}
+                      <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-extrabold text-blue-700">
+                        {String(u.user_type || "").replace(/_/g, " ")}
                       </span>
                     </td>
 
                     <td className="px-6 py-4">
                       {!u.is_approved ? (
-                        <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-extrabold">
+                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold text-amber-700">
                           Pending Approval
                         </span>
                       ) : u.is_blocked ? (
-                        <span className="px-3 py-1 rounded-full bg-rose-100 text-rose-700 text-xs font-extrabold">
+                        <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-extrabold text-rose-700">
                           Blocked
                         </span>
                       ) : (
-                        <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-extrabold">
+                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-700">
                           Active
                         </span>
                       )}
@@ -165,20 +168,20 @@ export default function UsersManagement() {
                     </td>
 
                     <td className="px-6 py-4">
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         {!u.is_approved && (
                           <button
                             onClick={() => approveUser(u.id)}
-                            className="px-3 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 transition text-white text-xs font-extrabold"
-                            title="Approve user"
+                            className="rounded-2xl bg-emerald-600 px-3 py-2 text-xs font-extrabold text-white hover:bg-emerald-700"
                           >
                             Approve
                           </button>
                         )}
+
                         {u.is_blocked ? (
                           <button
                             onClick={() => openAction(u, "unblock")}
-                            className="p-3 rounded-2xl bg-white/70 border border-white/50 hover:bg-white/90 transition"
+                            className="rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] p-3 transition hover:bg-white"
                             title="Unblock"
                           >
                             <ShieldOff size={18} className="text-emerald-700" />
@@ -186,7 +189,7 @@ export default function UsersManagement() {
                         ) : (
                           <button
                             onClick={() => openAction(u, "block")}
-                            className="p-3 rounded-2xl bg-white/70 border border-white/50 hover:bg-white/90 transition"
+                            className="rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] p-3 transition hover:bg-white"
                             title="Block"
                           >
                             <Shield size={18} className="text-rose-700" />
@@ -195,7 +198,7 @@ export default function UsersManagement() {
 
                         <button
                           onClick={() => openAction(u, "warn")}
-                          className="p-3 rounded-2xl bg-white/70 border border-white/50 hover:bg-white/90 transition"
+                          className="rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] p-3 transition hover:bg-white"
                           title="Warn"
                         >
                           <AlertTriangle size={18} className="text-amber-700" />
@@ -211,60 +214,51 @@ export default function UsersManagement() {
       )}
 
       {selectedUser && actionType && (
-        <Modal onClose={closeModal}>
-          <h2 className="text-2xl font-extrabold text-slate-900 mb-2">
-            {actionType === "block" && "Block User"}
-            {actionType === "unblock" && "Unblock User"}
-            {actionType === "warn" && "Warn User"}
-          </h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 p-4">
+          <div className="w-full max-w-md rounded-[28px] border border-[#dfe7f3] bg-white p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
+            <h2 className="mb-2 text-2xl font-extrabold text-slate-900">
+              {actionType === "block" && "Block User"}
+              {actionType === "unblock" && "Unblock User"}
+              {actionType === "warn" && "Warn User"}
+            </h2>
 
-          <p className="text-slate-600 mb-4">
-            User: <span className="font-bold text-slate-900">{selectedUser.username}</span>
-          </p>
+            <p className="mb-4 text-slate-500">
+              User: <span className="font-bold text-slate-900">{selectedUser.username}</span>
+            </p>
 
-          {actionType !== "unblock" && (
-            <div className="mb-4">
-              <label className="block text-sm font-bold text-slate-700 mb-2">
-                {actionType === "block" ? "Block Reason" : "Warning Note"}
-              </label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={3}
-                className="w-full px-4 py-3 rounded-2xl bg-white/70 border border-white/50 outline-none"
-                placeholder="Write reason..."
-              />
+            {actionType !== "unblock" && (
+              <div className="mb-4">
+                <label className="mb-2 block text-sm font-bold text-slate-700">
+                  {actionType === "block" ? "Block Reason" : "Warning Note"}
+                </label>
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] px-4 py-3 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                  placeholder="Write reason..."
+                />
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleAction}
+                disabled={submitting || (actionType !== "unblock" && !reason.trim())}
+                className="flex-1 rounded-2xl bg-blue-600 py-3 font-extrabold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {submitting ? "Processing..." : "Confirm"}
+              </button>
+              <button
+                onClick={closeModal}
+                className="flex-1 rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] py-3 font-semibold text-slate-700 hover:bg-white"
+              >
+                Cancel
+              </button>
             </div>
-          )}
-
-          <div className="flex gap-3">
-            <button
-              onClick={handleAction}
-              disabled={submitting || (actionType !== "unblock" && !reason.trim())}
-              className="flex-1 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 transition text-white font-extrabold disabled:opacity-50"
-            >
-              {submitting ? "Processing..." : "Confirm"}
-            </button>
-            <button
-              onClick={closeModal}
-              className="flex-1 py-3 rounded-2xl bg-white/70 border border-white/50 hover:bg-white/90 transition font-semibold"
-            >
-              Cancel
-            </button>
           </div>
-        </Modal>
+        </div>
       )}
-    </div>
-  );
-}
-
-function Modal({ children, onClose }) {
-  return (
-    <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center p-4 z-50">
-      <div className="w-full max-w-md rounded-3xl bg-white/65 backdrop-blur-xl border border-white/40 shadow-[0_20px_60px_rgba(2,6,23,0.25)] p-6">
-        {children}
-        <button onClick={onClose} className="sr-only">close</button>
-      </div>
     </div>
   );
 }

@@ -1,51 +1,55 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
-  Home,
+  LayoutDashboard,
   List,
+  BookOpen,
   MessageSquare,
-  BarChart3,
-  CheckCircle,
-  LogOut,
-  Menu,
-  X,
+  DollarSign,
+  Settings,
   Bell,
-  Search,
+  Mail,
+  LogOut,
   ChevronDown,
   Building2,
+  User,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 
-const navigation = [
-  { name: "Dashboard", to: "/owner/dashboard", icon: Home },
+const NAV = [
+  { name: "Dashboard", to: "/owner/dashboard", icon: LayoutDashboard },
   { name: "Listings", to: "/owner/listings", icon: List },
+  { name: "Bookings", to: "/owner/bookings", icon: BookOpen },
   { name: "Enquiries", to: "/owner/enquiries", icon: MessageSquare },
-  { name: "Analytics", to: "/owner/analytics", icon: BarChart3 },
-  { name: "Verification", to: "/owner/verification", icon: CheckCircle },
+  { name: "Earnings", to: "/owner/analytics", icon: DollarSign },
+  { name: "Settings", to: "/owner/settings", icon: Settings },
 ];
 
-function getInitials(nameOrEmail = "") {
-  const s = String(nameOrEmail).trim();
-  if (!s) return "U";
-  const parts = s.split(" ").filter(Boolean);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+function initials(str = "") {
+  const p = String(str).trim().split(" ").filter(Boolean);
+  if (!p.length) return "U";
+  if (p.length === 1) return p[0].slice(0, 2).toUpperCase();
+  return (p[0][0] + p[p.length - 1][0]).toUpperCase();
 }
 
 export default function OwnerDashboardLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef(null);
 
-  const displayName = useMemo(() => {
-    return user?.username || user?.email || "Owner";
-  }, [user]);
+  const name = user?.username || user?.email || "Owner";
+  const ini = useMemo(() => initials(name), [name]);
 
-  const initials = useMemo(() => {
-    return getInitials(user?.username || user?.email);
-  }, [user]);
+  useEffect(() => {
+    const handler = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -53,189 +57,171 @@ export default function OwnerDashboardLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+    <div
+      className="min-h-screen"
+      style={{
+        background: "linear-gradient(180deg,#f7f4ee 0%, #f3efe8 55%, #f8f5ef 100%)",
+      }}
+    >
+      <div
+        className="h-[88px] w-full"
+        style={{
+          background:
+            "radial-gradient(circle at top center, rgba(255,255,255,0.04), transparent 32%), linear-gradient(180deg,#151519 0%, #1b1b20 100%)",
+        }}
+      />
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-950 text-white transform transition-transform lg:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+      <header
+        className="sticky top-0 z-50 -mt-[20px] mx-auto flex max-w-[1400px] items-center gap-4 border-y px-6 py-3"
+        style={{
+          background: "rgba(12,12,15,0.97)",
+          borderColor: "rgba(212,175,55,0.10)",
+          backdropFilter: "blur(12px)",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
+        }}
       >
-        <div className="flex flex-col h-full">
-          {/* Brand */}
-          <div className="px-6 py-5 border-b border-white/10">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center">
-                  <Building2 size={20} />
-                </div>
-                <div>
-                  <p className="text-sm text-white/70">StaySync AI</p>
-                  <h1 className="text-lg font-extrabold tracking-tight">
-                    Owner Portal
-                  </h1>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="lg:hidden p-2 rounded-lg hover:bg-white/10"
-                aria-label="Close sidebar"
-              >
-                <X size={20} />
-              </button>
-            </div>
-          </div>
-
-          {/* Nav */}
-          <nav className="px-4 py-4 space-y-1 flex-1">
-            {navigation.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === "/owner/dashboard"}
-                onClick={() => setSidebarOpen(false)}
-                className={({ isActive }) =>
-                  [
-                    "flex items-center gap-3 px-4 py-3 rounded-xl transition",
-                    isActive
-                      ? "bg-white/12 text-white ring-1 ring-white/10"
-                      : "text-white/70 hover:text-white hover:bg-white/8",
-                  ].join(" ")
-                }
-              >
-                <item.icon size={18} />
-                <span className="font-semibold">{item.name}</span>
-              </NavLink>
-            ))}
-          </nav>
-
-          {/* User + logout */}
-          <div className="px-6 py-5 border-t border-white/10">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center font-bold">
-                {initials}
-              </div>
-              <div className="min-w-0">
-                <p className="font-semibold truncate">{displayName}</p>
-                <p className="text-xs text-white/60 truncate">{user?.email}</p>
-              </div>
-            </div>
-
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 transition font-semibold"
-            >
-              <LogOut size={18} />
-              Logout
-            </button>
+        <div className="flex min-w-[185px] items-center gap-3">
+          <Building2 size={22} className="text-[#d4af37]" />
+          <div className="leading-tight">
+            <p className="text-[15px] font-extrabold tracking-wide text-white">
+              StaySync <span className="text-[#d4af37]">AI</span>
+            </p>
           </div>
         </div>
-      </aside>
 
-      {/* Main */}
-      <div className="lg:ml-72">
-        {/* Topbar */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200">
-          <div className="px-4 sm:px-6 py-4 flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-xl hover:bg-slate-100"
-              aria-label="Open sidebar"
+        <nav className="flex flex-1 items-center justify-center gap-1">
+          {NAV.map(({ name: label, to }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === "/owner/dashboard"}
+              className={({ isActive }) =>
+                `relative px-4 py-2 text-[15px] font-medium transition ${
+                  isActive ? "text-white" : "text-white/80 hover:text-white"
+                }`
+              }
             >
-              <Menu size={22} />
-            </button>
-
-            <div className="flex-1">
-              {/* Search */}
-              <div className="relative max-w-xl">
-                <Search
-                  size={18}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                />
-                <input
-                  placeholder="Search listings, enquiries..."
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-                />
-              </div>
-            </div>
-
-            {/* Actions */}
-            <button
-              className="p-2.5 rounded-xl hover:bg-slate-100 relative"
-              aria-label="Notifications"
-              title="Notifications"
-            >
-              <Bell size={20} />
-              {/* badge */}
-              <span className="absolute -top-0.5 -right-0.5 h-4 w-4 text-[10px] bg-blue-600 text-white rounded-full grid place-items-center">
-                3
-              </span>
-            </button>
-
-            {/* Profile dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setProfileOpen((v) => !v)}
-                className="flex items-center gap-3 pl-2 pr-3 py-2 rounded-xl hover:bg-slate-100"
-                aria-label="Profile menu"
-              >
-                <div className="h-9 w-9 rounded-full bg-slate-900 text-white grid place-items-center font-bold">
-                  {initials}
-                </div>
-                <div className="hidden sm:block text-left">
-                  <p className="text-sm font-bold leading-4">{displayName}</p>
-                  <p className="text-xs text-slate-500">Hostel owner</p>
-                </div>
-                <ChevronDown size={18} className="text-slate-500" />
-              </button>
-
-              {profileOpen && (
-                <div
-                  className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden"
-                  onMouseLeave={() => setProfileOpen(false)}
-                >
-                  <div className="px-4 py-3 border-b border-slate-100">
-                    <p className="text-sm font-bold truncate">{displayName}</p>
-                    <p className="text-xs text-slate-500 truncate">
-                      {user?.email}
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setProfileOpen(false);
-                      navigate("/owner/verification");
-                    }}
-                    className="w-full text-left px-4 py-3 hover:bg-slate-50 text-sm font-semibold"
-                  >
-                    Verification
-                  </button>
-
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-3 hover:bg-slate-50 text-sm font-semibold text-red-600"
-                  >
-                    Logout
-                  </button>
-                </div>
+              {({ isActive }) => (
+                <span className="relative">
+                  {label}
+                  {isActive && (
+                    <span
+                      className="absolute left-0 top-[30px] h-[2.5px] w-full rounded-full"
+                      style={{
+                        background: "linear-gradient(90deg,#c9a84c,#f0d682,#c9a84c)",
+                        boxShadow: "0 0 12px rgba(201,168,76,0.55)",
+                      }}
+                    />
+                  )}
+                </span>
               )}
-            </div>
-          </div>
-        </header>
+            </NavLink>
+          ))}
+        </nav>
 
-        {/* Page content */}
-        <main className="px-4 sm:px-6 py-6">
-          <Outlet />
-        </main>
-      </div>
+        <div className="flex min-w-[220px] items-center justify-end gap-3" ref={profileRef}>
+          <button className="relative text-white/85 transition hover:text-[#d4af37]">
+            <Bell size={18} />
+            <span
+              className="absolute -right-1.5 -top-1.5 grid h-4 w-4 place-items-center rounded-full text-[9px] font-bold text-black"
+              style={{ background: "#d4af37" }}
+            >
+              1
+            </span>
+          </button>
+
+          <button className="relative text-white/85 transition hover:text-[#d4af37]">
+            <Mail size={18} />
+            <span
+              className="absolute -right-1.5 -top-1.5 grid h-4 w-4 place-items-center rounded-full text-[9px] font-bold text-black"
+              style={{ background: "#d4af37" }}
+            >
+              2
+            </span>
+          </button>
+
+          <div className="relative">
+            <button
+              onClick={() => setProfileOpen((v) => !v)}
+              className="flex items-center gap-3 rounded-full px-2 py-1 transition hover:bg-white/5"
+            >
+              <div
+                className="grid h-9 w-9 place-items-center rounded-full text-xs font-extrabold text-white"
+                style={{
+                  background: "linear-gradient(135deg,#c9a84c,#a07830)",
+                  boxShadow: "0 4px 12px rgba(201,168,76,0.35)",
+                }}
+              >
+                {ini}
+              </div>
+
+              <div className="hidden text-left sm:block">
+                <p className="text-[14px] font-bold leading-tight text-white">{name}</p>
+                <p className="text-[11px] text-white/55">Hostel Owner</p>
+              </div>
+
+              <ChevronDown size={14} className="text-white/55" />
+            </button>
+
+            {profileOpen && (
+              <div
+                className="absolute right-0 top-14 w-60 rounded-2xl border p-2"
+                style={{
+                  background: "#ffffff",
+                  borderColor: "#eadfcb",
+                  boxShadow: "0 20px 50px rgba(0,0,0,0.12)",
+                }}
+              >
+                <div className="flex items-center gap-3 border-b border-[#f0e8db] px-3 py-3">
+                  <div
+                    className="grid h-10 w-10 place-items-center rounded-full text-sm font-extrabold text-white"
+                    style={{ background: "linear-gradient(135deg,#c9a84c,#a07830)" }}
+                  >
+                    {ini}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-[#1e1d1a]">{name}</p>
+                    <p className="text-xs text-[#7b7568]">{user?.email}</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setProfileOpen(false);
+                    navigate("/owner/profile");
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#524d43] transition hover:bg-[#faf7f1] hover:text-[#a07830]"
+                >
+                  <User size={14} /> Profile
+                </button>
+
+                <button
+                  onClick={() => {
+                    setProfileOpen(false);
+                    navigate("/owner/settings");
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#524d43] transition hover:bg-[#faf7f1] hover:text-[#a07830]"
+                >
+                  <Settings size={14} /> Settings
+                </button>
+
+                <div className="my-1 border-t border-[#f0e8db]" />
+
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 transition hover:bg-red-50"
+                >
+                  <LogOut size={14} /> Logout
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-[1400px] px-6 py-8">
+        <Outlet />
+      </main>
     </div>
   );
 }

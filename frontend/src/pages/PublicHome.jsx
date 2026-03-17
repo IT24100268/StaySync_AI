@@ -1,7 +1,11 @@
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import './PublicHome.css';
 
 const PublicHome = () => {
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [selectedFood, setSelectedFood] = useState(null);
+  
   const featuredRooms = [
     {
       id: 1,
@@ -9,6 +13,9 @@ const PublicHome = () => {
       location: 'Near University',
       price: 'LKR 25,000/month',
       image: '/images/PublicImage1.jpg',
+      description: 'Perfect for students seeking a quiet study environment. Includes WiFi, desk, and shared kitchen access.',
+      amenities: ['WiFi', 'Desk', 'Shared Kitchen', 'Laundry'],
+      size: '120 sq ft',
     },
     {
       id: 2,
@@ -16,6 +23,9 @@ const PublicHome = () => {
       location: 'City Center',
       price: 'LKR 18,000/month',
       image: '/images/PublicImage2.jpg',
+      description: 'Affordable shared accommodation in the heart of the city. Great for social students.',
+      amenities: ['WiFi', '2 Beds', 'Shared Bathroom', 'Common Area'],
+      size: '180 sq ft',
     },
     {
       id: 3,
@@ -23,6 +33,9 @@ const PublicHome = () => {
       location: 'Colombo 7',
       price: 'LKR 35,000/month',
       image: '/images/PublicImage3.jpg',
+      description: 'Luxury studio apartment with private bathroom and kitchenette. Fully furnished.',
+      amenities: ['WiFi', 'AC', 'Private Bathroom', 'Kitchenette', 'Parking'],
+      size: '250 sq ft',
     },
     {
       id: 4,
@@ -30,6 +43,9 @@ const PublicHome = () => {
       location: 'Nugegoda',
       price: 'LKR 15,000/month',
       image: '/images/PublicImage4.png',
+      description: 'Basic accommodation for budget-conscious students. Clean and safe environment.',
+      amenities: ['WiFi', 'Shared Facilities', 'Security'],
+      size: '100 sq ft',
     },
   ];
 
@@ -40,6 +56,9 @@ const PublicHome = () => {
       type: 'Home Food',
       location: 'Maharagama',
       image: '/images/Restaurant1.jpg',
+      description: 'Authentic home-cooked meals prepared with love. Perfect for students missing home food.',
+      menu: ['Rice & Curry', 'Kottu', 'Fried Rice', 'Noodles'],
+      priceRange: 'LKR 200 - 400',
     },
     {
       id: 2,
@@ -47,6 +66,9 @@ const PublicHome = () => {
       type: 'Restaurant',
       location: 'Colombo 3',
       image: '/images/Restaurant2.jpg',
+      description: 'Premium restaurant offering a variety of Sri Lankan and international cuisine.',
+      menu: ['Biriyani', 'Grilled Chicken', 'Pasta', 'Burgers'],
+      priceRange: 'LKR 400 - 800',
     },
     {
       id: 3,
@@ -54,6 +76,9 @@ const PublicHome = () => {
       type: 'Home Food',
       location: 'Nugegoda',
       image: '/images/Restaurant3.png',
+      description: 'Nutritious and balanced meals for health-conscious students.',
+      menu: ['Salads', 'Smoothie Bowls', 'Grilled Fish', 'Veggie Wraps'],
+      priceRange: 'LKR 300 - 600',
     },
     {
       id: 4,
@@ -61,6 +86,9 @@ const PublicHome = () => {
       type: 'Restaurant',
       location: 'Dehiwala',
       image: '/images/Restaurant4.jpg',
+      description: 'Fast and affordable meals for students on the go.',
+      menu: ['Sandwiches', 'Rolls', 'Short Eats', 'Juice'],
+      priceRange: 'LKR 150 - 350',
     },
   ];
 
@@ -150,7 +178,7 @@ const PublicHome = () => {
                   <h3 className="card-title">{room.name}</h3>
                   <p className="card-location">Location | {room.location}</p>
                   <p className="card-price">{room.price}</p>
-                  <button className="btn-card">View Details</button>
+                  <button className="btn-card" onClick={() => setSelectedRoom(room)}>View Details</button>
                 </div>
               </div>
             ))}
@@ -175,7 +203,7 @@ const PublicHome = () => {
                   <h3 className="card-title">{provider.name}</h3>
                   <p className="card-type">Type | {provider.type}</p>
                   <p className="card-location">Location | {provider.location}</p>
-                  <button className="btn-card">View Menu</button>
+                  <button className="btn-card" onClick={() => setSelectedFood(provider)}>View Menu</button>
                 </div>
               </div>
             ))}
@@ -259,6 +287,71 @@ const PublicHome = () => {
           <p>&copy; 2024 StaySync AI. All rights reserved.</p>
         </div>
       </footer>
+
+      {/* Room Details Modal */}
+      {selectedRoom && (
+        <div className="modal-overlay" onClick={() => setSelectedRoom(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setSelectedRoom(null)}>&times;</button>
+            <img src={selectedRoom.image} alt={selectedRoom.name} className="modal-image" />
+            <div className="modal-body">
+              <h2 className="modal-title">{selectedRoom.name}</h2>
+              <p className="modal-location">📍 {selectedRoom.location}</p>
+              <p className="modal-price">{selectedRoom.price}</p>
+              <p className="modal-description">{selectedRoom.description}</p>
+              <div className="modal-info">
+                <div className="info-item">
+                  <span className="info-label">Size:</span>
+                  <span className="info-value">{selectedRoom.size}</span>
+                </div>
+              </div>
+              <div className="modal-amenities">
+                <h3>Amenities</h3>
+                <div className="amenities-list">
+                  {selectedRoom.amenities.map((amenity, index) => (
+                    <span key={index} className="amenity-tag">✓ {amenity}</span>
+                  ))}
+                </div>
+              </div>
+              <Link to="/register" className="btn-primary modal-btn">Book Now</Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Food Provider Modal */}
+      {selectedFood && (
+        <div className="modal-overlay" onClick={() => setSelectedFood(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setSelectedFood(null)}>&times;</button>
+            <img src={selectedFood.image} alt={selectedFood.name} className="modal-image" />
+            <div className="modal-body">
+              <h2 className="modal-title">{selectedFood.name}</h2>
+              <p className="modal-location">📍 {selectedFood.location}</p>
+              <div className="modal-info">
+                <div className="info-item">
+                  <span className="info-label">Type:</span>
+                  <span className="info-value">{selectedFood.type}</span>
+                </div>
+                <div className="info-item">
+                  <span className="info-label">Price Range:</span>
+                  <span className="info-value">{selectedFood.priceRange}</span>
+                </div>
+              </div>
+              <p className="modal-description">{selectedFood.description}</p>
+              <div className="modal-amenities">
+                <h3>Popular Menu Items</h3>
+                <div className="amenities-list">
+                  {selectedFood.menu.map((item, index) => (
+                    <span key={index} className="amenity-tag">🍽️ {item}</span>
+                  ))}
+                </div>
+              </div>
+              <Link to="/register" className="btn-primary modal-btn">Order Now</Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

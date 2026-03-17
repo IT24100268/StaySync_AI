@@ -1,27 +1,37 @@
 import { useEffect, useMemo, useState } from "react";
-import { Eye, MessageSquare, TrendingUp, ArrowUpRight } from "lucide-react";
+import { Eye, MessageSquare, TrendingUp, ArrowUpRight, BarChart3 } from "lucide-react";
 import ownerApi from "../../api/ownerApi";
+import { cardCls, cardStyle, EmptyState, Skeleton, PageHeader } from "./ownerTheme.jsx";
 
-const KPI = ({ title, value, icon: Icon, hint }) => (
-  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-    <div className="flex items-start justify-between">
-      <div>
-        <p className="text-sm font-semibold text-slate-600">{title}</p>
-        <p className="text-3xl font-extrabold text-slate-900 mt-2">{value}</p>
-        {hint ? (
-          <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
-            <ArrowUpRight size={16} />
-            {hint}
-          </div>
-        ) : null}
-      </div>
+function KPI({ title, value, icon: Icon, hint, gold = false }) {
+  return (
+    <div className={cardCls("p-5 transition-all hover:-translate-y-0.5")} style={cardStyle(gold)}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#7f786b]">{title}</p>
+          <p className={`mt-2.5 text-[28px] font-extrabold leading-none ${gold ? "text-[#b98b1f]" : "text-[#1e1d1a]"}`}>
+            {value}
+          </p>
+          {hint && (
+            <div className="mt-2 flex items-center gap-1 text-[11px] text-[#7f786b]">
+              <ArrowUpRight size={11} className="text-[#b98b1f]" /> {hint}
+            </div>
+          )}
+        </div>
 
-      <div className="h-11 w-11 rounded-2xl bg-slate-900 text-white grid place-items-center">
-        <Icon size={20} />
+        <div
+          className="grid h-11 w-11 place-items-center rounded-[14px]"
+          style={{
+            background: gold ? "#fff8e8" : "#faf7f1",
+            border: "1px solid #eadab1",
+          }}
+        >
+          <Icon size={17} className={gold ? "text-[#b98b1f]" : "text-[#7f786b]"} />
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+}
 
 export default function OwnerAnalytics() {
   const [summary, setSummary] = useState({ totalViews: 0, totalEnquiries: 0 });
@@ -30,140 +40,119 @@ export default function OwnerAnalytics() {
 
   useEffect(() => {
     fetchAnalytics();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchAnalytics = async () => {
     try {
-      const [summaryRes, listingsRes] = await Promise.all([
+      const [sRes, lRes] = await Promise.all([
         ownerApi.get("/owner/analytics/summary"),
         ownerApi.get("/owner/analytics/listings"),
       ]);
 
-      // supports your existing shapes
       setSummary({
-        totalViews: summaryRes.data.totalViews ?? summaryRes.data.views ?? 0,
-        totalEnquiries:
-          summaryRes.data.totalEnquiries ?? summaryRes.data.enquiries ?? 0,
+        totalViews: sRes.data.totalViews ?? sRes.data.views ?? 0,
+        totalEnquiries: sRes.data.totalEnquiries ?? sRes.data.enquiries ?? 0,
       });
 
-      setListingStats(Array.isArray(listingsRes.data) ? listingsRes.data : []);
-    } catch (error) {
-      console.error("Failed to fetch analytics:", error);
+      setListingStats(Array.isArray(lRes.data) ? lRes.data : []);
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  const maxViews = useMemo(() => {
-    return Math.max(...listingStats.map((l) => Number(l.views || 0)), 1);
-  }, [listingStats]);
+  const maxViews = useMemo(
+    () => Math.max(...listingStats.map((l) => Number(l.views || 0)), 1),
+    [listingStats]
+  );
 
   if (loading) {
     return (
-      <div className="py-10">
-        <div className="h-7 w-40 bg-slate-200 rounded animate-pulse mb-6" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="h-28 bg-slate-200 rounded-2xl animate-pulse" />
-          <div className="h-28 bg-slate-200 rounded-2xl animate-pulse" />
+      <div className="space-y-5">
+        <Skeleton h="h-24" rounded="rounded-[22px]" />
+        <div className="grid grid-cols-2 gap-4">
+          <Skeleton h="h-28" rounded="rounded-[22px]" />
+          <Skeleton h="h-28" rounded="rounded-[22px]" />
         </div>
-        <div className="h-80 bg-slate-200 rounded-2xl animate-pulse mt-6" />
+        <Skeleton h="h-80" rounded="rounded-[22px]" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-slate-900">Analytics</h1>
-        <p className="text-slate-600">
-          Track views and enquiry conversion per listing.
-        </p>
+      <PageHeader
+        icon={BarChart3}
+        title="Analytics"
+        subtitle="Track listing visibility, student interest, and conversion trends."
+      />
+
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <KPI title="Total Views" value={summary.totalViews} icon={Eye} hint="Overall listing visibility" />
+        <KPI title="Total Enquiries" value={summary.totalEnquiries} icon={MessageSquare} hint="Interest from students" gold />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <KPI
-          title="Total Views"
-          value={summary.totalViews}
-          icon={Eye}
-          hint="Overall listing visibility"
-        />
-        <KPI
-          title="Total Enquiries"
-          value={summary.totalEnquiries}
-          icon={MessageSquare}
-          hint="Interest from students"
-        />
-      </div>
-
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-        <div className="flex items-center justify-between gap-3 mb-4">
+      <div className={cardCls("p-6")} style={cardStyle()}>
+        <div className="mb-5 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-extrabold text-slate-900">
-              Listings Performance
-            </h2>
-            <p className="text-sm text-slate-600">
-              Conversion = enquiries / views
-            </p>
+            <h2 className="text-[16px] font-extrabold text-[#1e1d1a]">Listings Performance</h2>
+            <p className="mt-0.5 text-[11px] text-[#7f786b]">Conversion = enquiries ÷ views × 100</p>
           </div>
-
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <TrendingUp size={18} />
-            Updated
+          <div className="flex items-center gap-2 text-[11px] text-[#7f786b]">
+            <TrendingUp size={13} className="text-[#b98b1f]" /> Live data
           </div>
         </div>
 
         {listingStats.length === 0 ? (
-          <div className="rounded-2xl bg-slate-50 border border-slate-100 p-10 text-center">
-            <p className="font-semibold text-slate-700">No data available</p>
-            <p className="text-sm text-slate-500 mt-1">
-              Add listings and start getting views/enquiries.
-            </p>
-          </div>
+          <EmptyState
+            icon={BarChart3}
+            title="No data available"
+            subtitle="Add listings and start getting views and enquiries."
+          />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px]">
-              <thead className="border-b border-slate-200">
-                <tr className="text-left text-xs font-bold uppercase text-slate-500">
-                  <th className="py-3 pr-4">Listing</th>
-                  <th className="py-3 px-4 text-center">Views</th>
-                  <th className="py-3 px-4 text-center">Enquiries</th>
-                  <th className="py-3 px-4 text-right">Conversion</th>
-                  <th className="py-3 pl-4">Views Trend</th>
+            <table className="w-full min-w-[680px]">
+              <thead>
+                <tr className="border-b border-[#eee5d7] bg-[#fbf8f2]">
+                  {["Listing", "Views", "Enquiries", "Conversion", "Trend"].map((h, i) => (
+                    <th
+                      key={h}
+                      className={`px-5 py-3.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8b8578] ${
+                        i === 3 ? "text-right" : "text-left"
+                      }`}
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {listingStats.map((listing) => {
-                  const views = Number(listing.views || 0);
-                  const enquiries = Number(listing.enquiries || 0);
-                  const conv =
-                    views > 0 ? ((enquiries / views) * 100).toFixed(1) : "0.0";
+              <tbody>
+                {listingStats.map((l, idx) => {
+                  const views = Number(l.views || 0);
+                  const enquiries = Number(l.enquiries || 0);
+                  const conv = views > 0 ? ((enquiries / views) * 100).toFixed(1) : "0.0";
 
                   return (
-                    <tr key={listing.id} className="hover:bg-slate-50">
-                      <td className="py-4 pr-4">
-                        <p className="font-bold text-slate-900">
-                          {listing.title}
-                        </p>
-                      </td>
-
-                      <td className="py-4 px-4 text-center font-semibold text-slate-800">
-                        {views}
-                      </td>
-
-                      <td className="py-4 px-4 text-center font-semibold text-slate-800">
-                        {enquiries}
-                      </td>
-
-                      <td className="py-4 px-4 text-right font-bold text-slate-900">
+                    <tr
+                      key={l.id}
+                      className="border-b border-[#f1eadf] transition-colors hover:bg-[#fffaf2]"
+                      style={idx % 2 === 0 ? {} : { background: "#fcfbf8" }}
+                    >
+                      <td className="px-5 py-4 text-[13px] font-extrabold text-[#2b2823]">{l.title}</td>
+                      <td className="px-5 py-4 text-[13px] font-semibold text-[#6f6a5f] tabular-nums">{views}</td>
+                      <td className="px-5 py-4 text-[13px] font-semibold text-[#6f6a5f] tabular-nums">{enquiries}</td>
+                      <td className="px-5 py-4 text-right text-[13px] font-extrabold text-[#b98b1f] tabular-nums">
                         {conv}%
                       </td>
-
-                      <td className="py-4 pl-4">
-                        <div className="w-full bg-slate-100 rounded-full h-2">
+                      <td className="px-5 py-4 w-36">
+                        <div className="h-1.5 w-full rounded-full bg-[#efe6d5]">
                           <div
-                            className="h-2 rounded-full bg-slate-900 transition-all"
-                            style={{ width: `${(views / maxViews) * 100}%` }}
+                            className="h-1.5 rounded-full transition-all duration-500"
+                            style={{
+                              width: `${(views / maxViews) * 100}%`,
+                              background: "linear-gradient(90deg,#c9a84c,#a07830)",
+                            }}
                           />
                         </div>
                       </td>
@@ -172,10 +161,6 @@ export default function OwnerAnalytics() {
                 })}
               </tbody>
             </table>
-
-            <p className="text-xs text-slate-500 mt-4">
-              Tip: highest views bar is 100%.
-            </p>
           </div>
         )}
       </div>

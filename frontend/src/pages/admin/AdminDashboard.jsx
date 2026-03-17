@@ -1,247 +1,251 @@
-import { useEffect, useMemo, useState } from "react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
-  Users,
   Home,
-  UtensilsCrossed,
-  ShoppingBag,
-  CheckCircle,
-  Clock,
-  Shield,
+  Users,
+  Building,
+  Truck,
   AlertCircle,
-  UserCheck,
+  FileText,
+  LogOut,
+  Menu,
+  X,
+  ShoppingBag,
+  BarChart3,
+  Bell,
+  Search,
+  User,
+  ChevronDown,
 } from "lucide-react";
-import api from "../../services/api";
-import GlassCard from "./components/GlassCard";
-import StatCard from "./components/StatCard";
-import { Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { useMemo, useState } from "react";
 
-export default function AdminDashboard() {
-  const [stats, setStats] = useState(null);
-  const [recentLogs, setRecentLogs] = useState([]);
-  const [pendingUsers, setPendingUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+const navigationGroups = [
+  {
+    title: "Overview",
+    items: [{ name: "Dashboard", to: "/admin/dashboard", icon: Home }],
+  },
+  {
+    title: "Moderation",
+    items: [
+      { name: "Room Approvals", to: "/admin/rooms", icon: Building },
+      { name: "Restaurant Approvals", to: "/admin/restaurants", icon: Building },
+      { name: "Partner Approvals", to: "/admin/partners", icon: Truck },
+      { name: "Reports Queue", to: "/admin/reports", icon: AlertCircle },
+    ],
+  },
+  {
+    title: "Operations",
+    items: [
+      { name: "Orders Monitor", to: "/admin/orders", icon: ShoppingBag },
+      { name: "Analytics", to: "/admin/analytics", icon: BarChart3 },
+    ],
+  },
+  {
+    title: "Management",
+    items: [
+      { name: "User Management", to: "/admin/users", icon: Users },
+      { name: "Activity Logs", to: "/admin/logs", icon: FileText },
+      { name: "Profile", to: "/admin/profile", icon: User },
+    ],
+  },
+];
 
-  const ordersToday = useMemo(
-    () => stats?.orders_today ?? stats?.total_orders_today ?? 0,
-    [stats]
-  );
-
-  useEffect(() => {
-    fetchData();
-    // eslint-disable-next-line
-  }, []);
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const { data: analyticsData } = await api.get("/admin/analytics/summary/");
-      setStats(analyticsData);
-
-      const { data: logsData } = await api.get("/admin/logs/?limit=8");
-      setRecentLogs(logsData.results || logsData || []);
-
-      const { data: usersData } = await api.get("/admin/users/?is_approved=false");
-      setPendingUsers(Array.isArray(usersData) ? usersData : usersData.results || []);
-    } catch (error) {
-      console.error("Failed to fetch dashboard data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const approveUser = async (userId) => {
-    if (!window.confirm("Approve this user?")) return;
-    try {
-      await api.patch(`/admin/users/${userId}/approve/`);
-      fetchData();
-    } catch (error) {
-      console.error("Failed to approve user:", error);
-      alert("Failed to approve user. Please try again.");
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-[70vh] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <GlassCard className="p-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-3xl font-extrabold text-slate-900">
-              Welcome Back, Admin!
-            </h1>
-            <p className="text-slate-600 mt-1">
-              Monitor overall platform activity and safety.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={fetchData}
-              className="px-4 py-2 rounded-2xl bg-white/70 border border-white/50 hover:bg-white/90 transition font-semibold text-slate-800"
-            >
-              Refresh
-            </button>
-          </div>
-        </div>
-      </GlassCard>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        <StatCard icon={Users} label="Active Users" value={stats?.total_users || 0} color="blue" />
-        <StatCard icon={Shield} label="Blocked Users" value={stats?.blocked_users || 0} color="red" />
-        <StatCard icon={Home} label="Pending Rooms" value={stats?.pending_rooms || 0} color="orange" />
-        <StatCard icon={UtensilsCrossed} label="Pending Restaurants" value={stats?.pending_restaurants || 0} color="green" />
-        <StatCard icon={AlertCircle} label="Pending Reports" value={stats?.pending_reports || 0} color="yellow" />
-        <StatCard icon={ShoppingBag} label="Orders Today" value={ordersToday} color="purple" />
-        <StatCard icon={UserCheck} label="Pending Users" value={pendingUsers.length} color="indigo" />
-        <StatCard icon={Clock} label="Disputes Pending" value={stats?.disputes_pending || 0} color="pink" />
-      </div>
-
-      {/* Overview Row */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Platform Overview */}
-        <GlassCard className="p-6 xl:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-extrabold text-slate-900">Platform Overview</h2>
-            <div className="flex gap-2">
-              <Link
-                to="/admin/rooms"
-                className="px-3 py-2 rounded-2xl bg-white/70 border border-white/50 hover:bg-white/90 transition text-sm font-semibold"
-              >
-                View Rooms
-              </Link>
-              <Link
-                to="/admin/reports"
-                className="px-3 py-2 rounded-2xl bg-white/70 border border-white/50 hover:bg-white/90 transition text-sm font-semibold"
-              >
-                View Reports
-              </Link>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <MiniCard
-              title="New Room Listings"
-              subtitle={`${stats?.pending_rooms || 0} pending approvals`}
-              to="/admin/rooms"
-            />
-            <MiniCard
-              title="New Restaurants"
-              subtitle={`${stats?.pending_restaurants || 0} pending approvals`}
-              to="/admin/restaurants"
-            />
-            <MiniCard
-              title="Reports Queue"
-              subtitle={`${stats?.pending_reports || 0} pending reports`}
-              to="/admin/reports"
-            />
-            <MiniCard
-              title="Users"
-              subtitle={`${stats?.total_users || 0} total users`}
-              to="/admin/users"
-            />
-          </div>
-        </GlassCard>
-
-        {/* Live / Recent Activity */}
-        <GlassCard className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-extrabold text-slate-900">Recent Activity</h2>
-            <Link
-              to="/admin/logs"
-              className="text-sm font-semibold text-blue-700 hover:underline"
-            >
-              View all
-            </Link>
-          </div>
-
-          {recentLogs.length === 0 ? (
-            <div className="text-center text-slate-600 py-10">
-              No recent activity
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recentLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className="flex items-start justify-between gap-3 p-3 rounded-2xl bg-white/50 border border-white/40"
-                >
-                  <div>
-                    <p className="font-bold text-slate-900 text-sm">{log.action}</p>
-                    <p className="text-xs text-slate-600 mt-1">
-                      {log.target_type} #{log.target_id} • {log.admin_username}
-                    </p>
-                  </div>
-                  <span className="text-xs text-slate-500">
-                    {new Date(log.created_at).toLocaleTimeString()}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </GlassCard>
-      </div>
-
-      {/* Pending Users */}
-      <GlassCard className="p-6">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <h2 className="text-xl font-extrabold text-slate-900">Pending User Approvals</h2>
-          <span className="px-3 py-1 rounded-full bg-rose-100 text-rose-700 text-sm font-bold">
-            {pendingUsers.length} Pending
-          </span>
-        </div>
-
-        {pendingUsers.length === 0 ? (
-          <div className="text-center py-10 text-slate-600">
-            <CheckCircle className="mx-auto mb-3 text-emerald-600" size={44} />
-            <p className="font-semibold">No pending approvals</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {pendingUsers.map((u) => (
-              <div
-                key={u.id}
-                className="p-4 rounded-3xl bg-white/50 border border-white/40 flex items-center justify-between gap-4"
-              >
-                <div>
-                  <p className="font-extrabold text-slate-900">{u.username}</p>
-                  <p className="text-sm text-slate-600">{u.email}</p>
-                  <span className="inline-block mt-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
-                    {String(u.user_type || "").replace("_", " ").toUpperCase()}
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => approveUser(u.id)}
-                  className="px-4 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 transition text-white font-bold"
-                >
-                  Approve
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </GlassCard>
-    </div>
-  );
+function getInitials(name = "Admin") {
+  return String(name).slice(0, 2).toUpperCase();
 }
 
-function MiniCard({ title, subtitle, to }) {
+export default function AdminDashboard() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  const initials = useMemo(() => {
+    return getInitials(user?.username || "Admin");
+  }, [user]);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
-    <Link
-      to={to}
-      className="p-5 rounded-3xl bg-white/50 border border-white/40 hover:bg-white/70 transition block"
-    >
-      <p className="font-extrabold text-slate-900">{title}</p>
-      <p className="text-sm text-slate-600 mt-1">{subtitle}</p>
-    </Link>
+    <div className="min-h-screen bg-[#eef3fb] text-slate-900">
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-slate-900/30 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-300 lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="m-4 flex h-[calc(100vh-2rem)] flex-col rounded-[30px] border border-[#dfe7f3] bg-[#f8fbff] p-5 shadow-[0_14px_34px_rgba(148,163,184,0.18)]">
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white font-extrabold shadow-md">
+                S
+              </div>
+              <div>
+                <p className="text-sm font-extrabold text-slate-900">StaySync AI</p>
+                <p className="text-xs text-slate-500">Admin Panel</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="rounded-xl p-2 text-slate-600 hover:bg-white lg:hidden"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <nav className="flex-1 space-y-5 overflow-y-auto pr-1">
+            {navigationGroups.map((group) => (
+              <div key={group.title}>
+                <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                  {group.title}
+                </p>
+
+                <div className="space-y-1.5">
+                  {group.items.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      className={({ isActive }) =>
+                        [
+                          "flex items-center gap-3 rounded-2xl px-3 py-3 transition",
+                          isActive
+                            ? "bg-white text-blue-700 shadow-sm border border-[#e4ebf5]"
+                            : "text-slate-600 hover:bg-white hover:text-slate-900",
+                        ].join(" ")
+                      }
+                    >
+                      <item.icon size={18} />
+                      <span className="font-semibold">{item.name}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </nav>
+
+          <div className="mt-5 rounded-[24px] border border-[#e4ebf5] bg-white p-4">
+            <div className="flex items-center gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#edf3fb] font-bold text-slate-800">
+                {initials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-bold text-slate-900">{user?.username || "Admin"}</p>
+                <p className="truncate text-xs text-slate-500">{user?.email || "admin@staysync.ai"}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="rounded-xl p-2 text-slate-600 hover:bg-slate-50"
+                title="Logout"
+              >
+                <LogOut size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div className="lg:ml-72">
+        <header className="sticky top-0 z-30 px-4 pt-4">
+          <div className="rounded-[28px] border border-[#dfe7f3] bg-[#f8fbff]/95 px-5 py-4 shadow-[0_10px_24px_rgba(148,163,184,0.14)] backdrop-blur">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  className="rounded-2xl p-2.5 text-slate-600 hover:bg-white lg:hidden"
+                >
+                  <Menu size={20} />
+                </button>
+                <div>
+                  <p className="text-xl font-extrabold text-slate-900">Dashboard</p>
+                  <p className="text-xs text-slate-500">All details about your platform are here.</p>
+                </div>
+              </div>
+
+              <div className="hidden w-full max-w-md md:block">
+                <div className="relative">
+                  <Search
+                    size={18}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+                  <input
+                    placeholder="Search users, reports, restaurants..."
+                    className="w-full rounded-2xl border border-[#e4ebf5] bg-white px-4 py-2.5 pl-10 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button className="relative rounded-2xl border border-[#e4ebf5] bg-white p-2.5 text-slate-600 hover:bg-slate-50">
+                  <Bell size={18} />
+                  <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-blue-600 text-[10px] font-bold text-white">
+                    3
+                  </span>
+                </button>
+
+                <div className="relative">
+                  <button
+                    onClick={() => setProfileOpen((v) => !v)}
+                    className="flex items-center gap-3 rounded-2xl border border-[#e4ebf5] bg-white px-2 py-2 pr-3 hover:bg-slate-50"
+                  >
+                    <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#edf3fb] font-bold text-slate-800">
+                      {initials}
+                    </div>
+                    <div className="hidden text-left sm:block">
+                      <p className="text-sm font-bold text-slate-900">{user?.username || "Admin"}</p>
+                      <p className="text-xs text-slate-500">Administrator</p>
+                    </div>
+                    <ChevronDown size={16} className="text-slate-400" />
+                  </button>
+
+                  {profileOpen && (
+                    <div
+                      className="absolute right-0 mt-2 w-60 overflow-hidden rounded-[24px] border border-[#e4ebf5] bg-white shadow-[0_18px_44px_rgba(15,23,42,0.10)]"
+                      onMouseLeave={() => setProfileOpen(false)}
+                    >
+                      <div className="border-b border-[#edf2f7] px-4 py-4">
+                        <p className="font-bold text-slate-900">{user?.username || "Admin"}</p>
+                        <p className="text-xs text-slate-500">{user?.email || "admin@staysync.ai"}</p>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setProfileOpen(false);
+                          navigate("/admin/profile");
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        Profile
+                      </button>
+
+                      <button
+                        onClick={handleLogout}
+                        className="w-full px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="p-4 lg:p-6">
+          <Outlet />
+        </main>
+      </div>
+    </div>
   );
 }

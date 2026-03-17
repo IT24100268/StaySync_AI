@@ -9,6 +9,7 @@ import {
   ShoppingBag,
   User,
   LogOut,
+  Star,
 } from "lucide-react";
 import { STUDENT_THEME as THEME } from "../styles/studentTheme";
 
@@ -31,6 +32,7 @@ const Navbar = () => {
     { to: "/bookings", label: "Bookings", icon: CalendarCheck },
     { to: "/restaurants", label: "Restaurants", icon: UtensilsCrossed },
     { to: "/orders", label: "Orders", icon: ShoppingBag },
+    { to: "/reviews", label: "Reviews", icon: Star },
     { to: "/profile", label: "Profile", icon: User },
   ];
 
