@@ -1,29 +1,64 @@
+#####################################
 # Python
+#####################################
 __pycache__/
 *.py[cod]
+*.pyo
+*.pyd
 
-# Django
-*.sqlite3
-db.sqlite3
-
-# Virtual environment
-.venv/
+#####################################
+# Virtual Environments
+#####################################
 venv/
+env/
+.venv/
 
-# Node
-node_modules/
-dist/
-build/
-coverage/
+#####################################
+# Django
+#####################################
+*.sqlite3
+media/
+staticfiles/
+local_settings.py
 
-# Environment
+#####################################
+# Environment Variables
+#####################################
 .env
 .env.*
 
-# IDE
-.idea/
-.vscode/
+#####################################
+# Node / Frontend
+#####################################
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+build/
 
-# OS
-Thumbs.db
+#####################################
+# PyCharm / IDE
+#####################################
+.idea/
+*.iml
+
+#####################################
+# OS Files
+#####################################
 .DS_Store
+Thumbs.db
+
+#####################################
+# Logs
+#####################################
+*.log
+
+#####################################
+# Coverage / Tests
+#####################################
+htmlcov/
+.coverage
+.tox/
+.pytest_cache/
+``
