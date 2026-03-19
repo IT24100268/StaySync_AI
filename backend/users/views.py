@@ -47,7 +47,7 @@ class LoginView(APIView):
             )
         
         # Check if user is approved
-        if not user.is_approved:
+        if not user.is_approved and not user.is_superuser and not user.is_staff:
             print(f"User {username} not approved")
             return Response(
                 {'detail': 'Account pending admin approval'},
