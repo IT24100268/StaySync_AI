@@ -1,20 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Grid2X2, Pencil, Plus, Star, Trash2 } from 'lucide-react';
+import { ChevronDown, Grid2X2, Pencil, Plus, Search, Star, Trash2 } from 'lucide-react';
 import FoodItemModal from '../components/FoodItemModal';
 import { restaurantApi } from '../services/restaurantApi';
 
-const fallbackCategories = ['All', 'Pizzas', 'Burgers', 'Pasta', 'Salads', 'Drinks'];
+const CATEGORY_META_PREFIX = '[category:';
 
-function getCategoryFromName(name = '') {
-  const lower = name.toLowerCase();
+function normalizeCategoryName(category = '') {
+  const value = String(category || '').trim();
+  if (!value) return '';
+  if (value.toLowerCase() === 'fride_rice') return 'fried_rice';
+  return value;
+}
 
-  if (lower.includes('pizza')) return 'Pizzas';
-  if (lower.includes('burger')) return 'Burgers';
-  if (lower.includes('pasta') || lower.includes('spaghetti') || lower.includes('noodle')) return 'Pasta';
-  if (lower.includes('salad')) return 'Salads';
-  if (lower.includes('juice') || lower.includes('drink') || lower.includes('coffee') || lower.includes('tea')) return 'Drinks';
+function extractCategoryMeta(description = '') {
+  const trimmed = String(description || '').trim();
+  if (!trimmed.startsWith(CATEGORY_META_PREFIX)) return null;
+  const match = trimmed.match(/^\[category:([^\]]+)\]/i);
+  return normalizeCategoryName(match?.[1] || '');
+}
 
-  return 'Other';
+function stripCategoryMeta(description = '') {
+  return String(description || '')
+    .replace(/^\[category:[^\]]+\]\s*/i, '')
+    .trim();
 }
 
 function MenuSkeletonCard() {
@@ -34,16 +42,45 @@ function MenuSkeletonCard() {
   );
 }
 
-function AvailabilityPill({ available, onClick }) {
+function AvailabilityPill({ available, onChange }) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <button
-      type="button"
-      className={`restaurant-availability-pill ${available ? 'is-available' : 'is-unavailable'}`}
-      onClick={onClick}
-    >
-      <span>{available ? 'Available' : 'Unavailable'}</span>
-      <ChevronDown size={14} />
-    </button>
+    <div className="restaurant-availability-menu">
+      <button
+        type="button"
+        className={`restaurant-availability-pill ${available ? 'is-available' : 'is-unavailable'}`}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span>{available ? 'Available' : 'Unavailable'}</span>
+        <ChevronDown size={14} />
+      </button>
+
+      {open ? (
+        <div className="restaurant-availability-dropdown">
+          <button
+            type="button"
+            className={`restaurant-availability-option ${available ? 'active' : ''}`}
+            onClick={() => {
+              if (!available) onChange(true);
+              setOpen(false);
+            }}
+          >
+            Available
+          </button>
+          <button
+            type="button"
+            className={`restaurant-availability-option ${!available ? 'active' : ''}`}
+            onClick={() => {
+              if (available) onChange(false);
+              setOpen(false);
+            }}
+          >
+            Unavailable
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -74,6 +111,10 @@ function MenuCard({ item, onEdit, onDelete, onToggleAvailability }) {
           </span>
         </p>
 
+        {item.description ? (
+          <p className="restaurant-menu-card__description">{item.description}</p>
+        ) : null}
+
         <p className="restaurant-menu-card__orders">{ordersToday} Orders Today</p>
 
         <div className="restaurant-menu-card__footer">
@@ -85,25 +126,27 @@ function MenuCard({ item, onEdit, onDelete, onToggleAvailability }) {
           <div className="restaurant-menu-card__actions">
             <AvailabilityPill
               available={item.is_available}
-              onClick={() => onToggleAvailability(item.id)}
+              onChange={(nextAvailable) => onToggleAvailability(item.id, nextAvailable)}
             />
 
             <button
               type="button"
-              className="restaurant-icon-action"
+              className="restaurant-text-action"
               onClick={() => onEdit(item)}
               title="Edit item"
             >
-              <Pencil size={15} />
+              <Pencil size={14} />
+              <span>Edit</span>
             </button>
 
             <button
               type="button"
-              className="restaurant-icon-action restaurant-icon-action--danger"
+              className="restaurant-text-action restaurant-text-action--danger"
               onClick={() => onDelete(item.id)}
               title="Delete item"
             >
-              <Trash2 size={15} />
+              <Trash2 size={14} />
+              <span>Delete</span>
             </button>
           </div>
         </div>
@@ -149,28 +192,26 @@ export default function MenuManagementPage() {
   const categorizedItems = useMemo(() => {
     return items.map((item) => ({
       ...item,
-      derivedCategory: getCategoryFromName(item.name),
+      description: stripCategoryMeta(item.description || ''),
+      derivedCategory: normalizeCategoryName(extractCategoryMeta(item.description || '')),
     }));
   }, [items]);
 
   const categories = useMemo(() => {
     const counts = categorizedItems.reduce((acc, item) => {
+      if (!item.derivedCategory) return acc;
       acc[item.derivedCategory] = (acc[item.derivedCategory] || 0) + 1;
       return acc;
     }, {});
 
-    const ordered = fallbackCategories
-      .filter((name) => name === 'All' || counts[name])
-      .map((name) => ({
-        name,
-        count: name === 'All' ? categorizedItems.length : counts[name] || 0,
-      }));
-
-    const extras = Object.entries(counts)
-      .filter(([name]) => !fallbackCategories.includes(name))
+    const dynamic = Object.entries(counts)
+      .sort(([left], [right]) => left.localeCompare(right))
       .map(([name, count]) => ({ name, count }));
 
-    return [...ordered, ...extras];
+    return [
+      { name: 'All', count: categorizedItems.length },
+      ...dynamic,
+    ];
   }, [categorizedItems]);
 
   const visibleItems = useMemo(() => {
@@ -233,7 +274,14 @@ export default function MenuManagementPage() {
     }
   };
 
-  const onToggleAvailability = async (id) => {
+  const onToggleAvailability = async (id, nextAvailable) => {
+    const target = items.find((item) => item.id === id);
+    if (!target) return;
+
+    if (Boolean(target.is_available) === Boolean(nextAvailable)) {
+      return;
+    }
+
     try {
       await restaurantApi.toggleFoodAvailability(id);
       loadItems();
@@ -248,7 +296,7 @@ export default function MenuManagementPage() {
         <div className="restaurant-menu-section__top">
           <div>
             <h3>Menu Items</h3>
-            <p>Manage your restaurant&apos;s menu items and their availability.</p>
+            <p>Manage food and drink items with beautiful images, pricing, and categories.</p>
           </div>
 
           <button
@@ -257,8 +305,20 @@ export default function MenuManagementPage() {
             onClick={onAddNew}
           >
             <Plus size={18} />
-            <span>Add Item</span>
+            <span>Add Menu Item</span>
           </button>
+        </div>
+
+        <div className="restaurant-menu-toolbar">
+          <label className="restaurant-menu-search">
+            <Search size={18} />
+            <input
+              value={filteredText}
+              onChange={(event) => setFilteredText(event.target.value)}
+              placeholder="Search by name, description, or category..."
+            />
+          </label>
+
         </div>
 
         <div className="restaurant-category-bar">
@@ -274,12 +334,6 @@ export default function MenuManagementPage() {
               </button>
             ))}
           </div>
-
-          <button type="button" className="restaurant-category-filter-btn">
-            <Grid2X2 size={16} />
-            <span>All Categories</span>
-            <ChevronDown size={15} />
-          </button>
         </div>
 
         <div className="restaurant-menu-grid">
@@ -332,6 +386,9 @@ export default function MenuManagementPage() {
       <FoodItemModal
         open={modalOpen}
         item={editingItem}
+        categoryOptions={categories
+          .map((category) => category.name)
+          .filter((name) => name && name !== 'All')}
         onClose={() => {
           setModalOpen(false);
           setEditingItem(null);

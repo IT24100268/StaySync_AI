@@ -43,6 +43,25 @@ def get_primary_owner_contact(user):
     return contacts[0] if contacts else ''
 
 
+def sync_room_images(room, request):
+    sync_existing = str(request.data.get('sync_existing', '')).lower() in ('1', 'true', 'yes')
+    replace_existing = str(request.data.get('replace', '')).lower() in ('1', 'true', 'yes')
+
+    if replace_existing:
+        room.images.all().delete()
+    elif sync_existing:
+        keep_ids = set()
+        for value in request.data.getlist('keep_existing_ids'):
+            try:
+                keep_ids.add(int(value))
+            except (TypeError, ValueError):
+                continue
+        room.images.exclude(id__in=keep_ids).delete()
+
+    for photo in request.FILES.getlist('photos'):
+        RoomImage.objects.create(room=room, image=photo)
+
+
 class OwnerRoomViewSet(viewsets.ModelViewSet):
     serializer_class = OwnerRoomSerializer
     permission_classes = [IsAuthenticated]
@@ -164,9 +183,7 @@ class OwnerRoomViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='photos')
     def photos(self, request, pk=None):
         room = self.get_object()
-        photos = request.FILES.getlist('photos')
-        for photo in photos:
-            RoomImage.objects.create(room=room, image=photo)
+        sync_room_images(room, request)
         return Response({'message': 'Photos uploaded'}, status=status.HTTP_201_CREATED)
 
 
@@ -177,12 +194,9 @@ def upload_room_photos(request, pk):
     try:
         owner_contacts = get_owner_contacts(request.user)
         room = Room.objects.get(pk=pk, owner_contact__in=owner_contacts)
-        
-        photos = request.FILES.getlist('photos')
-        for photo in photos:
-            RoomImage.objects.create(room=room, image=photo)
-        
-        return Response({'message': f'{len(photos)} photos uploaded successfully'}, status=status.HTTP_201_CREATED)
+
+        sync_room_images(room, request)
+        return Response({'message': f'{room.images.count()} photos saved successfully'}, status=status.HTTP_201_CREATED)
     except Room.DoesNotExist:
         return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -193,12 +207,19 @@ def owner_analytics_summary(request):
     """Get owner dashboard analytics"""
     owner_contacts = get_owner_contacts(request.user)
     rooms = Room.objects.filter(owner_contact__in=owner_contacts)
+    room_ids = list(rooms.values_list('id', flat=True))
+    bookings = Booking.objects.filter(room_id__in=room_ids).select_related('room')
+
+    approved_bookings = bookings.filter(status='approved')
+    estimated_revenue = 0
+    for booking in approved_bookings:
+        estimated_revenue += getattr(booking.room, 'price', 0) or 0
     
     return Response({
         'listings': rooms.count(),
         'views': sum(getattr(r, 'views', 0) for r in rooms),
-        'enquiries': 0,  # TODO: Connect to bookings
-        'revenue': 0,  # TODO: Connect to payments
+        'enquiries': bookings.count(),
+        'revenue': estimated_revenue,
     })
 
 

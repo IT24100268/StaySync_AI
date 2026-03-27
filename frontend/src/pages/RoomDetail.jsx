@@ -1,13 +1,52 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import {
+  BadgeDollarSign,
+  BedDouble,
+  Building2,
+  Mail,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import api from "../services/api";
-import { STUDENT_LAYOUT, STUDENT_THEME as THEME } from "../styles/studentTheme";
+import "./RoomDetail.css";
 
-const RoomDetail = () => {
+const formatCurrency = (value) => {
+  const numeric = Number(value);
+  const safe = Number.isFinite(numeric) ? numeric : 0;
+  return `LKR ${safe.toLocaleString("en-LK")}`;
+};
+
+const toTitleCase = (value) =>
+  String(value || "")
+    .replaceAll("_", " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((item) => item[0].toUpperCase() + item.slice(1).toLowerCase())
+    .join(" ");
+
+const parseCoordinate = (value, axis) => {
+  if (value === null || value === undefined || value === "") return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  if (axis === "lat" && (numeric < -90 || numeric > 90)) return null;
+  if (axis === "lng" && (numeric < -180 || numeric > 180)) return null;
+  return numeric;
+};
+
+export default function RoomDetail() {
   const { id } = useParams();
-  const [room, setRoom] = useState(null);
-  const [message, setMessage] = useState("");
   const navigate = useNavigate();
+
+  const [room, setRoom] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [bookingError, setBookingError] = useState("");
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
     fetchRoom();
@@ -15,158 +54,271 @@ const RoomDetail = () => {
   }, [id]);
 
   const fetchRoom = async () => {
+    setLoading(true);
+    setError("");
+
     try {
       const { data } = await api.get(`/rooms/${id}/`);
       setRoom(data);
-    } catch (error) {
-      console.error("Error fetching room:", error);
+      setActiveImageIndex(0);
+    } catch (fetchError) {
+      console.error("Failed to fetch room details:", fetchError);
+      setRoom(null);
+      setError("Failed to load room details.");
+    } finally {
+      setLoading(false);
     }
   };
+
+  const roomImages = useMemo(() => {
+    if (!Array.isArray(room?.images)) return [];
+    return room.images.map((item) => item?.image).filter(Boolean);
+  }, [room?.images]);
+
+  const featuredImage = roomImages[activeImageIndex] || null;
+
+  const ownerName = room?.hostel_name || "Hostel Owner";
+  const ownerPhone = room?.hostel_phone || room?.owner_contact || "Unavailable";
+  const ownerEmail = room?.hostel_email || "Unavailable";
+  const ownerAddress = room?.hostel_address || room?.address || "Address unavailable";
+
+  const facilities = Array.isArray(room?.facilities) ? room.facilities : [];
+
+  const latitude = parseCoordinate(room?.latitude, "lat");
+  const longitude = parseCoordinate(room?.longitude, "lng");
+  const hasMapCoordinates = latitude !== null && longitude !== null;
+  const mapEmbedUrl = hasMapCoordinates
+    ? `https://maps.google.com/maps?q=${latitude},${longitude}&z=15&output=embed`
+    : "";
 
   const handleBooking = async () => {
+    setBookingError("");
+    setSubmitting(true);
+
     try {
       await api.post("/bookings/create/", { room_id: id, message });
-      alert("Booking request sent!");
       navigate("/bookings");
-    } catch (error) {
-      alert("Error creating booking");
+    } catch (submitError) {
+      console.error("Failed to create booking:", submitError);
+      setBookingError("Unable to send booking request right now. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  if (!room) {
+  if (loading) {
     return (
-      <div style={STUDENT_LAYOUT.page}>
-        <div style={STUDENT_LAYOUT.container}>
-          <div style={STUDENT_LAYOUT.card}>Loading...</div>
+      <div className="room-detail-page">
+        <div className="room-detail-container">
+          <div className="rd-card rd-feedback">Loading room details...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!room || error) {
+    return (
+      <div className="room-detail-page">
+        <div className="room-detail-container">
+          <div className="rd-card rd-feedback rd-feedback--error">{error || "Room not found."}</div>
+          <button type="button" className="rd-btn rd-btn--outline" onClick={() => navigate("/rooms")}>
+            Back to Rooms
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={STUDENT_LAYOUT.page}>
-      <div style={{ ...STUDENT_LAYOUT.container, maxWidth: 1000 }}>
-        <div style={styles.header}>
-          <div>
-            <h1 style={styles.title}>{room.title}</h1>
-            <div style={styles.meta}>
-              📍 {room.distance_from_university} km • Gender: {room.gender_allowed}
-            </div>
+    <div className="room-detail-page">
+      <div className="room-detail-container">
+        <header className="rd-hero rd-card">
+          <div className="rd-hero__left">
+            <h1>{room.title || "Room Details"}</h1>
+            <p>
+              <MapPin size={14} /> {room.distance_from_university || "0"} km from university | Gender: {toTitleCase(room.gender_allowed)}
+            </p>
           </div>
-          <div style={styles.price}>LKR {Number(room.price).toLocaleString()} / month</div>
-        </div>
+          <div className="rd-price-pill">
+            <BadgeDollarSign size={16} /> {formatCurrency(room.price)} / month
+          </div>
+        </header>
 
-        <div style={styles.grid}>
-          <div style={STUDENT_LAYOUT.card}>
-            <div style={styles.images}>
-              {room.images?.length ? (
-                room.images.map((img) => (
-                  <img key={img.id} src={img.image} alt={room.title} style={styles.image} />
-                ))
+        <div className="rd-layout">
+          <section className="rd-main rd-card">
+            <div className="rd-gallery">
+              {featuredImage ? (
+                <img src={featuredImage} alt={room.title} className="rd-gallery__featured" />
               ) : (
-                <div style={styles.noImage}>No images</div>
+                <div className="rd-gallery__empty">No room images uploaded</div>
+              )}
+
+              {roomImages.length > 1 ? (
+                <div className="rd-gallery__thumbs">
+                  {roomImages.map((image, index) => (
+                    <button
+                      key={`${image}-${index}`}
+                      type="button"
+                      className={`rd-thumb ${activeImageIndex === index ? "is-active" : ""}`}
+                      onClick={() => setActiveImageIndex(index)}
+                    >
+                      <img src={image} alt={`Room ${index + 1}`} />
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="rd-section">
+              <h2>
+                <BedDouble size={16} /> Room Details
+              </h2>
+              <div className="rd-info-grid">
+                <div className="rd-info-row">
+                  <span>Room Type</span>
+                  <strong>{room.title || "N/A"}</strong>
+                </div>
+                <div className="rd-info-row">
+                  <span>Monthly Rent</span>
+                  <strong>{formatCurrency(room.price)}</strong>
+                </div>
+                <div className="rd-info-row">
+                  <span>Deposit</span>
+                  <strong>{formatCurrency(room.deposit)}</strong>
+                </div>
+                <div className="rd-info-row">
+                  <span>Gender Allowed</span>
+                  <strong>{toTitleCase(room.gender_allowed) || "Any"}</strong>
+                </div>
+                <div className="rd-info-row">
+                  <span>Distance</span>
+                  <strong>{room.distance_from_university || "0"} km</strong>
+                </div>
+                <div className="rd-info-row">
+                  <span>Location</span>
+                  <strong>{room.address || "Address unavailable"}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="rd-section">
+              <h2>
+                <ShieldCheck size={16} /> Facilities
+              </h2>
+              {facilities.length > 0 ? (
+                <div className="rd-tags">
+                  {facilities.map((item) => (
+                    <span key={item}>{item}</span>
+                  ))}
+                </div>
+              ) : (
+                <p className="rd-muted">No facilities listed.</p>
               )}
             </div>
 
-            <div style={styles.info}>
-              <div style={styles.infoRow}>
-                <span style={styles.label}>Description</span>
-                <span style={styles.value}>{room.description || "—"}</span>
-              </div>
-              <div style={styles.infoRow}>
-                <span style={styles.label}>Facilities</span>
-                <span style={styles.value}>{room.facilities?.join(", ") || "—"}</span>
-              </div>
-              <div style={styles.infoRow}>
-                <span style={styles.label}>Rules</span>
-                <span style={styles.value}>{room.rules || "—"}</span>
-              </div>
-              <div style={styles.infoRow}>
-                <span style={styles.label}>Contact</span>
-                <span style={styles.value}>{room.owner_contact || "—"}</span>
-              </div>
-            </div>
-          </div>
-
-          <div style={STUDENT_LAYOUT.card}>
-            <div style={{ fontSize: 15, fontWeight: 900, color: THEME.text }}>
-              Request Booking
-            </div>
-            <div style={{ marginTop: 6, color: THEME.muted, fontWeight: 800, fontSize: 13 }}>
-              Add a short message to the owner (optional).
+            <div className="rd-section">
+              <h2>Description</h2>
+              <p className="rd-text">{room.description || "No description provided."}</p>
             </div>
 
-            <textarea
-              placeholder="Hi, I’m interested in this room. Can I visit and confirm availability?"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              style={STUDENT_LAYOUT.textarea}
-            />
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-              <button onClick={handleBooking} style={STUDENT_LAYOUT.primaryBtn}>
-                Send Booking Request
-              </button>
-              <button onClick={() => navigate(-1)} style={STUDENT_LAYOUT.outlineBtn}>
-                Back
-              </button>
+            <div className="rd-section">
+              <h2>Rules</h2>
+              <p className="rd-text">{room.rules || "No specific rules mentioned."}</p>
             </div>
-          </div>
+          </section>
+
+          <aside className="rd-side">
+            <section className="rd-card rd-owner-card">
+              <h2>
+                <Building2 size={16} /> Hostel Owner Details
+              </h2>
+
+              <div className="rd-owner-grid">
+                <div className="rd-owner-row">
+                  <span>
+                    <UserRound size={14} /> Hostel
+                  </span>
+                  <strong>{ownerName}</strong>
+                </div>
+                <div className="rd-owner-row">
+                  <span>
+                    <Phone size={14} /> Phone
+                  </span>
+                  <strong>{ownerPhone}</strong>
+                </div>
+                <div className="rd-owner-row">
+                  <span>
+                    <Mail size={14} /> Email
+                  </span>
+                  <strong>{ownerEmail}</strong>
+                </div>
+                <div className="rd-owner-row">
+                  <span>
+                    <MapPin size={14} /> Address
+                  </span>
+                  <strong>{ownerAddress}</strong>
+                </div>
+              </div>
+
+              <div className="rd-owner-actions">
+                {ownerPhone !== "Unavailable" ? (
+                  <a className="rd-btn rd-btn--outline" href={`tel:${ownerPhone}`}>
+                    Call Owner
+                  </a>
+                ) : null}
+                {ownerEmail !== "Unavailable" ? (
+                  <a className="rd-btn rd-btn--outline" href={`mailto:${ownerEmail}`}>
+                    Email Owner
+                  </a>
+                ) : null}
+              </div>
+            </section>
+
+            {hasMapCoordinates ? (
+              <section className="rd-card rd-map-card">
+                <h2>
+                  <MapPin size={16} /> Room Location
+                </h2>
+                <div className="rd-map-wrap">
+                  <iframe
+                    title="Room location"
+                    src={mapEmbedUrl}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </div>
+              </section>
+            ) : null}
+
+            <section className="rd-card rd-booking-card">
+              <h2>Request Booking</h2>
+              <p>Add a short message to the owner (optional).</p>
+
+              <textarea
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                placeholder="Hi, I am interested in this room. Can I visit and confirm availability?"
+              />
+
+              {bookingError ? <div className="rd-feedback rd-feedback--error">{bookingError}</div> : null}
+
+              <div className="rd-booking-actions">
+                <button
+                  type="button"
+                  className="rd-btn rd-btn--primary"
+                  onClick={handleBooking}
+                  disabled={submitting}
+                >
+                  {submitting ? "Sending..." : "Send Booking Request"}
+                </button>
+                <button type="button" className="rd-btn rd-btn--outline" onClick={() => navigate(-1)}>
+                  Back
+                </button>
+              </div>
+            </section>
+          </aside>
         </div>
       </div>
     </div>
   );
-};
-
-const styles = {
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    gap: 12,
-    marginBottom: 12,
-  },
-  title: { margin: 0, fontSize: 26, fontWeight: 900, color: THEME.text },
-  meta: { marginTop: 6, color: THEME.muted, fontWeight: 800 },
-  price: { fontWeight: 900, color: THEME.navy, fontSize: 18 },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "1.6fr 1fr",
-    gap: 12,
-    alignItems: "start",
-  },
-
-  images: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: 10,
-    marginBottom: 12,
-  },
-  image: { width: "100%", height: 180, objectFit: "cover", borderRadius: 14 },
-  noImage: {
-    height: 180,
-    borderRadius: 14,
-    border: `1px solid ${THEME.border}`,
-    background: "rgba(31,79,150,0.06)",
-    display: "grid",
-    placeItems: "center",
-    color: THEME.muted,
-    fontWeight: 900,
-  },
-
-  info: { display: "grid", gap: 10 },
-  infoRow: {
-    display: "grid",
-    gridTemplateColumns: "160px 1fr",
-    gap: 10,
-    padding: 10,
-    borderRadius: 14,
-    border: `1px solid ${THEME.border}`,
-    background: "rgba(255,255,255,0.92)",
-  },
-  label: { fontWeight: 900, color: THEME.muted, fontSize: 12 },
-  value: { fontWeight: 800, color: THEME.text, fontSize: 13, lineHeight: 1.6 },
-};
-
-export default RoomDetail;
+}

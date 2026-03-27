@@ -12,12 +12,13 @@ export const OwnerAuthProvider = ({ children }) => {
   }, []);
 
   const checkAuth = async () => {
-    const token = localStorage.getItem('owner_token');
+    const token = localStorage.getItem('access_token') || localStorage.getItem('owner_token');
     if (token) {
       try {
-        const { data } = await ownerApi.get('/owner/me');
+        const { data } = await ownerApi.get('/auth/profile/');
         setOwner(data);
       } catch (error) {
+        localStorage.removeItem('access_token');
         localStorage.removeItem('owner_token');
       }
     }

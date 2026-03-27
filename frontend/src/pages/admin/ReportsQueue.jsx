@@ -1,311 +1,228 @@
-import { useEffect, useMemo, useState } from "react";
-import { CheckCircle, XCircle, AlertCircle, Eye, RefreshCcw, Search } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { ShieldAlert, CheckCircle, Search, AlertCircle } from "lucide-react";
 import api from "../../services/api";
-import GlassCard from "./components/GlassCard";
 
-export default function RoomApprovals() {
-  const [rooms, setRooms] = useState([]);
-  const [pendingHostelUsers, setPendingHostelUsers] = useState([]);
+// Simple helper to format time
+function timeAgo(dateString) {
+  if (!dateString) return "Unknown";
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
+  
+  if (diffInSeconds < 60) return "Just now";
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} mins ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} hrs ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 30) return `${diffInDays} days ago`;
+  
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+export default function ReportsQueue() {
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("PENDING");
-  const [selectedRoom, setSelectedRoom] = useState(null);
-  const [reviewNote, setReviewNote] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [query, setQuery] = useState("");
+  const [tab, setTab] = useState("PENDING");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    fetchRooms();
-    // eslint-disable-next-line
-  }, [filter]);
+    fetchReports();
+  }, []);
 
-  const fetchRooms = async () => {
+  const fetchReports = async () => {
     setLoading(true);
     try {
-      const [{ data: roomsData }, { data: usersData }] = await Promise.all([
-        api.get(`/admin/rooms/?status=${filter}`),
-        api.get(`/admin/users/?is_approved=false&user_type=hostel_owner`),
-      ]);
-      setRooms(roomsData.results || roomsData || []);
-      setPendingHostelUsers(usersData.results || usersData || []);
+      const { data } = await api.get("/admin/reports/");
+      // The API usually returns paginated { results: [...] } or an array
+      setReports(data.results || data || []);
     } catch (error) {
-      console.error("Failed to fetch rooms:", error);
+      console.error("Failed to fetch reports:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const approveHostelUser = async (userId) => {
-    try {
-      await api.patch(`/admin/users/${userId}/approve/`);
-      fetchRooms();
-    } catch (error) {
-      console.error("Failed to approve hostel owner:", error);
-      alert("Failed to approve hostel owner account");
+  const pendingCount = useMemo(() => reports.filter(r => r.status === 'PENDING' || r.status === 'INVESTIGATING').length, [reports]);
+  const resolvedCount = useMemo(() => reports.filter(r => r.status === 'RESOLVED' || r.status === 'DISMISSED').length, [reports]);
+
+  const filteredReports = useMemo(() => {
+    let filtered = reports.filter(r => {
+      if (tab === 'PENDING') return r.status === 'PENDING' || r.status === 'INVESTIGATING';
+      return r.status === 'RESOLVED' || r.status === 'DISMISSED';
+    });
+
+    if (searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(r => 
+        (r.reason && r.reason.toLowerCase().includes(q)) ||
+        (r.target_type && r.target_type.toLowerCase().includes(q)) ||
+        (r.reporter?.username && r.reporter.username.toLowerCase().includes(q))
+      );
     }
-  };
+    return filtered;
+  }, [reports, tab, searchQuery]);
 
-  const filteredRooms = useMemo(() => {
-    if (!query.trim()) return rooms;
-    const q = query.toLowerCase();
-    return rooms.filter(
-      (r) =>
-        String(r.title || "").toLowerCase().includes(q) ||
-        String(r.description || "").toLowerCase().includes(q) ||
-        String(r.owner_contact || "").toLowerCase().includes(q)
-    );
-  }, [rooms, query]);
-
-  const updateStatus = async (roomId, status) => {
-    setSubmitting(true);
+  const updateReportStatus = async (id, status) => {
     try {
-      await api.patch(`/admin/rooms/${roomId}/update_status/`, {
-        status,
-        review_note: reviewNote,
-      });
-      setSelectedRoom(null);
-      setReviewNote("");
-      fetchRooms();
+      await api.patch(`/admin/reports/${id}/`, { status });
+      // Instant optimistic UI update
+      setReports(prev => prev.map(r => r.id === id ? { ...r, status } : r));
     } catch (error) {
-      alert("Failed to update room status");
-    } finally {
-      setSubmitting(false);
+      console.error("Failed to update status", error);
+      alert("Error updating report status.");
     }
   };
 
   return (
-    <div className="space-y-6">
-      <GlassCard className="p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold text-slate-900">Room Approvals</h1>
-            <p className="mt-1 text-slate-500">
-              Review room listings for quality, trust, and safety before publishing.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] px-4 py-3 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
-            >
-              <option value="PENDING">Pending</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
-              <option value="NEEDS_CHANGES">Needs Changes</option>
-              <option value="SUSPENDED">Suspended</option>
-            </select>
-
-            <button
-              onClick={fetchRooms}
-              className="inline-flex items-center gap-2 rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] px-4 py-3 font-semibold text-slate-700 hover:bg-white"
-            >
-              <RefreshCcw size={18} />
-              Refresh
-            </button>
-          </div>
+    <div className="space-y-6 max-w-[1400px] mx-auto pb-10">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-[#1A1D2E] tracking-tight">Reports Queue</h1>
+          <p className="mt-1 text-[15px] font-semibold text-slate-500">
+            Review and manage user-reported issues across the platform.
+          </p>
         </div>
-
-        <div className="relative mt-5">
+        <div className="relative w-full md:w-72">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search rooms by title, description, contact..."
-            className="w-full rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] px-4 py-3 pl-10 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search reports..."
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 pl-10 text-sm font-semibold text-[#1A1D2E] outline-none transition-all placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50"
           />
         </div>
-      </GlassCard>
+      </div>
 
-      {pendingHostelUsers.length > 0 && (
-        <GlassCard className="p-6">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-xl font-extrabold text-slate-900">Pending Hostel Owner Accounts</h2>
-            <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-700">
-              {pendingHostelUsers.length} Pending
-            </span>
+      {/* Top Banner Stats */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-3 px-5 py-3 bg-rose-50 rounded-2xl border border-rose-100/50 shadow-sm">
+          <div className="w-8 h-8 rounded-full bg-rose-500 text-white flex justify-center items-center shadow-md shadow-rose-500/20">
+            <span className="font-bold">!</span>
           </div>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {pendingHostelUsers.map((u) => (
-              <div
-                key={u.id}
-                className="rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff] p-4"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-extrabold text-slate-900">
-                      {u.profile?.hostel_name || u.username}
-                    </p>
-                    <p className="text-sm text-slate-500">{u.email}</p>
-                    <p className="mt-1 text-sm text-slate-700">
-                      {u.profile?.phone_number || "No phone"}
-                    </p>
-                    <p className="mt-2 text-xs text-slate-500">
-                      {u.profile?.address || "No address"}
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => approveHostelUser(u.id)}
-                    className="rounded-2xl bg-emerald-600 px-4 py-2 font-bold text-white hover:bg-emerald-700"
-                  >
-                    Approve
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </GlassCard>
-      )}
-
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600" />
+          <span className="font-extrabold text-rose-700 text-lg">{pendingCount} <span className="text-rose-600/70 font-bold text-sm">Pending Reports</span></span>
         </div>
-      ) : filteredRooms.length === 0 ? (
-        <GlassCard className="p-10 text-center">
-          <CheckCircle className="mx-auto mb-3 text-emerald-600" size={44} />
-          <p className="font-semibold text-slate-700">No {filter.toLowerCase()} rooms</p>
-        </GlassCard>
-      ) : (
-        <div className="grid gap-4">
-          {filteredRooms.map((room) => (
-            <GlassCard key={room.id} className="p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h3 className="text-xl font-extrabold text-slate-900">{room.title}</h3>
-                    <StatusBadge status={room.status} />
-                  </div>
-
-                  <p className="mt-2 line-clamp-2 text-slate-600">{room.description}</p>
-
-                  <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-4">
-                    <Info label="Price" value={`LKR ${room.price}`} />
-                    <Info label="Gender" value={room.gender_allowed} />
-                    <Info label="Contact" value={room.owner_contact} />
-                    <Info label="Owner" value={room.owner_username || "—"} />
-                  </div>
-
-                  {room.review_note && (
-                    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3">
-                      <p className="text-sm text-amber-900">
-                        <strong>Review Note:</strong> {room.review_note}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => setSelectedRoom(room)}
-                  className="rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] p-3 hover:bg-white"
-                  title="View & Review"
-                >
-                  <Eye size={20} className="text-slate-800" />
-                </button>
-              </div>
-            </GlassCard>
-          ))}
+        <div className="flex items-center gap-3 px-5 py-3 bg-emerald-50 rounded-2xl border border-emerald-100/50 shadow-sm">
+          <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex justify-center items-center shadow-md shadow-emerald-500/20">
+            <CheckCircle size={18} strokeWidth={3} />
+          </div>
+          <span className="font-extrabold text-emerald-700 text-lg">{resolvedCount} <span className="text-emerald-600/70 font-bold text-sm">Resolved Reports</span></span>
         </div>
-      )}
+      </div>
 
-      {selectedRoom && (
-        <Modal onClose={() => { setSelectedRoom(null); setReviewNote(""); }}>
-          <h2 className="mb-1 text-2xl font-extrabold text-slate-900">Review Room</h2>
-          <p className="mb-4 text-slate-500">{selectedRoom.title}</p>
-
-          <div className="mb-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-            <Info label="Price" value={`LKR ${selectedRoom.price}`} />
-            <Info label="Contact" value={selectedRoom.owner_contact} />
-            <Info label="Gender" value={selectedRoom.gender_allowed} />
-            <Info
-              label="Facilities"
-              value={selectedRoom.facilities?.join(", ") || "None"}
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="mb-2 block text-sm font-bold text-slate-700">Review Note</label>
-            <textarea
-              value={reviewNote}
-              onChange={(e) => setReviewNote(e.target.value)}
-              rows={3}
-              className="w-full rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] px-4 py-3 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
-              placeholder="Write feedback for owner (optional)"
-            />
-          </div>
-
-          <div className="flex flex-col gap-3 md:flex-row">
-            <ActionButton onClick={() => updateStatus(selectedRoom.id, "APPROVED")} disabled={submitting} variant="green" icon={CheckCircle} text="Approve" />
-            <ActionButton onClick={() => updateStatus(selectedRoom.id, "NEEDS_CHANGES")} disabled={submitting} variant="yellow" icon={AlertCircle} text="Needs Changes" />
-            <ActionButton onClick={() => updateStatus(selectedRoom.id, "REJECTED")} disabled={submitting} variant="red" icon={XCircle} text="Reject" />
-          </div>
-
-          <button
-            onClick={() => { setSelectedRoom(null); setReviewNote(""); }}
-            className="mt-4 w-full rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] py-3 font-semibold text-slate-700 hover:bg-white"
-          >
-            Close
-          </button>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-function Info({ label, value }) {
-  return (
-    <div className="rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] p-3">
-      <div className="text-xs font-bold uppercase text-slate-500">{label}</div>
-      <div className="mt-1 truncate font-semibold text-slate-900">{value || "—"}</div>
-    </div>
-  );
-}
-
-function StatusBadge({ status }) {
-  const colors = {
-    PENDING: "bg-amber-100 text-amber-800",
-    APPROVED: "bg-emerald-100 text-emerald-800",
-    REJECTED: "bg-rose-100 text-rose-800",
-    NEEDS_CHANGES: "bg-orange-100 text-orange-800",
-    SUSPENDED: "bg-slate-200 text-slate-800",
-  };
-  return (
-    <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${colors[status] || "bg-slate-100 text-slate-700"}`}>
-      {status}
-    </span>
-  );
-}
-
-function Modal({ children, onClose }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-[#dfe7f3] bg-white p-6 shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
-        {children}
-        <button onClick={onClose} className="sr-only">
-          close
+      {/* Tabs */}
+      <div className="flex items-center gap-3 bg-slate-100 p-1.5 rounded-2xl w-max border border-slate-200">
+        <button 
+          onClick={() => setTab('PENDING')} 
+          className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${
+            tab === 'PENDING' 
+            ? "bg-rose-500 text-white shadow-md shadow-rose-500/20 scale-[1.02]" 
+            : "text-slate-500 hover:text-slate-700 hover:bg-slate-200"
+          }`}
+        >
+          Pending Reports
+        </button>
+        <button 
+          onClick={() => setTab('RESOLVED')} 
+          className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${
+            tab === 'RESOLVED' 
+            ? "bg-indigo-100 text-indigo-700 shadow-sm scale-[1.02] border border-indigo-200" 
+            : "text-slate-500 hover:text-slate-700 hover:bg-slate-200"
+          }`}
+        >
+          Resolved Reports
         </button>
       </div>
+
+      {/* Main Table */}
+      <div className="bg-white rounded-3xl shadow-[0_8px_30px_-12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden">
+        <div className="overflow-x-auto min-h-[400px]">
+          <table className="w-full text-left border-collapse whitespace-nowrap">
+            <thead>
+              <tr className="bg-slate-50/80 border-b border-slate-100">
+                <th className="py-4 px-6 text-xs font-black text-slate-500 uppercase tracking-widest w-1/4">User</th>
+                <th className="py-4 px-6 text-xs font-black text-slate-500 uppercase tracking-widest w-1/6">Category</th>
+                <th className="py-4 px-6 text-xs font-black text-slate-500 uppercase tracking-widest w-1/4">Issue</th>
+                <th className="py-4 px-6 text-xs font-black text-slate-500 uppercase tracking-widest w-1/6">Reported</th>
+                <th className="py-4 px-6 text-xs font-black text-slate-500 uppercase tracking-widest w-1/6 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan="5" className="py-20 text-center">
+                    <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto shadow-indigo-500/50 shadow-lg"></div>
+                  </td>
+                </tr>
+              ) : filteredReports.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="py-20 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 mb-4 border border-slate-100">
+                        <ShieldAlert size={32} strokeWidth={1.5} />
+                      </div>
+                      <p className="font-bold text-slate-600 text-lg">No {tab.toLowerCase()} reports</p>
+                      <p className="text-sm font-medium text-slate-400 mt-1">You're all caught up!</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredReports.map(report => (
+                  <tr key={report.id} className="border-b last:border-0 border-slate-100 hover:bg-slate-50/50 transition-colors group">
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={report.reporter?.profile_picture || `https://ui-avatars.com/api/?name=${report.reporter?.username || 'U'}&background=F8F9FC&color=1A1D2E`} 
+                          alt="avatar" 
+                          className="w-10 h-10 rounded-full bg-slate-100 border-2 border-white shadow-sm"
+                        />
+                        <div>
+                          <p className="font-black text-[#1A1D2E] text-[15px]">{report.reporter?.username || 'Anonymous'}</p>
+                          <p className="text-xs font-bold text-slate-400">{report.reporter?.email || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <p className="font-bold text-[#3E405B]">{report.target_type || 'Platform'}</p>
+                    </td>
+                    <td className="py-4 px-6">
+                      <p className="font-bold text-[#1A1D2E] truncate max-w-xs">{report.reason || report.description}</p>
+                    </td>
+                    <td className="py-4 px-6">
+                      <p className="font-semibold text-slate-500">{timeAgo(report.created_at)}</p>
+                    </td>
+                    <td className="py-4 px-6 text-right">
+                      {tab === 'PENDING' ? (
+                        <div className="flex justify-end items-center gap-2">
+                          <button 
+                            onClick={() => updateReportStatus(report.id, 'RESOLVED')}
+                            className="bg-rose-500 hover:bg-rose-600 text-white px-5 py-2 rounded-[10px] text-[13px] font-black tracking-wide transition-all shadow-sm hover:shadow-rose-500/30 hover:-translate-y-0.5"
+                          >
+                            Resolve
+                          </button>
+                          <button 
+                            onClick={() => updateReportStatus(report.id, 'DISMISSED')}
+                            className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-5 py-2 rounded-[10px] text-[13px] font-black tracking-wide transition-all"
+                          >
+                            Ignore
+                          </button>
+                        </div>
+                      ) : (
+                        <span className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider border ${
+                          report.status === 'RESOLVED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'
+                        }`}>
+                          {report.status}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
-  );
-}
-
-function ActionButton({ onClick, disabled, variant, icon: Icon, text }) {
-  const styles = {
-    green: "bg-emerald-600 hover:bg-emerald-700",
-    yellow: "bg-amber-600 hover:bg-amber-700",
-    red: "bg-rose-600 hover:bg-rose-700",
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`flex-1 rounded-2xl py-3 font-extrabold text-white transition disabled:opacity-50 ${styles[variant]}`}
-    >
-      <Icon className="mr-2 inline" size={18} />
-      {disabled ? "Processing..." : text}
-    </button>
   );
 }

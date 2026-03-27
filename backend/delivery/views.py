@@ -397,15 +397,25 @@ def my_deliveries(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def dashboard_summary(request):
-    # Check if user is a delivery partner
-    try:
-        partner = DeliveryPartner.objects.get(user=request.user)
-    except DeliveryPartner.DoesNotExist:
+    if getattr(request.user, 'user_type', '') != 'delivery':
         return api_response(
             success=False,
             message="Not a delivery partner",
             status=403
         )
+        
+    defaults = {
+        'status': 'APPROVED' if getattr(request.user, 'is_approved', False) else 'PENDING'
+    }
+    if hasattr(request.user, 'delivery_profile'):
+        defaults['phone'] = getattr(request.user.delivery_profile, 'phone_number', '')
+        defaults['vehicle_type'] = getattr(request.user.delivery_profile, 'vehicle_type', '')
+        defaults['vehicle_number'] = getattr(request.user.delivery_profile, 'license_no', '')
+        
+    partner, _ = DeliveryPartner.objects.get_or_create(
+        user=request.user,
+        defaults=defaults
+    )
     now = timezone.now()
     
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)

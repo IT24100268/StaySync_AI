@@ -1,9 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  ArrowUpRight,
+  CircleDollarSign,
   ChevronDown,
+  Clock3,
+  Flame,
+  ListOrdered,
   MapPin,
+  MenuSquare,
   MoreHorizontal,
+  PackageCheck,
+  Sparkles,
   Star,
+  Store,
 } from 'lucide-react';
 import {
   Area,
@@ -16,12 +25,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
+import restaurantApi from '../services/restaurantApi';
 import StatusBadge from '../components/StatusBadge';
 import MenuItemModal from '../components/menu/MenuItemModal';
-import MenuItemsSection from '../components/menu/MenuItemsSection';
 import { useFoodItems } from '../context/FoodItemsContext';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 import './RestaurantDashboard.css';
 
 const revenueSeries = [
@@ -61,17 +72,9 @@ const mockFeaturedItems = [
   },
 ];
 
-function DashboardStat({ label, value, detail }) {
-  return (
-    <div className="hero-stat">
-      <p className="hero-stat__label">{label}</p>
-      <div className="hero-stat__value-row">
-        <h3>{value}</h3>
-        <span>{detail}</span>
-      </div>
-    </div>
-  );
-}
+const defaultDashboardImage =
+  'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1400&q=80';
+const JAFFNA_UNIVERSITY_CENTER = { lat: 9.6848, lng: 80.0220 };
 
 function OrderCustomer({ order }) {
   const label = order.student_name || `Customer ${order.student || ''}`.trim() || 'Customer';
@@ -114,17 +117,44 @@ function FeaturedMenuCard({ item, onEdit }) {
             <Star size={14} fill="currentColor" />
             <span>{item.rating}</span>
           </div>
-
-          <button type="button" className="featured-menu-card__action" onClick={() => onEdit?.(item)}>
-            <ChevronDown size={14} />
-          </button>
         </div>
       </div>
     </article>
   );
 }
 
+function HighlightCard({
+  icon: Icon,
+  title,
+  value,
+  description,
+  actionLabel,
+  actionTo,
+  accentClass,
+}) {
+  return (
+    <article className={`highlight-card ${accentClass || ''}`}>
+      <div className="highlight-card__top">
+        <div className="highlight-card__icon">
+          <Icon size={20} />
+        </div>
+        <Link to={actionTo} className="highlight-card__action">
+          <span>{actionLabel}</span>
+          <ArrowUpRight size={15} />
+        </Link>
+      </div>
+
+      <div className="highlight-card__body">
+        <p>{title}</p>
+        <strong>{value}</strong>
+        <span>{description}</span>
+      </div>
+    </article>
+  );
+}
+
 export default function RestaurantDashboard() {
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -148,34 +178,13 @@ export default function RestaurantDashboard() {
   useEffect(() => {
     const fetchOverview = async () => {
       try {
-        const ordersResponse = await api.get('/orders/restaurant/orders/');
-        const rawOrders = Array.isArray(ordersResponse.data)
-          ? ordersResponse.data
-          : (ordersResponse.data.results || []);
-
-        const today = new Date().toDateString();
-
-        const todays_orders_count = rawOrders.filter(
-          (o) => new Date(o.created_at).toDateString() === today
-        ).length;
-
-        const total_revenue = rawOrders
-          .filter((o) => ['delivered', 'completed'].includes(o.status))
-          .reduce((sum, o) => sum + Number(o.total_price || o.total_amount || 0), 0);
-
-        const active_orders = rawOrders.filter((o) =>
-          ['pending', 'accepted', 'preparing', 'ready', 'out_for_delivery'].includes(o.status)
-        ).length;
-
+        const response = await restaurantApi.getDashboardOverview();
         setData({
-          todays_orders_count,
-          total_revenue,
-          active_orders,
-          ratings: 4.8,
-          recent_orders: rawOrders.slice(0, 5),
           total_reviews: 248,
-          restaurant_name: 'Pizza Delight',
-          location: 'Malabe',
+          restaurant_name: user?.profile?.restaurant_name || user?.username || 'Restaurant',
+          location: user?.profile?.address || 'Location not updated yet',
+          ...response.data,
+          recent_orders: response.data?.recent_orders || [],
         });
       } catch (err) {
         setError('Failed to load dashboard overview.');
@@ -183,7 +192,7 @@ export default function RestaurantDashboard() {
     };
 
     fetchOverview();
-  }, []);
+  }, [user]);
 
   const statusData = useMemo(() => {
     const orders = data?.recent_orders || [];
@@ -228,6 +237,102 @@ export default function RestaurantDashboard() {
     const pending = statusData.find((item) => item.name === 'Pending');
     return pending?.percent || 0;
   }, [statusData]);
+
+  const restaurantName =
+    user?.profile?.restaurant_name ||
+    data?.restaurant_name ||
+    user?.username ||
+    'Restaurant';
+
+  const restaurantLocation =
+    user?.profile?.address ||
+    data?.location ||
+    'Location not updated yet';
+
+  const dashboardImage = user?.profile?.display_image || defaultDashboardImage;
+  const locationLatitude = Number.parseFloat(user?.profile?.latitude);
+  const locationLongitude = Number.parseFloat(user?.profile?.longitude);
+  const hasPinnedLocation =
+    Number.isFinite(locationLatitude) && Number.isFinite(locationLongitude);
+  const mapCenter = hasPinnedLocation
+    ? { lat: locationLatitude, lng: locationLongitude }
+    : JAFFNA_UNIVERSITY_CENTER;
+  const mapEmbedUrl = `https://maps.google.com/maps?q=${mapCenter.lat},${mapCenter.lng}&z=${
+    hasPinnedLocation ? 16 : 13
+  }&output=embed`;
+
+  const featuredItems = useMemo(() => {
+    if (items?.length) {
+      return items.slice(0, 4).map((item, index) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        rating: item.rating || 4.5 + index * 0.1,
+        orders: item.orders_today || item.order_count || 8 + index * 2,
+        image: item.image || item.image_url || mockFeaturedItems[index % mockFeaturedItems.length]?.image,
+        is_available: item.is_available,
+      }));
+    }
+
+    return mockFeaturedItems;
+  }, [items]);
+
+  const dashboardInsights = useMemo(() => {
+    const menuCount = items?.length || 0;
+    const availableCount = items?.filter((item) => item.is_available).length || 0;
+    const unavailableCount = Math.max(menuCount - availableCount, 0);
+    const pendingOrders =
+      data?.recent_orders?.filter((order) => order.status === 'pending').length || 0;
+
+    return {
+      menuCount,
+      availableCount,
+      unavailableCount,
+      pendingOrders,
+      featuredNames: featuredItems.slice(0, 3).map((item) => item.name),
+    };
+  }, [data, featuredItems, items]);
+
+  const snapshotCards = useMemo(() => {
+    const bestSeller = featuredItems[0];
+    const revenueGoal = 50000;
+    const revenueProgress = Math.min(
+      100,
+      Math.round((Number(data?.total_revenue || 0) / revenueGoal) * 100)
+    );
+
+    return [
+      {
+        id: 'best-seller',
+        title: 'Best Seller',
+        value: bestSeller?.name || 'Add menu items',
+        detail: bestSeller
+          ? `${bestSeller.orders} orders today • LKR ${Number(bestSeller.price || 0).toLocaleString()}`
+          : 'Showcase your top dish by adding menu items',
+        icon: Flame,
+        tone: 'warm',
+      },
+      {
+        id: 'menu-health',
+        title: 'Menu Health',
+        value: `${dashboardInsights.availableCount}/${dashboardInsights.menuCount || 0}`,
+        detail:
+          dashboardInsights.menuCount > 0
+            ? `${dashboardInsights.unavailableCount} items paused right now`
+            : 'No live items yet. Start building your menu.',
+        icon: PackageCheck,
+        tone: 'fresh',
+      },
+      {
+        id: 'revenue-target',
+        title: 'Revenue Target',
+        value: `${revenueProgress}%`,
+        detail: `LKR ${Number(data?.total_revenue || 0).toLocaleString()} of LKR ${revenueGoal.toLocaleString()} goal`,
+        icon: Sparkles,
+        tone: 'glow',
+      },
+    ];
+  }, [data, dashboardInsights, featuredItems]);
 
   const openAddModal = () => {
     setEditingItem(null);
@@ -300,14 +405,11 @@ export default function RestaurantDashboard() {
   };
 
   const refreshOrders = async () => {
-    const ordersResponse = await api.get('/orders/restaurant/orders/');
-    const orders = Array.isArray(ordersResponse.data)
-      ? ordersResponse.data
-      : (ordersResponse.data.results || []);
-
+    const response = await restaurantApi.getDashboardOverview();
     setData((prev) => ({
       ...prev,
-      recent_orders: orders.slice(0, 5),
+      ...response.data,
+      recent_orders: response.data?.recent_orders || [],
     }));
   };
 
@@ -394,18 +496,23 @@ export default function RestaurantDashboard() {
       <section className="dashboard-hero-card">
         <div className="dashboard-hero-card__image">
           <img
-            src="https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1400&q=80"
-            alt="Restaurant hero"
+            src={dashboardImage}
+            alt={`${restaurantName} dashboard`}
           />
         </div>
 
         <div className="dashboard-hero-card__content">
           <div className="dashboard-hero-card__top">
-            <div>
-              <h2>{data.restaurant_name}</h2>
+            <div className="dashboard-hero-card__intro">
+              <p className="hero-eyebrow">Modern restaurant command center</p>
+              <h2>{restaurantName}</h2>
+              <p className="hero-summary">
+                Track orders, highlight signature dishes, and keep today&apos;s service moving
+                from one polished dashboard.
+              </p>
               <p className="hero-location">
                 <MapPin size={15} />
-                <span>{data.location}</span>
+                <span>{restaurantLocation}</span>
               </p>
               <div className="hero-rating">
                 <div className="hero-rating__stars">
@@ -419,25 +526,83 @@ export default function RestaurantDashboard() {
               </div>
             </div>
 
-            <button type="button" className="hero-open-btn">
-              <span>Open</span>
-              <ChevronDown size={16} />
-            </button>
+            <div className="hero-actions">
+              <Link to="/restaurant/menu" className="hero-link-btn">
+                <span>Manage Menu</span>
+                <ArrowUpRight size={15} />
+              </Link>
+            </div>
           </div>
 
-          <div className="dashboard-hero-card__stats">
-            <DashboardStat
-              label="Today's Orders"
-              value={data.todays_orders_count}
-              detail="+ 8.4%"
-            />
-            <DashboardStat
-              label="Active Orders"
-              value={data.active_orders}
-              detail="+ 2 active now"
-            />
+          <div className="hero-map-card">
+            <div className="hero-map-card__header">
+              <div>
+                <p className="hero-map-card__eyebrow">Location Preview</p>
+                <h3>{hasPinnedLocation ? 'Pinned restaurant location' : 'Default Jaffna area view'}</h3>
+              </div>
+              <div className="flex items-center gap-3">
+                <Link to="/restaurant/profile" className="hero-map-card__link">
+                  <span>Edit in Profile</span>
+                  <ArrowUpRight size={14} />
+                </Link>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${mapCenter.lat},${mapCenter.lng}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hero-map-card__link"
+                >
+                  <span>Open Map</span>
+                  <ArrowUpRight size={14} />
+                </a>
+              </div>
+            </div>
+
+            <div className="hero-map-card__frame">
+              <iframe
+                title="Restaurant location preview"
+                src={mapEmbedUrl}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            </div>
+
+            <p className="hero-map-card__note">
+              {hasPinnedLocation
+                ? 'This dashboard is preview-only. Update the shared location from your profile page.'
+                : 'This dashboard is preview-only. Pin your exact restaurant location in Profile to replace this default Jaffna view.'}
+            </p>
           </div>
         </div>
+      </section>
+
+      <section className="dashboard-highlight-strip">
+        <HighlightCard
+          icon={ListOrdered}
+          title="Pending Queue"
+          value={`${dashboardInsights.pendingOrders} orders`}
+          description="Check new orders quickly and keep preparation moving without delays."
+          actionLabel="Review Orders"
+          actionTo="/restaurant/orders"
+          accentClass="highlight-card--queue"
+        />
+        <HighlightCard
+          icon={CircleDollarSign}
+          title="Today's Revenue"
+          value={`LKR ${Number(data.total_revenue || 0).toLocaleString()}`}
+          description="Track confirmed earnings from completed orders across today's service."
+          actionLabel="View Earnings"
+          actionTo="/restaurant/earnings"
+          accentClass="highlight-card--revenue"
+        />
+        <HighlightCard
+          icon={MenuSquare}
+          title="Menu Availability"
+          value={`${dashboardInsights.availableCount} ready to sell`}
+          description={`${dashboardInsights.unavailableCount} items are paused, so update the menu when stock changes.`}
+          actionLabel="Manage Menu"
+          actionTo="/restaurant/menu"
+          accentClass="highlight-card--menu"
+        />
       </section>
 
       <div className="dashboard-main-grid">
@@ -445,55 +610,25 @@ export default function RestaurantDashboard() {
           <section className="section-card">
             <div className="section-header">
               <h3 className="section-title">Featured Menu Items</h3>
-              <button type="button" className="soft-action-btn">
+              <Link to="/restaurant/menu" className="soft-action-btn soft-action-btn--link">
                 Edit Menu
-              </button>
+              </Link>
             </div>
 
             <div className="featured-menu-grid">
-              {(items?.length ? items.slice(0, 3).map((item, index) => ({
-                id: item.id,
-                name: item.name,
-                price: item.price,
-                rating: 4.5 + index * 0.1,
-                orders: 7 + index * 2,
-                image:
-                  item.image ||
-                  item.image_url ||
-                  mockFeaturedItems[index]?.image,
-              })) : mockFeaturedItems).map((item) => (
+              {featuredItems.map((item) => (
                 <FeaturedMenuCard key={item.id} item={item} onEdit={openEditModal} />
               ))}
             </div>
           </section>
 
           <div className="dashboard-bottom-split">
-            <section className="promo-status-card">
-              <div className="promo-status-card__top">
-                <div>
-                  <h4>Restaurant Status</h4>
-                  <p>Open</p>
-                </div>
-
-                <label className="switch">
-                  <input type="checkbox" defaultChecked />
-                  <span className="slider" />
-                </label>
-              </div>
-
-              <div className="promo-status-card__body">
-                <h5>Upgrade Plan</h5>
-                <p>Unlock advanced insights and analytics.</p>
-                <button type="button">Go Pro</button>
-              </div>
-            </section>
-
             <section className="section-card orders-panel-card">
               <div className="section-header">
                 <h3 className="section-title">Recent Orders</h3>
-                <button type="button" className="soft-action-btn">
+                <Link to="/restaurant/orders" className="soft-action-btn soft-action-btn--link">
                   View All
-                </button>
+                </Link>
               </div>
 
               <div className="orders-table-wrap">
@@ -556,21 +691,45 @@ export default function RestaurantDashboard() {
             </section>
           </div>
 
-          <section className="section-card popular-list-card">
+          <section className="section-card snapshot-card">
             <div className="section-header">
-              <h3 className="section-title">Recent Orders</h3>
+              <div>
+                <h3 className="section-title">Restaurant Snapshot</h3>
+                <p className="snapshot-subtitle">
+                  A quick view of what matters most across your menu and daily performance.
+                </p>
+              </div>
             </div>
 
-            <div className="mini-popular-grid">
-              {mockFeaturedItems.map((item) => (
-                <article key={item.id} className="mini-popular-item">
-                  <img src={item.image} alt={item.name} />
-                  <h4>{item.name.replace('Chicken ', '')}</h4>
-                  <p>{item.orders + 20} orders</p>
-                </article>
-              ))}
+            <div className="snapshot-grid">
+              {snapshotCards.map((card) => {
+                const Icon = card.icon;
+                return (
+                  <article key={card.id} className={`snapshot-item snapshot-item--${card.tone}`}>
+                    <div className="snapshot-item__top">
+                      <div className="snapshot-item__icon">
+                        <Icon size={18} />
+                      </div>
+                      <span>{card.title}</span>
+                    </div>
+
+                    <strong>{card.value}</strong>
+                    <p>{card.detail}</p>
+
+                    {card.id === 'revenue-target' ? (
+                      <div className="snapshot-progress">
+                        <div
+                          className="snapshot-progress__bar"
+                          style={{ width: card.value }}
+                        />
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })}
             </div>
           </section>
+
         </div>
 
         <aside className="dashboard-right-column">
@@ -579,7 +738,7 @@ export default function RestaurantDashboard() {
               <div>
                 <h3 className="section-title">Today's Revenue</h3>
                 <p className="revenue-card__value">
-                  LKR {Number(data.total_revenue || 54320).toLocaleString()}
+                  LKR {Number(data.total_revenue || 0).toLocaleString()}
                 </p>
               </div>
 
@@ -662,37 +821,8 @@ export default function RestaurantDashboard() {
             </div>
           </section>
 
-          <section className="section-card popular-items-card">
-            <h3 className="section-title">Popular Items Today</h3>
-
-            <div className="popular-items-card__grid">
-              {mockFeaturedItems.slice(0, 2).map((item) => (
-                <article key={item.id} className="popular-items-card__item">
-                  <img src={item.image} alt={item.name} />
-                  <h4>{item.name.includes('Pizza') ? 'Pizza' : item.name.includes('Burger') ? 'Burger' : item.name}</h4>
-                  <p>{item.orders + 25} orders</p>
-                </article>
-              ))}
-            </div>
-
-            <button type="button" className="popular-items-card__button">
-              View Menu
-            </button>
-          </section>
         </aside>
       </div>
-
-      <section className="menu-items-theme-wrapper">
-        <MenuItemsSection
-          items={items}
-          loading={itemsLoading}
-          error={itemsError}
-          onAdd={openAddModal}
-          onEdit={openEditModal}
-          onDelete={handleDelete}
-          onToggle={handleToggle}
-        />
-      </section>
 
       <MenuItemModal
         open={modalOpen}

@@ -1,8 +1,103 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Upload, X, MapPin, Home, ShieldCheck, ImagePlus } from "lucide-react";
+import { Upload, X, MapPin, Home, ShieldCheck, ImagePlus, Crosshair, LoaderCircle } from "lucide-react";
 import ownerApi from "../../api/ownerApi";
 import { cardCls, cardStyle, inputCls, btnGold, btnGhost, PageHeader } from "./ownerTheme.jsx";
+
+const JAFFNA_UNIVERSITY_CENTER = { lat: 9.6848, lng: 80.0220 };
+const GOOGLE_MAP_SCRIPT_ID = "google-maps-script";
+
+function isConfiguredGoogleMapsKey(apiKey) {
+  return Boolean(apiKey && apiKey.trim() && apiKey !== "your-google-maps-api-key");
+}
+
+function isGoogleMapsReady() {
+  const maps = window.google?.maps;
+  return Boolean(
+    maps &&
+      typeof maps.Map === "function" &&
+      typeof maps.Marker === "function" &&
+      typeof maps.Geocoder === "function"
+  );
+}
+
+function waitForGoogleMaps(timeoutMs = 12000) {
+  return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+    const checkReady = () => {
+      if (isGoogleMapsReady()) {
+        resolve(window.google.maps);
+        return true;
+      }
+      return false;
+    };
+
+    if (checkReady()) {
+      return;
+    }
+
+    const pollTimer = window.setInterval(() => {
+      if (checkReady()) {
+        window.clearInterval(pollTimer);
+        return;
+      }
+
+      if (Date.now() - startedAt >= timeoutMs) {
+        window.clearInterval(pollTimer);
+        reject(new Error("Failed to load Google Maps."));
+      }
+    }, 120);
+  });
+}
+
+function loadGoogleMaps(apiKey) {
+  if (!isConfiguredGoogleMapsKey(apiKey)) {
+    return Promise.reject(
+      new Error("Google Maps is not configured yet. Add a real VITE_GOOGLE_MAPS_API_KEY in frontend/.env and restart the frontend.")
+    );
+  }
+
+  if (isGoogleMapsReady()) {
+    return Promise.resolve(window.google.maps);
+  }
+
+  const existingScript = document.getElementById(GOOGLE_MAP_SCRIPT_ID);
+  if (existingScript) {
+    return waitForGoogleMaps();
+  }
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.id = GOOGLE_MAP_SCRIPT_ID;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&loading=async`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      waitForGoogleMaps().then(resolve).catch(reject);
+    };
+    script.onerror = () => reject(new Error("Failed to load Google Maps."));
+    document.head.appendChild(script);
+  });
+}
+
+function parseCoordinate(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatCoordinateAddress(lat, lng) {
+  return `Lat ${Number(lat).toFixed(6)}, Lng ${Number(lng).toFixed(6)}`;
+}
+
+function getCurrentPosition(options) {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+  });
+}
 
 function Section({ title, icon: Icon, children }) {
   return (
@@ -27,6 +122,10 @@ export default function OwnerListingForm() {
   const [loading, setLoading] = useState(false);
   const [photos, setPhotos] = useState([]);
   const [error, setError] = useState("");
+  const [mapsReady, setMapsReady] = useState(false);
+  const [mapError, setMapError] = useState("");
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [resolvingLocation, setResolvingLocation] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -38,6 +137,12 @@ export default function OwnerListingForm() {
     longitude: "",
     address: "",
   });
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
+  const geocoderRef = useRef(null);
+  const mapListenersRef = useRef([]);
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
   const facilityOptions = useMemo(
     () => ["WiFi", "AC", "Parking", "Kitchen", "Laundry", "Security", "Water 24/7"],
@@ -48,6 +153,87 @@ export default function OwnerListingForm() {
     if (id) fetchListing();
   }, [id]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    loadGoogleMaps(googleMapsApiKey)
+      .then(() => {
+        if (!isMounted) return;
+        setMapsReady(true);
+        setMapError("");
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setMapsReady(false);
+        setMapError(err.message || "Unable to load Google Maps.");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [googleMapsApiKey]);
+
+  useEffect(() => {
+    if (!mapsReady || !mapContainerRef.current || !isGoogleMapsReady()) {
+      return;
+    }
+
+    const latitude = parseCoordinate(formData.latitude);
+    const longitude = parseCoordinate(formData.longitude);
+    const center =
+      latitude !== null && longitude !== null
+        ? { lat: latitude, lng: longitude }
+        : JAFFNA_UNIVERSITY_CENTER;
+
+    if (!mapRef.current) {
+      mapRef.current = new window.google.maps.Map(mapContainerRef.current, {
+        center,
+        zoom: latitude !== null && longitude !== null ? 16 : 13,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        gestureHandling: "greedy",
+      });
+
+      markerRef.current = new window.google.maps.Marker({
+        map: mapRef.current,
+        position: center,
+        draggable: true,
+      });
+
+      geocoderRef.current = new window.google.maps.Geocoder();
+
+      mapListenersRef.current.push(
+        mapRef.current.addListener("click", (event) => {
+          if (!event.latLng) return;
+          updateSelectedLocation({
+            lat: event.latLng.lat(),
+            lng: event.latLng.lng(),
+            shouldPan: false,
+          });
+        }),
+        markerRef.current.addListener("dragend", (event) => {
+          if (!event.latLng) return;
+          updateSelectedLocation({
+            lat: event.latLng.lat(),
+            lng: event.latLng.lng(),
+            shouldPan: false,
+          });
+        })
+      );
+    } else {
+      markerRef.current?.setPosition(center);
+      mapRef.current.setCenter(center);
+    }
+  }, [mapsReady, formData.latitude, formData.longitude]);
+
+  useEffect(() => {
+    return () => {
+      mapListenersRef.current.forEach((listener) => listener?.remove?.());
+      mapListenersRef.current = [];
+    };
+  }, []);
+
   const fetchListing = async () => {
     try {
       const { data } = await ownerApi.get(`/owner/listings/${id}/`);
@@ -57,12 +243,12 @@ export default function OwnerListingForm() {
         rent: data.rent ?? "",
         deposit: data.deposit ?? "",
         facilities: data.facilities || [],
-        genderAllowed: data.genderAllowed || "any",
+        genderAllowed: data.gender_allowed || "any",
         latitude: data.latitude || "",
         longitude: data.longitude || "",
         address: data.address || "",
       });
-      setPhotos(data.photos || []);
+      setPhotos(data.images || []);
     } catch (e) {
       console.error(e);
     }
@@ -81,12 +267,122 @@ export default function OwnerListingForm() {
 
   const uploadPhotos = async (lid) => {
     const fd = new FormData();
+    const hasNewFiles = photos.some((p) => p instanceof File);
+
+    if (id) {
+      fd.append("sync_existing", "true");
+      photos.forEach((p) => {
+        if (!(p instanceof File) && p?.id) {
+          fd.append("keep_existing_ids", String(p.id));
+        }
+      });
+    }
+
     photos.forEach((p) => {
       if (p instanceof File) fd.append("photos", p);
     });
+
+    if (id && hasNewFiles) {
+      fd.append("replace", "true");
+    }
+
     await ownerApi.post(`/owner/listings/${lid}/photos/`, fd, {
       headers: { "Content-Type": "multipart/form-data" },
     });
+  };
+
+  const reverseGeocode = async (lat, lng) => {
+    if (!geocoderRef.current) {
+      setFormData((current) =>
+        current.address?.trim()
+          ? current
+          : { ...current, address: formatCoordinateAddress(lat, lng) }
+      );
+      return;
+    }
+
+    setResolvingLocation(true);
+
+    try {
+      const response = await geocoderRef.current.geocode({ location: { lat, lng } });
+      const formattedAddress = response.results?.[0]?.formatted_address || "";
+      if (formattedAddress) {
+        setFormData((current) => ({ ...current, address: formattedAddress }));
+      }
+    } catch (geocodeError) {
+      console.error("Reverse geocoding failed:", geocodeError);
+      setFormData((current) =>
+        current.address?.trim()
+          ? current
+          : { ...current, address: formatCoordinateAddress(lat, lng) }
+      );
+    } finally {
+      setResolvingLocation(false);
+    }
+  };
+
+  const updateSelectedLocation = async ({ lat, lng, shouldPan = true }) => {
+    setFormData((current) => ({
+      ...current,
+      latitude: Number(lat).toFixed(6),
+      longitude: Number(lng).toFixed(6),
+    }));
+
+    if (markerRef.current) {
+      markerRef.current.setPosition({ lat, lng });
+    }
+
+    if (shouldPan && mapRef.current) {
+      mapRef.current.panTo({ lat, lng });
+      mapRef.current.setZoom(16);
+    }
+
+    await reverseGeocode(lat, lng);
+  };
+
+  const handleUseCurrentLocation = async () => {
+    if (!navigator.geolocation) {
+      setError("Location is not supported in this browser.");
+      return;
+    }
+
+    setDetectingLocation(true);
+    setError("");
+
+    try {
+      if (navigator.permissions?.query) {
+        const permission = await navigator.permissions.query({ name: "geolocation" });
+        if (permission.state === "denied") {
+          setError("Location access is blocked in browser settings. Enable it for this site and try again.");
+          return;
+        }
+      }
+
+      let position;
+      try {
+        position = await getCurrentPosition({ enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+      } catch (firstAttemptError) {
+        if (firstAttemptError?.code !== 2 && firstAttemptError?.code !== 3) {
+          throw firstAttemptError;
+        }
+        position = await getCurrentPosition({ enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 });
+      }
+
+      const { latitude, longitude } = position.coords;
+      await updateSelectedLocation({ lat: latitude, lng: longitude });
+    } catch (geoError) {
+      if (geoError?.code === 1) {
+        setError("Location permission denied. Please allow location access in your browser and try again.");
+      } else if (geoError?.code === 2) {
+        setError("Location unavailable right now. Please check GPS/network and try again.");
+      } else if (geoError?.code === 3) {
+        setError("Location request timed out. Please try again.");
+      } else {
+        setError("Unable to access your current location. Please allow location permission and try again.");
+      }
+    } finally {
+      setDetectingLocation(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -97,7 +393,8 @@ export default function OwnerListingForm() {
     if (!formData.description || formData.description.length < 20) return setError("Description must be at least 20 characters");
     if (!formData.rent || Number(formData.rent) < 1000) return setError("Rent must be at least LKR 1,000");
     if (Number(formData.deposit) < 0) return setError("Deposit cannot be negative");
-    if (!formData.address || formData.address.length < 10) return setError("Please provide a complete address");
+    if (!formData.address || formData.address.length < 10) return setError("Please provide a complete location");
+    if (!formData.latitude || !formData.longitude) return setError("Please choose the listing location on the map");
     if (formData.facilities.length === 0) return setError("Please select at least one facility");
 
     setLoading(true);
@@ -112,7 +409,7 @@ export default function OwnerListingForm() {
         lid = data.id;
       }
 
-      if (photos.filter((p) => p instanceof File).length > 0 && lid) {
+      if (lid && (id || photos.filter((p) => p instanceof File).length > 0)) {
         try {
           await uploadPhotos(lid);
         } catch (e) {
@@ -237,9 +534,59 @@ export default function OwnerListingForm() {
         </Section>
 
         <Section title="Location" icon={MapPin}>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="md:col-span-2">
-              {label("Address", true)}
+          <div className="space-y-4">
+            <div className="flex flex-col gap-3 rounded-[18px] border border-[#eadfc7] bg-[#fffaf2] p-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-[14px] font-extrabold text-[#2b2823]">Pin the exact listing location</p>
+                <p className="mt-1 text-[12px] text-[#8b8578]">
+                  The map starts near the University of Jaffna so nearby listings can be placed quickly.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleUseCurrentLocation}
+                disabled={detectingLocation}
+                className="inline-flex items-center justify-center gap-2 rounded-[14px] border border-[#dcc89a] bg-[#fff8e8] px-4 py-3 text-[12px] font-bold text-[#b98b1f] transition hover:bg-[#fff1d2] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {detectingLocation ? <LoaderCircle size={15} className="animate-spin" /> : <Crosshair size={15} />}
+                {detectingLocation ? "Locating..." : "Use Current Location"}
+              </button>
+            </div>
+
+            <div className="overflow-hidden rounded-[18px] border border-[#eadfc7] bg-[#fffaf2]">
+              {mapError ? (
+                <div className="flex h-[320px] items-center justify-center px-6 text-center text-[14px] font-bold text-[#7f1d1d]">
+                  {mapError}
+                </div>
+              ) : (
+                <div ref={mapContainerRef} className="h-[320px] w-full" />
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                {label("Latitude")}
+                <input
+                  type="text"
+                  value={formData.latitude}
+                  readOnly
+                  className={inputCls}
+                />
+              </div>
+
+              <div>
+                {label("Longitude")}
+                <input
+                  type="text"
+                  value={formData.longitude}
+                  readOnly
+                  className={inputCls}
+                />
+              </div>
+            </div>
+
+            <div>
+              {label("Location Label", true)}
               <input
                 type="text"
                 value={formData.address}
@@ -247,26 +594,11 @@ export default function OwnerListingForm() {
                 className={inputCls}
                 required
               />
-            </div>
-
-            <div>
-              {label("Latitude")}
-              <input
-                type="text"
-                value={formData.latitude}
-                onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
-                className={inputCls}
-              />
-            </div>
-
-            <div>
-              {label("Longitude")}
-              <input
-                type="text"
-                value={formData.longitude}
-                onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
-                className={inputCls}
-              />
+              <p className="mt-2 text-[11px] text-[#8b8578]">
+                {resolvingLocation
+                  ? "Updating the place name from the map..."
+                  : "Click the map or drag the marker to adjust the exact listing location."}
+              </p>
             </div>
           </div>
         </Section>

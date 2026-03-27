@@ -3,12 +3,21 @@ import { CheckCircle, XCircle, AlertCircle, Eye, RefreshCcw, Search } from "luci
 import api from "../../services/api";
 import GlassCard from "./components/GlassCard";
 
+const RESTAURANT_IMAGE_FALLBACK = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80";
+
+function getRestaurantImage(restaurant) {
+  return restaurant.owner_display_image || restaurant.image || restaurant.logo || RESTAURANT_IMAGE_FALLBACK;
+}
+
 export default function RestaurantApprovals() {
   const [restaurants, setRestaurants] = useState([]);
   const [pendingOwners, setPendingOwners] = useState([]);
+  const [approvedOwners, setApprovedOwners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("PENDING");
   const [selected, setSelected] = useState(null);
+  const [selectedPendingOwner, setSelectedPendingOwner] = useState(null);
+  const [selectedApprovedOwner, setSelectedApprovedOwner] = useState(null);
   const [reviewNote, setReviewNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [query, setQuery] = useState("");
@@ -21,12 +30,14 @@ export default function RestaurantApprovals() {
   const fetchRestaurants = async () => {
     setLoading(true);
     try {
-      const [{ data: restaurantsData }, { data: pendingOwnersData }] = await Promise.all([
+      const [{ data: restaurantsData }, { data: pendingOwnersData }, { data: approvedOwnersData }] = await Promise.all([
         api.get(`/admin/restaurants/?status=${filter}`),
         api.get(`/admin/users/?is_approved=false&user_type=restaurant_owner`),
+        api.get(`/admin/users/?is_approved=true&user_type=restaurant_owner`),
       ]);
       setRestaurants(restaurantsData.results || restaurantsData || []);
       setPendingOwners(pendingOwnersData.results || pendingOwnersData || []);
+      setApprovedOwners(approvedOwnersData.results || approvedOwnersData || []);
     } catch (e) {
       console.error("Failed to fetch restaurants:", e);
     } finally {
@@ -44,16 +55,26 @@ export default function RestaurantApprovals() {
     }
   };
 
+  const displayItems = filter === "APPROVED" ? approvedOwners : restaurants;
+
   const filtered = useMemo(() => {
-    if (!query.trim()) return restaurants;
+    if (!query.trim()) return displayItems;
     const q = query.toLowerCase();
-    return restaurants.filter(
-      (r) =>
-        String(r.name || "").toLowerCase().includes(q) ||
-        String(r.email || "").toLowerCase().includes(q) ||
-        String(r.owner_username || "").toLowerCase().includes(q)
+    return displayItems.filter((item) =>
+      filter === "APPROVED"
+        ? (
+            String(item.profile?.restaurant_name || "").toLowerCase().includes(q) ||
+            String(item.username || "").toLowerCase().includes(q) ||
+            String(item.email || "").toLowerCase().includes(q) ||
+            String(item.profile?.phone_number || "").toLowerCase().includes(q)
+          )
+        : (
+            String(item.name || "").toLowerCase().includes(q) ||
+            String(item.email || "").toLowerCase().includes(q) ||
+            String(item.owner_username || "").toLowerCase().includes(q)
+          )
     );
-  }, [restaurants, query]);
+  }, [displayItems, filter, query]);
 
   const updateStatus = async (id, status) => {
     setSubmitting(true);
@@ -117,7 +138,7 @@ export default function RestaurantApprovals() {
         </div>
       </GlassCard>
 
-      {pendingOwners.length > 0 && (
+      {filter === "PENDING" && pendingOwners.length > 0 && (
         <GlassCard className="p-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-xl font-extrabold text-slate-900">Pending Restaurant Owner Accounts</h2>
@@ -133,18 +154,31 @@ export default function RestaurantApprovals() {
                 className="rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff] p-4"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-extrabold text-slate-900">
-                      {owner.profile?.restaurant_name || owner.username}
-                    </p>
-                    <p className="text-sm text-slate-500">{owner.email}</p>
-                    <p className="mt-1 text-sm text-slate-700">
-                      {owner.profile?.phone_number || "No phone"}
-                    </p>
-                    <p className="mt-2 text-xs text-slate-500">
-                      {owner.profile?.address || "No address"}
-                    </p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPendingOwner(owner)}
+                    className="flex flex-1 items-start gap-4 text-left"
+                  >
+                    <div className="overflow-hidden rounded-[20px] border border-[#d9e5f3] bg-white">
+                      <img
+                        src={owner.profile?.display_image || RESTAURANT_IMAGE_FALLBACK}
+                        alt={owner.profile?.restaurant_name || owner.username}
+                        className="h-24 w-24 bg-white object-contain"
+                      />
+                    </div>
+                    <div>
+                      <p className="font-extrabold text-slate-900">
+                        {owner.profile?.restaurant_name || owner.username}
+                      </p>
+                      <p className="text-sm text-slate-500">{owner.email}</p>
+                      <p className="mt-1 text-sm text-slate-700">
+                        {owner.profile?.phone_number || "No phone"}
+                      </p>
+                      <p className="mt-2 text-xs text-slate-500">
+                        {owner.profile?.address || "No address"}
+                      </p>
+                    </div>
+                  </button>
 
                   <button
                     onClick={() => approveOwnerAccount(owner.id)}
@@ -170,42 +204,87 @@ export default function RestaurantApprovals() {
         </GlassCard>
       ) : (
         <div className="grid gap-4">
-          {filtered.map((r) => (
-            <GlassCard key={r.id} className="p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h3 className="text-xl font-extrabold text-slate-900">{r.name}</h3>
-                    <StatusBadge status={r.status} />
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
-                    <Info label="Email" value={r.email} />
-                    <Info label="Phone" value={r.phone} />
-                    <Info label="Owner" value={r.owner_username} />
-                    <div className="md:col-span-3">
-                      <Info label="Address" value={r.address} />
+          {filter === "APPROVED"
+            ? filtered.map((owner) => (
+                <GlassCard key={owner.id} className="p-6">
+                  <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="overflow-hidden rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff] xl:w-[280px]">
+                      <img
+                        src={owner.profile?.display_image || RESTAURANT_IMAGE_FALLBACK}
+                        alt={owner.profile?.restaurant_name || owner.username}
+                        className="h-52 w-full bg-white object-contain"
+                      />
                     </div>
-                  </div>
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h3 className="text-xl font-extrabold text-slate-900">
+                          {owner.profile?.restaurant_name || owner.username}
+                        </h3>
+                        <StatusBadge status="APPROVED" />
+                      </div>
 
-                  {r.review_note && (
-                    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3">
-                      <p className="text-sm text-amber-900">
-                        <strong>Review Note:</strong> {r.review_note}
-                      </p>
+                      <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+                        <Info label="Username" value={owner.username} />
+                        <Info label="Email" value={owner.email} />
+                        <Info label="Phone" value={owner.profile?.phone_number} />
+                        <div className="md:col-span-3">
+                          <Info label="Address" value={owner.profile?.address} />
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
 
-                <button
-                  onClick={() => setSelected(r)}
-                  className="rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] p-3 hover:bg-white"
-                >
-                  <Eye size={20} className="text-slate-800" />
-                </button>
-              </div>
-            </GlassCard>
-          ))}
+                    <button
+                      onClick={() => setSelectedApprovedOwner(owner)}
+                      className="rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] p-3 hover:bg-white"
+                    >
+                      <Eye size={20} className="text-slate-800" />
+                    </button>
+                  </div>
+                </GlassCard>
+              ))
+            : filtered.map((r) => (
+                <GlassCard key={r.id} className="p-6">
+                  <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="overflow-hidden rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff] xl:w-[280px]">
+                      <img
+                        src={getRestaurantImage(r)}
+                        alt={r.name}
+                        className="h-52 w-full bg-white object-contain"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h3 className="text-xl font-extrabold text-slate-900">{r.name}</h3>
+                        <StatusBadge status={r.status} />
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+                        <Info label="Email" value={r.email} />
+                        <Info label="Phone" value={r.phone} />
+                        <Info label="Owner" value={r.owner_username} />
+                        <div className="md:col-span-3">
+                          <Info label="Address" value={r.address} />
+                        </div>
+                      </div>
+
+                      {r.review_note && (
+                        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                          <p className="text-sm text-amber-900">
+                            <strong>Review Note:</strong> {r.review_note}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => setSelected(r)}
+                      className="rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] p-3 hover:bg-white"
+                    >
+                      <Eye size={20} className="text-slate-800" />
+                    </button>
+                  </div>
+                </GlassCard>
+              ))}
         </div>
       )}
 
@@ -214,12 +293,40 @@ export default function RestaurantApprovals() {
           <h2 className="mb-1 text-2xl font-extrabold text-slate-900">Review Restaurant</h2>
           <p className="mb-4 text-slate-500">{selected.name}</p>
 
+          <div className="mb-4 overflow-hidden rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff]">
+            <img
+              src={getRestaurantImage(selected)}
+              alt={selected.name}
+              className="h-64 w-full bg-white object-contain"
+            />
+          </div>
+
           <div className="mb-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
             <Info label="Email" value={selected.email} />
             <Info label="Phone" value={selected.phone} />
             <Info label="Owner" value={selected.owner_username} />
             <Info label="Address" value={selected.address} />
           </div>
+
+          {selected.owner_profile && (
+            <div className="mb-4 rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff] p-4">
+              <h3 className="mb-3 text-lg font-extrabold text-slate-900">Owner Registration Details</h3>
+              <div className="mb-4 overflow-hidden rounded-[20px] border border-[#d9e5f3] bg-white">
+                <img
+                  src={selected.owner_profile.display_image || RESTAURANT_IMAGE_FALLBACK}
+                  alt={selected.owner_profile.restaurant_name || selected.owner_profile.username}
+                  className="h-56 w-full bg-white object-contain"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                <Info label="Restaurant Name" value={selected.owner_profile.restaurant_name} />
+                <Info label="Username" value={selected.owner_profile.username} />
+                <Info label="Email" value={selected.owner_profile.email} />
+                <Info label="Phone Number" value={selected.owner_profile.phone_number} />
+                <Info label="Address" value={selected.owner_profile.address} />
+              </div>
+            </div>
+          )}
 
           <div className="mb-4">
             <label className="mb-2 block text-sm font-bold text-slate-700">Review Note</label>
@@ -240,6 +347,66 @@ export default function RestaurantApprovals() {
 
           <button
             onClick={() => { setSelected(null); setReviewNote(""); }}
+            className="mt-4 w-full rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] py-3 font-semibold text-slate-700 hover:bg-white"
+          >
+            Close
+          </button>
+        </Modal>
+      )}
+
+      {selectedPendingOwner && (
+        <Modal onClose={() => setSelectedPendingOwner(null)}>
+          <h2 className="mb-1 text-2xl font-extrabold text-slate-900">Pending Restaurant Owner</h2>
+          <p className="mb-4 text-slate-500">{selectedPendingOwner.profile?.restaurant_name || selectedPendingOwner.username}</p>
+
+          <div className="mb-4 overflow-hidden rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff]">
+            <img
+              src={selectedPendingOwner.profile?.display_image || RESTAURANT_IMAGE_FALLBACK}
+              alt={selectedPendingOwner.profile?.restaurant_name || selectedPendingOwner.username}
+              className="h-64 w-full bg-white object-contain"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+            <Info label="Restaurant Name" value={selectedPendingOwner.profile?.restaurant_name} />
+            <Info label="Username" value={selectedPendingOwner.username} />
+            <Info label="Email" value={selectedPendingOwner.email} />
+            <Info label="Phone Number" value={selectedPendingOwner.profile?.phone_number || "-"} />
+            <Info label="Address" value={selectedPendingOwner.profile?.address || "-"} />
+          </div>
+
+          <button
+            onClick={() => setSelectedPendingOwner(null)}
+            className="mt-4 w-full rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] py-3 font-semibold text-slate-700 hover:bg-white"
+          >
+            Close
+          </button>
+        </Modal>
+      )}
+
+      {selectedApprovedOwner && (
+        <Modal onClose={() => setSelectedApprovedOwner(null)}>
+          <h2 className="mb-1 text-2xl font-extrabold text-slate-900">Approved Restaurant</h2>
+          <p className="mb-4 text-slate-500">{selectedApprovedOwner.profile?.restaurant_name || selectedApprovedOwner.username}</p>
+
+          <div className="mb-4 overflow-hidden rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff]">
+            <img
+              src={selectedApprovedOwner.profile?.display_image || RESTAURANT_IMAGE_FALLBACK}
+              alt={selectedApprovedOwner.profile?.restaurant_name || selectedApprovedOwner.username}
+              className="h-64 w-full bg-white object-contain"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+            <Info label="Restaurant Name" value={selectedApprovedOwner.profile?.restaurant_name} />
+            <Info label="Username" value={selectedApprovedOwner.username} />
+            <Info label="Email" value={selectedApprovedOwner.email} />
+            <Info label="Phone Number" value={selectedApprovedOwner.profile?.phone_number} />
+            <Info label="Address" value={selectedApprovedOwner.profile?.address} />
+          </div>
+
+          <button
+            onClick={() => setSelectedApprovedOwner(null)}
             className="mt-4 w-full rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] py-3 font-semibold text-slate-700 hover:bg-white"
           >
             Close

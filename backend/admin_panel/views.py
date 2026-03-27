@@ -3,14 +3,15 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Prefetch
+from django.db.models.functions import TruncDate
 from datetime import datetime, timedelta
-import json
 
 from .models import Report, AdminLog
 from .serializers import (
     ReportSerializer, AdminLogSerializer, RoomAdminSerializer,
-    RestaurantAdminSerializer, DeliveryPartnerAdminSerializer, UserAdminSerializer
+    RestaurantAdminSerializer, DeliveryPartnerAdminSerializer, UserAdminSerializer,
+    AdminOrderMonitorSerializer
 )
 from .permissions import IsAdminUser
 from rooms.models import Room
@@ -18,17 +19,9 @@ from restaurants.models import Restaurant
 from delivery.models import DeliveryPartner
 from users.models import User
 from orders.models import Order
-
-
-def create_admin_log(admin, action, target_type, target_id, details):
-    """Helper function to create admin logs"""
-    AdminLog.objects.create(
-        admin=admin,
-        action=action,
-        target_type=target_type,
-        target_id=target_id,
-        details=json.dumps(details) if isinstance(details, dict) else str(details)
-    )
+from orders.models import OrderItem
+from bookings.models import Booking
+from .utils import create_admin_log
 
 
 @api_view(['GET'])
@@ -68,6 +61,173 @@ def admin_analytics_summary(request):
         'pending_reports': pending_reports,
         'total_orders_today': total_orders_today,
         'disputes_pending': disputes_pending
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_orders_monitor(request):
+    today = timezone.now().date()
+    latest_booking_prefetch = Prefetch(
+        'student__bookings',
+        queryset=Booking.objects.filter(status='approved').select_related('room').order_by('-updated_at', '-created_at'),
+        to_attr='approved_bookings_cache'
+    )
+    item_prefetch = Prefetch(
+        'items',
+        queryset=OrderItem.objects.select_related('menu_item'),
+        to_attr='prefetched_items'
+    )
+
+    orders = (
+        Order.objects.select_related('student', 'restaurant', 'delivery_partner')
+        .prefetch_related(item_prefetch, latest_booking_prefetch)
+        .order_by('-created_at')[:120]
+    )
+
+    for order in orders:
+        approved_bookings = getattr(order.student, 'approved_bookings_cache', [])
+        order.student.latest_approved_booking = approved_bookings[0] if approved_bookings else None
+
+    serialized_orders = AdminOrderMonitorSerializer(orders, many=True).data
+
+    status_counts = {key: 0 for key, _ in Order.STATUS_CHOICES}
+    for order in orders:
+        status_counts[order.status] = status_counts.get(order.status, 0) + 1
+
+    response_data = {
+        'summary': {
+            'total_orders': len(serialized_orders),
+            'today_orders': sum(1 for order in orders if order.created_at.date() == today),
+            'delivery_orders': sum(1 for order in orders if order.order_type == 'delivery'),
+            'takeaway_orders': sum(1 for order in orders if order.order_type == 'takeaway'),
+            'with_room_context': sum(1 for order in serialized_orders if order.get('room_context')),
+            'assigned_delivery_partners': sum(1 for order in orders if order.delivery_partner_id),
+            'status_counts': status_counts,
+        },
+        'orders': serialized_orders,
+    }
+    return Response(response_data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_analytics_detail(request):
+    today = timezone.now().date()
+    start_date = today - timedelta(days=6)
+
+    users_by_day = {
+        item['day']: item['count']
+        for item in (
+            User.objects.filter(date_joined__date__gte=start_date)
+            .annotate(day=TruncDate('date_joined'))
+            .values('day')
+            .annotate(count=Count('id'))
+        )
+    }
+    orders_by_day = {
+        item['day']: item['count']
+        for item in (
+            Order.objects.filter(created_at__date__gte=start_date)
+            .annotate(day=TruncDate('created_at'))
+            .values('day')
+            .annotate(count=Count('id'))
+        )
+    }
+    reports_by_day = {
+        item['day']: item['count']
+        for item in (
+            Report.objects.filter(created_at__date__gte=start_date)
+            .annotate(day=TruncDate('created_at'))
+            .values('day')
+            .annotate(count=Count('id'))
+        )
+    }
+
+    trend = []
+    for offset in range(7):
+        day = start_date + timedelta(days=offset)
+        trend.append({
+            'date': day.isoformat(),
+            'label': day.strftime('%a'),
+            'users': users_by_day.get(day, 0),
+            'orders': orders_by_day.get(day, 0),
+            'reports': reports_by_day.get(day, 0),
+        })
+
+    user_mix = [
+        {'name': label, 'value': User.objects.filter(user_type=key).count()}
+        for key, label in User.USER_TYPE_CHOICES
+    ]
+
+    order_status = [
+        {'name': label, 'value': Order.objects.filter(status=key).count()}
+        for key, label in Order.STATUS_CHOICES
+    ]
+
+    moderation_pipeline = [
+        {
+            'name': 'Rooms',
+            'pending': Room.objects.filter(status='PENDING').count(),
+            'approved': Room.objects.filter(status='APPROVED').count(),
+            'rejected': Room.objects.filter(status='REJECTED').count(),
+        },
+        {
+            'name': 'Restaurants',
+            'pending': Restaurant.objects.filter(status='PENDING').count(),
+            'approved': Restaurant.objects.filter(status='APPROVED').count(),
+            'rejected': Restaurant.objects.filter(status='REJECTED').count(),
+        },
+        {
+            'name': 'Partners',
+            'pending': DeliveryPartner.objects.filter(status='PENDING').count(),
+            'approved': DeliveryPartner.objects.filter(status='APPROVED').count(),
+            'rejected': DeliveryPartner.objects.filter(status='REJECTED').count(),
+        },
+    ]
+
+    top_restaurants = list(
+        Order.objects.values('restaurant__name')
+        .annotate(order_count=Count('id'))
+        .order_by('-order_count')[:5]
+    )
+    top_restaurants = [
+        {
+            'name': item['restaurant__name'] or 'Unknown Restaurant',
+            'orders': item['order_count'],
+        }
+        for item in top_restaurants
+    ]
+
+    recent_admin_actions = list(
+        AdminLog.objects.select_related('admin')
+        .values('id', 'action', 'target_type', 'target_id', 'created_at', 'admin__username')[:6]
+    )
+
+    metrics = {
+        'total_users': User.objects.count(),
+        'new_users_7d': User.objects.filter(date_joined__date__gte=start_date).count(),
+        'blocked_users': User.objects.filter(is_blocked=True).count(),
+        'orders_total': Order.objects.count(),
+        'orders_today': Order.objects.filter(created_at__date=today).count(),
+        'delivery_orders_active': Order.objects.filter(status__in=['ready', 'out_for_delivery']).count(),
+        'reports_open': Report.objects.filter(status__in=['PENDING', 'INVESTIGATING']).count(),
+        'delivery_online': DeliveryPartner.objects.filter(is_online=True, status='APPROVED').count(),
+        'approval_backlog': (
+            Room.objects.filter(status='PENDING').count()
+            + Restaurant.objects.filter(status='PENDING').count()
+            + DeliveryPartner.objects.filter(status='PENDING').count()
+        ),
+    }
+
+    return Response({
+        'metrics': metrics,
+        'trend': trend,
+        'user_mix': user_mix,
+        'order_status': order_status,
+        'moderation_pipeline': moderation_pipeline,
+        'top_restaurants': top_restaurants,
+        'recent_admin_actions': recent_admin_actions,
     })
 
 
@@ -157,7 +317,7 @@ class RestaurantAdminViewSet(viewsets.ModelViewSet):
 
 
 class UserAdminViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all().order_by('-date_joined')
+    queryset = User.objects.filter(is_staff=False, is_superuser=False).order_by('-date_joined')
     serializer_class = UserAdminSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
 

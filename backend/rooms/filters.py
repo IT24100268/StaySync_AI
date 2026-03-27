@@ -6,7 +6,8 @@ class RoomFilter(django_filters.FilterSet):
     max_price = django_filters.NumberFilter(field_name='price', lookup_expr='lte')
     max_distance = django_filters.NumberFilter(field_name='distance_from_university', lookup_expr='lte')
     gender_allowed = django_filters.CharFilter(field_name='gender_allowed')
+    owner_contact = django_filters.CharFilter(field_name='owner_contact')
     
     class Meta:
         model = Room
-        fields = ['gender_allowed', 'min_price', 'max_price', 'max_distance']
+        fields = ['gender_allowed', 'min_price', 'max_price', 'max_distance', 'owner_contact']

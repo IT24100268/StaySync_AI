@@ -2,7 +2,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     RoomAdminViewSet, RestaurantAdminViewSet, DeliveryPartnerAdminViewSet,
-    UserAdminViewSet, ReportViewSet, AdminLogViewSet, admin_analytics_summary
+    UserAdminViewSet, ReportViewSet, AdminLogViewSet, admin_analytics_summary,
+    admin_orders_monitor, admin_analytics_detail
 )
 
 router = DefaultRouter()
@@ -15,5 +16,7 @@ router.register(r'logs', AdminLogViewSet, basename='admin-logs')
 
 urlpatterns = [
     path('analytics/summary/', admin_analytics_summary, name='admin-analytics-summary'),
+    path('analytics/detail/', admin_analytics_detail, name='admin-analytics-detail'),
+    path('orders/monitor/', admin_orders_monitor, name='admin-orders-monitor'),
     path('', include(router.urls)),
 ]

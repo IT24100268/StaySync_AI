@@ -1,7 +1,44 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+
+const JAFFNA_UNIVERSITY_CENTER = { lat: 9.6848, lng: 80.0220 };
+const GOOGLE_MAP_SCRIPT_ID = 'google-maps-script';
+
+function isConfiguredGoogleMapsKey(apiKey) {
+  return Boolean(apiKey && apiKey.trim() && apiKey !== 'your-google-maps-api-key');
+}
+
+function loadGoogleMaps(apiKey) {
+  if (!isConfiguredGoogleMapsKey(apiKey)) {
+    return Promise.reject(
+      new Error('Google Maps is not configured yet. Add a real VITE_GOOGLE_MAPS_API_KEY in frontend/.env and restart the frontend.')
+    );
+  }
+
+  if (window.google?.maps) {
+    return Promise.resolve(window.google.maps);
+  }
+
+  const existingScript = document.getElementById(GOOGLE_MAP_SCRIPT_ID);
+  if (existingScript) {
+    return new Promise((resolve, reject) => {
+      existingScript.addEventListener('load', () => resolve(window.google?.maps), { once: true });
+      existingScript.addEventListener('error', () => reject(new Error('Failed to load Google Maps.')), { once: true });
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.id = GOOGLE_MAP_SCRIPT_ID;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&loading=async`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve(window.google?.maps);
+    script.onerror = () => reject(new Error('Failed to load Google Maps.'));
+    document.head.appendChild(script);
+  });
+}
 
 const Register = () => {
   const [step, setStep] = useState(1);
@@ -12,11 +49,23 @@ const Register = () => {
     password: '',
   });
   const [profileData, setProfileData] = useState({});
+  const [displayImagePreview, setDisplayImagePreview] = useState('');
+  const [mapsReady, setMapsReady] = useState(false);
+  const [mapError, setMapError] = useState('');
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [resolvingLocation, setResolvingLocation] = useState(false);
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const { register } = useAuth();
   const navigate = useNavigate();
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
+  const geocoderRef = useRef(null);
+  const mapListenersRef = useRef([]);
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const locationMapEnabled = step === 2 && ['hostel_owner', 'restaurant_owner'].includes(userType);
 
   const roleOptions = [
     { value: 'student', label: 'Student', icon: '🎓', desc: 'Find rooms and order food' },
@@ -27,10 +76,173 @@ const Register = () => {
 
   const handleRoleSelect = (role) => {
     setUserType(role);
+    setProfileData({});
+    setDisplayImagePreview('');
     setStep(2);
   };
 
+  useEffect(() => () => {
+    if (displayImagePreview?.startsWith('blob:')) {
+      URL.revokeObjectURL(displayImagePreview);
+    }
+  }, [displayImagePreview]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    loadGoogleMaps(googleMapsApiKey)
+      .then(() => {
+        if (!isMounted) return;
+        setMapsReady(true);
+        setMapError('');
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setMapsReady(false);
+        setMapError(err.message || 'Unable to load Google Maps.');
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [googleMapsApiKey]);
+
+  useEffect(() => {
+    if (!locationMapEnabled || !mapsReady || !mapContainerRef.current || !window.google?.maps) {
+      return;
+    }
+
+    const latitude = Number.parseFloat(profileData.latitude);
+    const longitude = Number.parseFloat(profileData.longitude);
+    const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude);
+    const center = hasCoordinates ? { lat: latitude, lng: longitude } : JAFFNA_UNIVERSITY_CENTER;
+
+    if (!mapRef.current) {
+      mapRef.current = new window.google.maps.Map(mapContainerRef.current, {
+        center,
+        zoom: hasCoordinates ? 16 : 13,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        gestureHandling: 'greedy',
+      });
+
+      markerRef.current = new window.google.maps.Marker({
+        map: mapRef.current,
+        position: center,
+        draggable: true,
+      });
+
+      geocoderRef.current = new window.google.maps.Geocoder();
+
+      mapListenersRef.current.push(
+        mapRef.current.addListener('click', (event) => {
+          if (!event.latLng) return;
+          updateSelectedLocation(event.latLng.lat(), event.latLng.lng(), false);
+        }),
+        markerRef.current.addListener('dragend', (event) => {
+          if (!event.latLng) return;
+          updateSelectedLocation(event.latLng.lat(), event.latLng.lng(), false);
+        })
+      );
+    } else {
+      markerRef.current?.setPosition(center);
+      mapRef.current.setCenter(center);
+    }
+  }, [locationMapEnabled, mapsReady, profileData.latitude, profileData.longitude]);
+
+  useEffect(() => {
+    return () => {
+      mapListenersRef.current.forEach((listener) => listener?.remove?.());
+      mapListenersRef.current = [];
+    };
+  }, []);
+
+  const setProfileValue = (key, value) => {
+    setProfileData((previous) => ({ ...previous, [key]: value }));
+  };
+
+  const reverseGeocode = async (lat, lng) => {
+    if (!geocoderRef.current) return;
+
+    setResolvingLocation(true);
+
+    try {
+      const response = await geocoderRef.current.geocode({ location: { lat, lng } });
+      const formattedAddress = response.results?.[0]?.formatted_address || '';
+      if (formattedAddress) {
+        setProfileValue('address', formattedAddress);
+      }
+    } finally {
+      setResolvingLocation(false);
+    }
+  };
+
+  const updateSelectedLocation = async (lat, lng, shouldPan = true) => {
+    setProfileData((previous) => ({
+      ...previous,
+      latitude: Number(lat).toFixed(6),
+      longitude: Number(lng).toFixed(6),
+    }));
+
+    if (markerRef.current) {
+      markerRef.current.setPosition({ lat, lng });
+    }
+
+    if (shouldPan && mapRef.current) {
+      mapRef.current.panTo({ lat, lng });
+      mapRef.current.setZoom(16);
+    }
+
+    await reverseGeocode(lat, lng);
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError('Location is not supported in this browser.');
+      return;
+    }
+
+    setDetectingLocation(true);
+    setError('');
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        await updateSelectedLocation(latitude, longitude);
+        setDetectingLocation(false);
+      },
+      () => {
+        setDetectingLocation(false);
+        setError('Unable to access your current location. Please allow location permission and try again.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  const handleDisplayImageChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (displayImagePreview?.startsWith('blob:')) {
+      URL.revokeObjectURL(displayImagePreview);
+    }
+
+    setProfileValue('display_image', file);
+    setDisplayImagePreview(URL.createObjectURL(file));
+  };
+
+  const clearDisplayImage = () => {
+    if (displayImagePreview?.startsWith('blob:')) {
+      URL.revokeObjectURL(displayImagePreview);
+    }
+    setDisplayImagePreview('');
+    setProfileData((previous) => {
+      const next = { ...previous };
+      delete next.display_image;
+      return next;
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,12 +267,39 @@ const Register = () => {
       return;
     }
 
+    if (userType === 'restaurant_owner' || userType === 'hostel_owner') {
+      if (!profileData.latitude || !profileData.longitude) {
+        setError(`Please choose your ${userType === 'restaurant_owner' ? 'restaurant' : 'hostel'} location on the map.`);
+        return;
+      }
+
+      if (!profileData.address || String(profileData.address).trim().length < 3) {
+        setError(`Please confirm a location label for your ${userType === 'restaurant_owner' ? 'restaurant' : 'hostel'}.`);
+        return;
+      }
+    }
+
     try {
-      const payload = {
-        ...formData,
-        user_type: userType,
-        profile: profileData,
-      };
+      let payload;
+      if (profileData.display_image) {
+        payload = new FormData();
+        payload.append('email', formData.email);
+        payload.append('username', formData.username);
+        payload.append('password', formData.password);
+        payload.append('user_type', userType);
+
+        Object.entries(profileData).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== '') {
+            payload.append(`profile.${key}`, value);
+          }
+        });
+      } else {
+        payload = {
+          ...formData,
+          user_type: userType,
+          profile: profileData,
+        };
+      }
 
       await register(payload);
       setSuccess('Registration successful! Redirecting to login...');
@@ -100,13 +339,13 @@ const Register = () => {
             <input
               name="university"
               placeholder="University"
-              onChange={(e) => setProfileData({ ...profileData, university: e.target.value })}
+              onChange={(e) => setProfileValue('university', e.target.value)}
               required
               style={styles.input}
             />
             <select
               name="gender_preference"
-              onChange={(e) => setProfileData({ ...profileData, gender_preference: e.target.value })}
+              onChange={(e) => setProfileValue('gender_preference', e.target.value)}
               style={styles.input}
             >
               <option value="any">Gender Preference: Any</option>
@@ -117,13 +356,13 @@ const Register = () => {
               name="budget"
               type="number"
               placeholder="Budget"
-              onChange={(e) => setProfileData({ ...profileData, budget: e.target.value })}
+              onChange={(e) => setProfileValue('budget', e.target.value)}
               style={styles.input}
             />
             <input
               name="phone_number"
               placeholder="Phone Number"
-              onChange={(e) => setProfileData({ ...profileData, phone_number: e.target.value })}
+              onChange={(e) => setProfileValue('phone_number', e.target.value)}
               required
               style={styles.input}
             />
@@ -135,30 +374,111 @@ const Register = () => {
             <input
               name="hostel_name"
               placeholder="Hostel Name"
-              onChange={(e) => setProfileData({ ...profileData, hostel_name: e.target.value })}
+              onChange={(e) => setProfileValue('hostel_name', e.target.value)}
               required
               style={styles.input}
-            />
-            <textarea
-              name="address"
-              placeholder="Address"
-              onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
-              required
-              style={{ ...styles.input, minHeight: '80px' }}
             />
             <input
               name="phone_number"
               placeholder="Phone Number"
-              onChange={(e) => setProfileData({ ...profileData, phone_number: e.target.value })}
+              onChange={(e) => setProfileValue('phone_number', e.target.value)}
               required
               style={styles.input}
             />
             <input
               name="business_reg_no"
               placeholder="Business Registration No (Optional)"
-              onChange={(e) => setProfileData({ ...profileData, business_reg_no: e.target.value })}
+              onChange={(e) => setProfileValue('business_reg_no', e.target.value)}
               style={styles.input}
             />
+            <div style={styles.mapCard}>
+              <div style={styles.mapHeader}>
+                <div>
+                  <div style={styles.mapTitle}>Hostel Location</div>
+                  <div style={styles.mapHint}>
+                    Pick the exact hostel location on the map. The view starts near the University of Jaffna.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleUseCurrentLocation}
+                  disabled={detectingLocation || !mapsReady}
+                  style={{
+                    ...styles.locationButton,
+                    opacity: detectingLocation || !mapsReady ? 0.7 : 1,
+                    cursor: detectingLocation || !mapsReady ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {detectingLocation ? 'Locating...' : 'Use Current Location'}
+                </button>
+              </div>
+
+              <div style={styles.mapShell}>
+                {mapError ? (
+                  <div style={styles.mapUnavailable}>{mapError}</div>
+                ) : (
+                  <div ref={mapContainerRef} style={styles.mapCanvas} />
+                )}
+              </div>
+
+              <div style={styles.coordinateGrid}>
+                <input
+                  value={profileData.latitude || ''}
+                  readOnly
+                  placeholder="Latitude"
+                  style={{ ...styles.input, marginBottom: 0 }}
+                />
+                <input
+                  value={profileData.longitude || ''}
+                  readOnly
+                  placeholder="Longitude"
+                  style={{ ...styles.input, marginBottom: 0 }}
+                />
+              </div>
+
+              <textarea
+                name="address"
+                placeholder="Location label"
+                value={profileData.address || ''}
+                onChange={(e) => setProfileValue('address', e.target.value)}
+                required
+                style={{ ...styles.input, minHeight: '80px', marginTop: '12px' }}
+              />
+              <div style={styles.mapNote}>
+                {resolvingLocation
+                  ? 'Updating the location label from the map...'
+                  : 'Click the map or drag the marker to set the hostel location.'}
+              </div>
+            </div>
+            <div style={styles.uploadCard}>
+              <div style={styles.uploadTitle}>Common Hostel Image</div>
+              <div style={styles.uploadHint}>
+                This image will be used in the admin dashboard and room approvals.
+              </div>
+              <div style={styles.uploadPreviewWrap}>
+                {displayImagePreview ? (
+                  <img src={displayImagePreview} alt="Hostel preview" style={styles.uploadPreviewImage} />
+                ) : (
+                  <div style={styles.uploadPlaceholder}>No image selected yet</div>
+                )}
+              </div>
+              <div style={styles.uploadActions}>
+                <label style={styles.uploadButton}>
+                  Choose Image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleDisplayImageChange}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+                {profileData.display_image && (
+                  <button type="button" onClick={clearDisplayImage} style={styles.removeButton}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
           </>
         );
       case 'restaurant_owner':
@@ -167,24 +487,105 @@ const Register = () => {
             <input
               name="restaurant_name"
               placeholder="Restaurant Name"
-              onChange={(e) => setProfileData({ ...profileData, restaurant_name: e.target.value })}
+              onChange={(e) => setProfileValue('restaurant_name', e.target.value)}
               required
               style={styles.input}
-            />
-            <textarea
-              name="address"
-              placeholder="Address"
-              onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
-              required
-              style={{ ...styles.input, minHeight: '80px' }}
             />
             <input
               name="phone_number"
               placeholder="Phone Number"
-              onChange={(e) => setProfileData({ ...profileData, phone_number: e.target.value })}
+              onChange={(e) => setProfileValue('phone_number', e.target.value)}
               required
               style={styles.input}
             />
+            <div style={styles.mapCard}>
+              <div style={styles.mapHeader}>
+                <div>
+                  <div style={styles.mapTitle}>Restaurant Location</div>
+                  <div style={styles.mapHint}>
+                    Pick the exact location on the map. The view starts near the University of Jaffna.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleUseCurrentLocation}
+                  disabled={detectingLocation || !mapsReady}
+                  style={{
+                    ...styles.locationButton,
+                    opacity: detectingLocation || !mapsReady ? 0.7 : 1,
+                    cursor: detectingLocation || !mapsReady ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {detectingLocation ? 'Locating...' : 'Use Current Location'}
+                </button>
+              </div>
+
+              <div style={styles.mapShell}>
+                {mapError ? (
+                  <div style={styles.mapUnavailable}>{mapError}</div>
+                ) : (
+                  <div ref={mapContainerRef} style={styles.mapCanvas} />
+                )}
+              </div>
+
+              <div style={styles.coordinateGrid}>
+                <input
+                  value={profileData.latitude || ''}
+                  readOnly
+                  placeholder="Latitude"
+                  style={{ ...styles.input, marginBottom: 0 }}
+                />
+                <input
+                  value={profileData.longitude || ''}
+                  readOnly
+                  placeholder="Longitude"
+                  style={{ ...styles.input, marginBottom: 0 }}
+                />
+              </div>
+
+              <textarea
+                name="address"
+                placeholder="Location label"
+                value={profileData.address || ''}
+                onChange={(e) => setProfileValue('address', e.target.value)}
+                required
+                style={{ ...styles.input, minHeight: '80px', marginTop: '12px' }}
+              />
+              <div style={styles.mapNote}>
+                {resolvingLocation
+                  ? 'Updating the location label from the map...'
+                  : 'Click the map or drag the marker to set the restaurant location.'}
+              </div>
+            </div>
+            <div style={styles.uploadCard}>
+              <div style={styles.uploadTitle}>Common Restaurant Image</div>
+              <div style={styles.uploadHint}>
+                This image will be used in the admin dashboard and restaurant approvals.
+              </div>
+              <div style={styles.uploadPreviewWrap}>
+                {displayImagePreview ? (
+                  <img src={displayImagePreview} alt="Restaurant preview" style={styles.uploadPreviewImage} />
+                ) : (
+                  <div style={styles.uploadPlaceholder}>No image selected yet</div>
+                )}
+              </div>
+              <div style={styles.uploadActions}>
+                <label style={styles.uploadButton}>
+                  Choose Image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleDisplayImageChange}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+                {profileData.display_image && (
+                  <button type="button" onClick={clearDisplayImage} style={styles.removeButton}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
           </>
         );
       case 'delivery':
@@ -193,24 +594,53 @@ const Register = () => {
             <input
               name="vehicle_type"
               placeholder="Vehicle Type (e.g., Bike, Scooter)"
-              onChange={(e) => setProfileData({ ...profileData, vehicle_type: e.target.value })}
+              onChange={(e) => setProfileValue('vehicle_type', e.target.value)}
               required
               style={styles.input}
             />
             <input
               name="license_no"
               placeholder="License Number"
-              onChange={(e) => setProfileData({ ...profileData, license_no: e.target.value })}
+              onChange={(e) => setProfileValue('license_no', e.target.value)}
               required
               style={styles.input}
             />
             <input
               name="phone_number"
               placeholder="Phone Number"
-              onChange={(e) => setProfileData({ ...profileData, phone_number: e.target.value })}
+              onChange={(e) => setProfileValue('phone_number', e.target.value)}
               required
               style={styles.input}
             />
+            <div style={styles.uploadCard}>
+              <div style={styles.uploadTitle}>Partner Profile Image</div>
+              <div style={styles.uploadHint}>
+                This image will be used in the admin dashboard and partner approvals.
+              </div>
+              <div style={styles.uploadPreviewWrap}>
+                {displayImagePreview ? (
+                  <img src={displayImagePreview} alt="Partner preview" style={styles.uploadPreviewImage} />
+                ) : (
+                  <div style={styles.uploadPlaceholder}>No image selected yet</div>
+                )}
+              </div>
+              <div style={styles.uploadActions}>
+                <label style={styles.uploadButton}>
+                  Choose Image
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleDisplayImageChange}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+                {profileData.display_image && (
+                  <button type="button" onClick={clearDisplayImage} style={styles.removeButton}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
           </>
         );
       default:
@@ -428,6 +858,151 @@ const styles = {
     color: '#93c5fd',
     fontWeight: 'bold',
     textDecoration: 'none',
+  },
+  uploadCard: {
+    marginTop: '8px',
+    marginBottom: '8px',
+    padding: '16px',
+    borderRadius: '16px',
+    background: 'rgba(255,255,255,0.16)',
+    border: '1px solid rgba(255,255,255,0.22)',
+  },
+  mapCard: {
+    marginTop: '8px',
+    marginBottom: '8px',
+    padding: '16px',
+    borderRadius: '16px',
+    background: 'rgba(255,255,255,0.16)',
+    border: '1px solid rgba(255,255,255,0.22)',
+  },
+  mapHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '12px',
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    marginBottom: '12px',
+  },
+  mapTitle: {
+    color: 'white',
+    fontSize: '15px',
+    fontWeight: 'bold',
+    marginBottom: '6px',
+  },
+  mapHint: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: '13px',
+    maxWidth: '360px',
+  },
+  locationButton: {
+    padding: '10px 14px',
+    borderRadius: '10px',
+    border: '1px solid rgba(255,255,255,0.3)',
+    background: 'rgba(255,255,255,0.92)',
+    color: '#1e3a8a',
+    fontSize: '14px',
+    fontWeight: '700',
+  },
+  mapShell: {
+    overflow: 'hidden',
+    borderRadius: '14px',
+    background: 'rgba(255,255,255,0.94)',
+    minHeight: '260px',
+    border: '1px solid rgba(255,255,255,0.35)',
+  },
+  mapCanvas: {
+    width: '100%',
+    height: '260px',
+  },
+  mapUnavailable: {
+    minHeight: '260px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    padding: '20px',
+    color: '#7f1d1d',
+    background: '#fff5f5',
+    fontWeight: '700',
+    lineHeight: 1.5,
+  },
+  coordinateGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '12px',
+    marginTop: '12px',
+  },
+  mapNote: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: '13px',
+    marginTop: '10px',
+  },
+  uploadTitle: {
+    color: 'white',
+    fontSize: '15px',
+    fontWeight: 'bold',
+    marginBottom: '6px',
+  },
+  uploadHint: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: '13px',
+    marginBottom: '12px',
+  },
+  uploadPreviewWrap: {
+    overflow: 'hidden',
+    borderRadius: '14px',
+    background: 'rgba(255,255,255,0.94)',
+    minHeight: '180px',
+    border: '1px solid rgba(255,255,255,0.35)',
+  },
+  uploadPreviewImage: {
+    width: '100%',
+    height: '180px',
+    objectFit: 'contain',
+    display: 'block',
+    background: '#f8fafc',
+  },
+  uploadPlaceholder: {
+    minHeight: '180px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#64748b',
+    fontSize: '14px',
+    fontWeight: '600',
+    textAlign: 'center',
+    padding: '16px',
+  },
+  uploadActions: {
+    display: 'flex',
+    gap: '12px',
+    marginTop: '12px',
+    flexWrap: 'wrap',
+  },
+  uploadButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '10px 14px',
+    borderRadius: '10px',
+    background: 'rgba(255,255,255,0.92)',
+    color: '#1e3a8a',
+    fontSize: '14px',
+    fontWeight: '700',
+    cursor: 'pointer',
+  },
+  removeButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '10px 14px',
+    borderRadius: '10px',
+    border: '1px solid rgba(255,255,255,0.3)',
+    background: 'rgba(127,29,29,0.18)',
+    color: 'white',
+    fontSize: '14px',
+    fontWeight: '700',
+    cursor: 'pointer',
   },
 };
 
