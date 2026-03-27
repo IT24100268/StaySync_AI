@@ -1,255 +1,403 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  Mail,
+  MapPin,
+  Minus,
+  Phone,
+  Plus,
+  Search,
+  ShoppingCart,
+  Trash2,
+} from "lucide-react";
 import api from "../services/api";
-import { STUDENT_LAYOUT, STUDENT_THEME as THEME } from "../styles/studentTheme";
+import "./RestaurantMenu.css";
 
-const RestaurantMenu = () => {
+const toArray = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.results)) return payload.results;
+  return [];
+};
+
+const safeNumber = (value, fallback = 0) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+};
+
+const formatCurrency = (value) => `LKR ${safeNumber(value).toLocaleString("en-LK")}`;
+
+const extractCategory = (item) => {
+  if (item?.category) {
+    return String(item.category).trim().toLowerCase();
+  }
+
+  const description = String(item?.description || "");
+  const match = description.match(/\[\s*category\s*:\s*([^\]]+)\]/i);
+  if (match?.[1]) {
+    return match[1].trim().toLowerCase();
+  }
+
+  return "menu";
+};
+
+const cleanDescription = (text) => String(text || "").replace(/\[\s*category\s*:[^\]]+\]/gi, "").trim();
+
+const prettifyCategory = (value) =>
+  String(value || "")
+    .replaceAll("_", " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word[0].toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+
+export default function RestaurantMenu() {
   const { id } = useParams();
+  const navigate = useNavigate();
+
   const [restaurant, setRestaurant] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [cart, setCart] = useState([]);
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState("all");
 
   useEffect(() => {
-    fetchRestaurant();
-    fetchMenu();
+    fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const fetchRestaurant = async () => {
+  const fetchData = async () => {
+    setLoading(true);
+    setError("");
+
     try {
-      const { data } = await api.get(`/restaurants/${id}/`);
-      setRestaurant(data);
-    } catch (error) {
-      console.error("Error fetching restaurant:", error);
+      const [restaurantRes, menuRes] = await Promise.all([
+        api.get(`/restaurants/${id}/`),
+        api.get(`/restaurants/${id}/menu/`),
+      ]);
+
+      setRestaurant(restaurantRes.data || null);
+      setMenuItems(toArray(menuRes.data));
+    } catch (fetchError) {
+      console.error("Error fetching restaurant menu:", fetchError);
+      setRestaurant(null);
+      setMenuItems([]);
+      setError("Unable to load restaurant menu right now.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchMenu = async () => {
-    try {
-      const { data } = await api.get(`/restaurants/${id}/menu/`);
-      console.log('Menu items:', data);
-      // Handle paginated response
-      const items = data.results || data;
-      setMenuItems(Array.isArray(items) ? items : []);
-    } catch (error) {
-      console.error("Error fetching menu:", error);
-      setMenuItems([]);
-    }
+  const menuItemsWithMeta = useMemo(() => {
+    return menuItems.map((item) => ({
+      ...item,
+      categoryKey: extractCategory(item),
+      cleanedDescription: cleanDescription(item.description),
+    }));
+  }, [menuItems]);
+
+  const categories = useMemo(() => {
+    const keys = Array.from(new Set(menuItemsWithMeta.map((item) => item.categoryKey)));
+    return ["all", ...keys];
+  }, [menuItemsWithMeta]);
+
+  const filteredItems = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return menuItemsWithMeta.filter((item) => {
+      const categoryMatch = activeCategory === "all" || item.categoryKey === activeCategory;
+      if (!categoryMatch) return false;
+
+      if (!query) return true;
+      const haystack = [item.name, item.cleanedDescription, item.categoryKey]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [menuItemsWithMeta, activeCategory, searchQuery]);
+
+  const cartCount = useMemo(
+    () => cart.reduce((count, item) => count + item.quantity, 0),
+    [cart]
+  );
+
+  const totalPrice = useMemo(() => {
+    return cart.reduce((sum, item) => sum + safeNumber(item.price) * item.quantity, 0);
+  }, [cart]);
+
+  const getItemQuantity = (itemId) => {
+    const existing = cart.find((entry) => entry.id === itemId);
+    return existing ? existing.quantity : 0;
   };
 
   const addToCart = (item) => {
-    const existing = cart.find((i) => i.id === item.id);
-    if (existing) {
-      setCart(cart.map((i) => (i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i)));
-    } else {
-      setCart([...cart, { ...item, quantity: 1 }]);
-    }
+    setCart((current) => {
+      const existing = current.find((entry) => entry.id === item.id);
+      if (existing) {
+        return current.map((entry) =>
+          entry.id === item.id ? { ...entry, quantity: entry.quantity + 1 } : entry
+        );
+      }
+      return [...current, { ...item, quantity: 1 }];
+    });
+  };
+
+  const updateQuantity = (itemId, nextQuantity) => {
+    setCart((current) => {
+      if (nextQuantity <= 0) {
+        return current.filter((entry) => entry.id !== itemId);
+      }
+      return current.map((entry) =>
+        entry.id === itemId ? { ...entry, quantity: nextQuantity } : entry
+      );
+    });
   };
 
   const removeFromCart = (itemId) => {
-    setCart(cart.filter((i) => i.id !== itemId));
+    setCart((current) => current.filter((entry) => entry.id !== itemId));
   };
 
-  const updateQuantity = (itemId, quantity) => {
-    if (quantity <= 0) removeFromCart(itemId);
-    else setCart(cart.map((i) => (i.id === itemId ? { ...i, quantity } : i)));
-  };
-
-  const totalPrice = useMemo(() => {
-    const t = cart.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
-    return t.toFixed(2);
-  }, [cart]);
+  const clearCart = () => setCart([]);
 
   const handleCheckout = () => {
-    navigate("/checkout", { state: { cart, restaurant, totalPrice } });
+    navigate("/checkout", {
+      state: {
+        cart,
+        restaurant,
+        totalPrice: Number(totalPrice.toFixed(2)),
+      },
+    });
   };
 
-  if (!restaurant) {
+  if (loading) {
     return (
-      <div style={STUDENT_LAYOUT.page}>
-        <div style={STUDENT_LAYOUT.container}>
-          <div style={STUDENT_LAYOUT.card}>Loading...</div>
+      <div className="restaurant-menu-page">
+        <div className="restaurant-menu-container">
+          <div className="rm-card rm-feedback">Loading restaurant menu...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!restaurant || error) {
+    return (
+      <div className="restaurant-menu-page">
+        <div className="restaurant-menu-container">
+          <div className="rm-card rm-feedback rm-feedback--error">{error || "Restaurant not found."}</div>
+          <button type="button" className="rm-btn rm-btn--outline" onClick={() => navigate("/restaurants")}>
+            Back to Restaurants
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={STUDENT_LAYOUT.page}>
-      <div style={{ ...STUDENT_LAYOUT.container, maxWidth: 1400 }}>
-        <div style={styles.header}>
-          <div>
-            <h1 style={styles.title}>{restaurant.name}</h1>
-            <p style={styles.sub}>Pick meals and build your cart.</p>
-          </div>
-          <span style={STUDENT_LAYOUT.pill}>{cart.length} items</span>
-        </div>
-
-        <div style={styles.layout}>
-          {/* Menu */}
-          <div style={STUDENT_LAYOUT.card}>
-            <div style={STUDENT_LAYOUT.cardHeader}>
-              <div style={STUDENT_LAYOUT.cardTitle}>Menu</div>
-            </div>
-
-            <div style={styles.grid}>
-              {menuItems.length > 0 ? (
-                menuItems.map((item) => (
-                  <div key={item.id} style={styles.menuCard}>
-                    {item.image_url ? (
-                      <img src={item.image_url} alt={item.name} style={styles.image} />
-                    ) : (
-                      <div style={styles.imagePlaceholder}>No Image</div>
-                    )}
-
-                    <div style={styles.menuBody}>
-                      <div style={styles.itemName}>{item.name}</div>
-                      <div style={styles.desc}>{item.description}</div>
-                      <div style={styles.price}>LKR {Number(item.price).toLocaleString()}</div>
-
-                      <button onClick={() => addToCart(item)} style={{ ...STUDENT_LAYOUT.primaryBtn, width: "100%" }}>
-                        Add to Cart
-                      </button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div style={{ padding: 20, color: THEME.muted, fontWeight: 800 }}>No menu items available</div>
-              )}
-            </div>
+    <div className="restaurant-menu-page">
+      <div className="restaurant-menu-container">
+        <header className="rm-hero rm-card">
+          <div className="rm-hero__media">
+            {restaurant.image ? (
+              <img src={restaurant.image} alt={restaurant.name} />
+            ) : (
+              <div className="rm-hero__placeholder">No Restaurant Image</div>
+            )}
           </div>
 
-          {/* Cart */}
-          <div style={{ ...STUDENT_LAYOUT.card, position: "sticky", top: 90, height: "fit-content" }}>
-            <div style={STUDENT_LAYOUT.cardHeader}>
-              <div style={STUDENT_LAYOUT.cardTitle}>Cart</div>
-              <span style={STUDENT_LAYOUT.pill}>LKR {Number(totalPrice).toLocaleString()}</span>
+          <div className="rm-hero__content">
+            <Link to="/restaurants" className="rm-back-link">
+              <ArrowLeft size={14} /> Back to Restaurants
+            </Link>
+
+            <h1>{restaurant.name}</h1>
+            <div className="rm-hero__meta">
+              <span>
+                <MapPin size={14} /> {restaurant.address || "Address unavailable"}
+              </span>
+              <span>
+                <Phone size={14} /> {restaurant.phone || "No phone"}
+              </span>
+              <span>
+                <Mail size={14} /> {restaurant.email || "No email"}
+              </span>
+            </div>
+          </div>
+        </header>
+
+        <section className="rm-toolbar rm-card">
+          <div className="rm-search">
+            <Search size={15} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search by dish name, category, or description"
+            />
+          </div>
+
+          <div className="rm-categories">
+            {categories.map((category) => (
+              <button
+                key={category}
+                type="button"
+                className={`rm-chip ${activeCategory === category ? "is-active" : ""}`}
+                onClick={() => setActiveCategory(category)}
+              >
+                {category === "all" ? "All" : prettifyCategory(category)}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <div className="rm-layout">
+          <section className="rm-menu rm-card">
+            <div className="rm-menu__head">
+              <h2>Menu Items</h2>
+              <span>{filteredItems.length} items</span>
+            </div>
+
+            {filteredItems.length === 0 ? (
+              <div className="rm-feedback">No menu items found for this search.</div>
+            ) : (
+              <div className="rm-menu-grid">
+                {filteredItems.map((item) => {
+                  const quantity = getItemQuantity(item.id);
+                  const categoryLabel = prettifyCategory(item.categoryKey);
+
+                  return (
+                    <article key={item.id} className="rm-item-card">
+                      <div className="rm-item-card__media">
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.name} />
+                        ) : (
+                          <div className="rm-item-card__empty">No Food Image</div>
+                        )}
+                      </div>
+
+                      <div className="rm-item-card__body">
+                        <h3>{item.name}</h3>
+                        <p className="rm-item-card__category">{categoryLabel}</p>
+                        <p className="rm-item-card__desc">
+                          {item.cleanedDescription || "Freshly prepared and available now."}
+                        </p>
+                        <p className="rm-item-card__price">{formatCurrency(item.price)}</p>
+
+                        {quantity === 0 ? (
+                          <button
+                            type="button"
+                            className="rm-btn rm-btn--primary"
+                            onClick={() => addToCart(item)}
+                          >
+                            Add to Cart
+                          </button>
+                        ) : (
+                          <div className="rm-qty-control">
+                            <button
+                              type="button"
+                              className="rm-icon-btn"
+                              onClick={() => updateQuantity(item.id, quantity - 1)}
+                            >
+                              <Minus size={14} />
+                            </button>
+                            <span>{quantity}</span>
+                            <button
+                              type="button"
+                              className="rm-icon-btn"
+                              onClick={() => updateQuantity(item.id, quantity + 1)}
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <aside className="rm-cart rm-card">
+            <div className="rm-cart__head">
+              <h2>
+                <ShoppingCart size={16} /> Cart
+              </h2>
+              <span>{cartCount} items</span>
             </div>
 
             {cart.length === 0 ? (
-              <div style={{ color: THEME.muted, fontWeight: 800 }}>Cart is empty</div>
+              <div className="rm-cart__empty">
+                <p>Your cart is empty.</p>
+                <small>Add dishes from the menu to continue.</small>
+              </div>
             ) : (
               <>
-                <div style={styles.cartList}>
+                <div className="rm-cart-list">
                   {cart.map((item) => (
-                    <div key={item.id} style={styles.cartItem}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={styles.cartName}>{item.name}</div>
-                        <div style={styles.cartMeta}>
-                          LKR {Number(item.price).toLocaleString()} × {item.quantity}
-                        </div>
+                    <article key={item.id} className="rm-cart-item">
+                      <div>
+                        <h3>{item.name}</h3>
+                        <p>
+                          {formatCurrency(item.price)} x {item.quantity}
+                        </p>
                       </div>
 
-                      <div style={styles.cartActions}>
-                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} style={styles.qtyBtn}>
-                          -
+                      <div className="rm-cart-item__actions">
+                        <button
+                          type="button"
+                          className="rm-icon-btn"
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        >
+                          <Minus size={14} />
                         </button>
-                        <span style={styles.qtyText}>{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} style={styles.qtyBtn}>
-                          +
+                        <span>{item.quantity}</span>
+                        <button
+                          type="button"
+                          className="rm-icon-btn"
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        >
+                          <Plus size={14} />
                         </button>
-                        <button onClick={() => removeFromCart(item.id)} style={styles.removeBtn}>
-                          Remove
+                        <button
+                          type="button"
+                          className="rm-remove-btn"
+                          onClick={() => removeFromCart(item.id)}
+                        >
+                          <Trash2 size={13} /> Remove
                         </button>
                       </div>
-                    </div>
+                    </article>
                   ))}
                 </div>
 
-                <div style={styles.totalBox}>
-                  <div style={styles.totalRow}>
-                    <span style={styles.totalLabel}>Total</span>
-                    <span style={styles.totalValue}>LKR {Number(totalPrice).toLocaleString()}</span>
+                <div className="rm-cart__summary">
+                  <div className="rm-total-row">
+                    <span>Total</span>
+                    <strong>{formatCurrency(totalPrice)}</strong>
                   </div>
 
-                  <button onClick={handleCheckout} style={{ ...STUDENT_LAYOUT.primaryBtn, width: "100%" }}>
-                    Checkout
-                  </button>
+                  <div className="rm-cart__buttons">
+                    <button
+                      type="button"
+                      className="rm-btn rm-btn--primary"
+                      onClick={handleCheckout}
+                    >
+                      Checkout
+                    </button>
+                    <button type="button" className="rm-btn rm-btn--outline" onClick={clearCart}>
+                      Clear Cart
+                    </button>
+                  </div>
                 </div>
               </>
             )}
-          </div>
+          </aside>
         </div>
       </div>
     </div>
   );
-};
-
-const styles = {
-  header: {
-    display: "flex",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    gap: 12,
-    margin: "6px 0 12px",
-  },
-  title: { margin: 0, fontSize: 26, fontWeight: 900, color: THEME.text },
-  sub: { margin: "6px 0 0", color: THEME.muted, fontWeight: 800 },
-
-  layout: { display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12, alignItems: "start" },
-
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 },
-  menuCard: {
-    background: THEME.cardSolid,
-    border: `1px solid ${THEME.border}`,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  image: { width: "100%", height: 160, objectFit: "cover", display: "block" },
-  imagePlaceholder: {
-    height: 160,
-    display: "grid",
-    placeItems: "center",
-    background: "linear-gradient(135deg, rgba(90,169,255,0.18), rgba(255,255,255,0.8))",
-    color: THEME.muted,
-    fontWeight: 900,
-  },
-  menuBody: { padding: 12, display: "grid", gap: 8 },
-  itemName: { fontWeight: 900, color: THEME.text },
-  desc: { color: THEME.muted, fontWeight: 700, fontSize: 12, minHeight: 34 },
-  price: { fontWeight: 900, color: THEME.navy },
-
-  cartList: { display: "grid", gap: 10 },
-  cartItem: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 10,
-    padding: 10,
-    borderRadius: 14,
-    border: `1px solid ${THEME.border}`,
-    background: "rgba(255,255,255,0.90)",
-  },
-  cartName: { fontWeight: 900, color: THEME.text },
-  cartMeta: { marginTop: 4, color: THEME.muted, fontWeight: 800, fontSize: 12 },
-
-  cartActions: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" },
-  qtyBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    border: `1px solid ${THEME.border}`,
-    background: THEME.pill,
-    color: THEME.navy,
-    fontWeight: 900,
-    cursor: "pointer",
-  },
-  qtyText: { fontWeight: 900, color: THEME.text, minWidth: 16, textAlign: "center" },
-  removeBtn: {
-    height: 34,
-    padding: "0 10px",
-    borderRadius: 12,
-    border: `1px solid ${THEME.border}`,
-    background: "rgba(239,68,68,0.14)",
-    color: "#b91c1c",
-    fontWeight: 900,
-    cursor: "pointer",
-  },
-
-  totalBox: { marginTop: 12, paddingTop: 12, borderTop: `1px solid ${THEME.border}` },
-  totalRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  totalLabel: { fontWeight: 900, color: THEME.muted },
-  totalValue: { fontWeight: 900, color: THEME.text },
-};
-
-export default RestaurantMenu;
+}

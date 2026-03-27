@@ -24,7 +24,7 @@ import RestaurantMenu from './pages/RestaurantMenu';
 import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
 import Tracking from './pages/Tracking';
-import DeliveryDashboard from './pages/DeliveryDashboard';
+import DeliveryApp from './delivery_partner/App';
 import RestaurantDashboard from './pages/RestaurantDashboard';
 import MenuManagementPage from './pages/MenuManagementPage';
 import OrdersPage from './pages/OrdersPage';
@@ -37,7 +37,6 @@ import OwnerAnalytics from './pages/owner/OwnerAnalytics';
 import OwnerVerification from './pages/owner/OwnerVerification';
 import OwnerProfile from './pages/owner/OwnerProfile';
 import OwnerBookings from './pages/owner/OwnerBookings';
-import OwnerSettings from './pages/owner/OwnerSettings';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminHome from './pages/admin/AdminHome';
 import AdminHome2 from './pages/admin/AdminHome2';
@@ -48,6 +47,8 @@ import UsersManagement from './pages/admin/UsersManagement';
 import ReportsQueue from './pages/admin/ReportsQueue';
 import AdminLogs from './pages/admin/AdminLogs';
 import AdminProfile from './pages/admin/AdminProfile';
+import AdminOrdersMonitor from './pages/admin/AdminOrdersMonitor';
+import AdminAnalytics from './pages/admin/AdminAnalytics';
 import RestaurantProfile from './pages/RestaurantProfile';
 import RestaurantReviews from './pages/RestaurantReviews';
 import OwnerReviews from './pages/owner/OwnerReviews';
@@ -56,10 +57,10 @@ import EarningsPage from './pages/EarningsPage';
 import SettingsPage from './pages/SettingsPage';
 
 const ProtectedLayout = ({ children }) => (
-  <>
+  <div className="student-shell">
     <Navbar />
-    {children}
-  </>
+    <main className="student-shell__content">{children}</main>
+  </div>
 );
 
 function App() {
@@ -86,7 +87,6 @@ function App() {
               <Route path="reviews" element={<OwnerReviews />} />
               <Route path="profile" element={<OwnerProfile />} />
               <Route path="bookings" element={<OwnerBookings />} />
-              <Route path="settings" element={<OwnerSettings />} />
             </Route>
             
             <Route path="/student/dashboard" element={<PrivateRoute><ProtectedLayout><Dashboard /></ProtectedLayout></PrivateRoute>} />
@@ -102,7 +102,7 @@ function App() {
             <Route path="/reviews" element={<PrivateRoute><ProtectedLayout><StudentReviews /></ProtectedLayout></PrivateRoute>} />
             <Route path="/tracking/:orderId" element={<PrivateRoute><ProtectedLayout><Tracking /></ProtectedLayout></PrivateRoute>} />
             
-            <Route path="/delivery/dashboard" element={<PrivateRoute><DeliveryDashboard /></PrivateRoute>} />
+            <Route path="/delivery/*" element={<DeliveryApp />} />
             
             <Route path="/restaurant" element={<PrivateRoute><RestaurantLayout /></PrivateRoute>}>
               <Route index element={<Navigate to="/restaurant/dashboard" replace />} />
@@ -125,8 +125,8 @@ function App() {
               <Route path="users" element={<UsersManagement />} />
               <Route path="reports" element={<ReportsQueue />} />
               <Route path="logs" element={<AdminLogs />} />
-              <Route path="orders" element={<PlaceholderPage title="Orders Monitor" />} />
-              <Route path="analytics" element={<PlaceholderPage title="Analytics" />} />
+              <Route path="orders" element={<AdminOrdersMonitor />} />
+              <Route path="analytics" element={<AdminAnalytics />} />
               <Route path="profile" element={<AdminProfile />} />
             </Route>
             

@@ -30,21 +30,28 @@ class StudentProfile(models.Model):
     gender_preference = models.CharField(max_length=10, choices=GENDER_CHOICES, default='any')
     budget = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     phone_number = models.CharField(max_length=20)
+    display_image = models.ImageField(upload_to='student_profiles/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class HostelOwnerProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='hostel_profile')
     hostel_name = models.CharField(max_length=255)
     address = models.TextField()
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     phone_number = models.CharField(max_length=20)
     business_reg_no = models.CharField(max_length=100, blank=True)
+    display_image = models.ImageField(upload_to='owner_profiles/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class RestaurantOwnerProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='restaurant_profile')
     restaurant_name = models.CharField(max_length=255)
     address = models.TextField()
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     phone_number = models.CharField(max_length=20)
+    display_image = models.ImageField(upload_to='owner_profiles/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class DeliveryProfile(models.Model):
@@ -52,6 +59,7 @@ class DeliveryProfile(models.Model):
     vehicle_type = models.CharField(max_length=50)
     license_no = models.CharField(max_length=100)
     phone_number = models.CharField(max_length=20)
+    display_image = models.ImageField(upload_to='owner_profiles/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 # Keep old Profile for backward compatibility

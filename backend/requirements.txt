@@ -9,3 +9,5 @@ channels-redis==4.1.0
 daphne==4.0.0
 Pillow==10.1.0
 django-filter==23.3
+python-dotenv==1.2.2
+requests==2.32.5

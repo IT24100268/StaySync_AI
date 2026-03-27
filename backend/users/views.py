@@ -2,27 +2,91 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.views import APIView
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from .models import User
 from .serializers import RegisterSerializer, UserSerializer, PendingUserSerializer
+from admin_panel.utils import create_admin_log
+
+
+def get_effective_role(user):
+    if user.is_staff or user.is_superuser:
+        return 'administrator'
+    return user.user_type
+
+
+def normalize_coordinate(value, field_name):
+    if value in (None, ''):
+        return None
+
+    try:
+        numeric_value = float(value)
+    except (TypeError, ValueError):
+        raise ValueError('Latitude and longitude must be valid numbers.')
+
+    if field_name == 'latitude' and not (-90 <= numeric_value <= 90):
+        raise ValueError('Latitude must be between -90 and 90.')
+    if field_name == 'longitude' and not (-180 <= numeric_value <= 180):
+        raise ValueError('Longitude must be between -180 and 180.')
+
+    return numeric_value
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        profile_data = request.data.get('profile')
+        extracted_profile_data = {}
+        for key in request.data.keys():
+            if key.startswith('profile.'):
+                extracted_profile_data[key.split('.', 1)[1]] = request.data.get(key)
+            elif key.startswith('profile[') and key.endswith(']'):
+                extracted_profile_data[key[8:-1]] = request.data.get(key)
+
+        if isinstance(profile_data, dict):
+            profile_data = {**profile_data, **extracted_profile_data}
+        else:
+            profile_data = extracted_profile_data
+
+        display_image = (
+            request.FILES.get('profile.display_image')
+            or request.FILES.get('profile[display_image]')
+            or request.FILES.get('display_image')
+        )
+        if display_image:
+            profile_data['display_image'] = display_image
+
+        payload = {
+            'email': request.data.get('email'),
+            'username': request.data.get('username'),
+            'password': request.data.get('password'),
+            'user_type': request.data.get('user_type'),
+            'profile': profile_data,
+        }
+
+        serializer = self.get_serializer(data=payload)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         
-        print(f"✅ User created: {user.username}, Type: {user.user_type}, Approved: {user.is_approved}")
-        
         response_data = {
-            'user': UserSerializer(user).data,
+            'user': UserSerializer(user, context={'request': request}).data,
             'message': 'Registration successful!' if user.is_approved else 'Registration successful. Please wait for admin approval to login.'
         }
+
+        create_admin_log(
+            actor=user,
+            action='User registered',
+            target_type='USER',
+            target_id=user.id,
+            details={
+                'user_type': get_effective_role(user),
+                'is_approved': user.is_approved,
+            }
+        )
         
         return Response(response_data, status=status.HTTP_201_CREATED)
 
@@ -45,18 +109,38 @@ class LoginView(APIView):
                 {'detail': 'Invalid credentials'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
+
+        if user.is_blocked and not user.is_superuser and not user.is_staff:
+            print(f"User {username} is blocked")
+            return Response(
+                {
+                    'detail': 'Your account has been blocked. Please contact support or the admin team.',
+                    'reason': user.block_reason or 'No reason was provided.',
+                    'code': 'account_blocked',
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
         
         # Check if user is approved
         if not user.is_approved and not user.is_superuser and not user.is_staff:
             print(f"User {username} not approved")
             return Response(
-                {'detail': 'Account pending admin approval'},
+                {'detail': 'Account pending admin approval', 'code': 'account_pending'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
         print(f"Login successful for {username}")
         refresh = RefreshToken.for_user(user)
-        user_data = UserSerializer(user).data
+        user_data = UserSerializer(user, context={'request': request}).data
+
+        create_admin_log(
+            actor=user,
+            action='User logged in',
+            target_type='USER',
+            target_id=user.id,
+            details={'user_type': get_effective_role(user)}
+        )
+
         return Response({
             'refresh': str(refresh),
             'access': str(refresh.access_token),
@@ -69,6 +153,7 @@ class LoginView(APIView):
 class ProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = UserSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_object(self):
         return self.request.user
@@ -76,24 +161,39 @@ class ProfileView(generics.RetrieveUpdateAPIView):
     def update(self, request, *args, **kwargs):
         user = request.user
         try:
+            restaurant_sync_payload = None
             update_fields = []
+            changed_fields = []
             for field in ('username', 'email', 'first_name', 'last_name'):
                 if field in request.data:
                     setattr(user, field, request.data[field])
                     update_fields.append(field)
+                    changed_fields.append(field)
             if update_fields:
                 user.save(update_fields=update_fields)
 
-            profile_data = request.data.get('profile', {})
-            if profile_data and isinstance(profile_data, dict):
+            profile_data = request.data.get('profile')
+            extracted_profile_data = {}
+            for key in request.data.keys():
+                if key.startswith('profile.'):
+                    extracted_profile_data[key.split('.', 1)[1]] = request.data.get(key)
+                elif key.startswith('profile[') and key.endswith(']'):
+                    extracted_profile_data[key[8:-1]] = request.data.get(key)
+
+            if isinstance(profile_data, dict):
+                profile_data = {**profile_data, **extracted_profile_data}
+            else:
+                profile_data = extracted_profile_data
+
+            if isinstance(profile_data, dict):
                 profile_obj = None
                 profile_fields = []
                 if user.user_type == 'hostel_owner' and hasattr(user, 'hostel_profile'):
                     profile_obj = user.hostel_profile
-                    allowed = ('hostel_name', 'address', 'phone_number', 'business_reg_no')
+                    allowed = ('hostel_name', 'address', 'latitude', 'longitude', 'phone_number', 'business_reg_no')
                 elif user.user_type == 'restaurant_owner' and hasattr(user, 'restaurant_profile'):
                     profile_obj = user.restaurant_profile
-                    allowed = ('restaurant_name', 'address', 'phone_number')
+                    allowed = ('restaurant_name', 'address', 'latitude', 'longitude', 'phone_number')
                 elif user.user_type == 'student' and hasattr(user, 'student_profile'):
                     profile_obj = user.student_profile
                     allowed = ('university', 'gender_preference', 'budget', 'phone_number')
@@ -105,12 +205,73 @@ class ProfileView(generics.RetrieveUpdateAPIView):
                 if profile_obj:
                     for f in allowed:
                         if f in profile_data:
-                            setattr(profile_obj, f, profile_data[f])
+                            value = profile_data[f]
+                            if f in ('latitude', 'longitude'):
+                                value = normalize_coordinate(value, f)
+                            setattr(profile_obj, f, value)
                             profile_fields.append(f)
-                    if profile_fields:
-                        profile_obj.save(update_fields=profile_fields)
+                            changed_fields.append(f'profile.{f}')
 
-            return Response(UserSerializer(user).data)
+                    profile_image = (
+                        request.FILES.get('profile.display_image')
+                        or request.FILES.get('profile[display_image]')
+                        or request.FILES.get('display_image')
+                    )
+                    remove_profile_image = str(
+                        request.data.get('remove_display_image', request.data.get('profile.remove_display_image', ''))
+                    ).lower() in ('1', 'true', 'yes')
+
+                    if hasattr(profile_obj, 'display_image'):
+                        if remove_profile_image and profile_obj.display_image:
+                            profile_obj.display_image.delete(save=False)
+                            profile_obj.display_image = None
+                            profile_fields.append('display_image')
+                            changed_fields.append('profile.display_image')
+                        elif profile_image:
+                            profile_obj.display_image = profile_image
+                            profile_fields.append('display_image')
+                            changed_fields.append('profile.display_image')
+
+                    if profile_fields:
+                        profile_obj.save(update_fields=list(dict.fromkeys(profile_fields)))
+
+                    if user.user_type == 'restaurant_owner':
+                        restaurant_sync_payload = {
+                            'name': getattr(profile_obj, 'restaurant_name', '') or user.username,
+                            'email': user.email or '',
+                            'phone': getattr(profile_obj, 'phone_number', '') or '',
+                            'address': getattr(profile_obj, 'address', '') or '',
+                            'latitude': getattr(profile_obj, 'latitude', None),
+                            'longitude': getattr(profile_obj, 'longitude', None),
+                        }
+
+            if restaurant_sync_payload:
+                from restaurants.models import Restaurant
+
+                restaurant, created = Restaurant.objects.get_or_create(
+                    owner=user,
+                    defaults=restaurant_sync_payload,
+                )
+
+                if not created:
+                    restaurant_fields = []
+                    for field, value in restaurant_sync_payload.items():
+                        if getattr(restaurant, field) != value:
+                            setattr(restaurant, field, value)
+                            restaurant_fields.append(field)
+                    if restaurant_fields:
+                        restaurant.save(update_fields=restaurant_fields)
+
+            if changed_fields:
+                create_admin_log(
+                    actor=user,
+                    action='Profile updated',
+                    target_type='USER',
+                    target_id=user.id,
+                    details={'updated_fields': changed_fields}
+                )
+
+            return Response(UserSerializer(user, context={'request': request}).data)
         except Exception as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -131,7 +292,7 @@ class ApproveUserView(APIView):
             user.save()
             return Response({
                 'message': 'User approved successfully',
-                'user': UserSerializer(user).data
+                'user': UserSerializer(user, context={'request': request}).data
             })
         except User.DoesNotExist:
             return Response(

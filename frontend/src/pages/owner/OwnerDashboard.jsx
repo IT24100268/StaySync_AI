@@ -1,216 +1,586 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Home, Eye, MessageSquare, TrendingUp, ArrowUpRight,
-  CalendarDays, CalendarCheck, CalendarX, Clock,
-  ChevronRight, Star, MapPin, BedDouble, Users,
-  Bell, Wrench, UserCheck, Plus,
+  ArrowRight,
+  ArrowUpRight,
+  BedDouble,
+  CalendarCheck2,
+  CalendarClock,
+  CheckCircle2,
+  Eye,
+  MailQuestion,
+  MapPin,
+  MessageSquare,
+  Plus,
+  TrendingUp,
 } from "lucide-react";
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  AreaChart, Area, CartesianGrid,
-} from "recharts";
-import { cardCls, cardStyle, btnGold, btnOutline, btnGhost, Avatar } from "./ownerTheme.jsx";
+import { Link } from "react-router-dom";
+import ownerApi from "../../api/ownerApi";
+import { useAuth } from "../../context/AuthContext";
+import { Avatar, cardCls, cardStyle, Skeleton } from "./ownerTheme.jsx";
 
-/* ───────── DATA (UNCHANGED) ───────── */
-const STATS = [
-  { label: "Total Listings", value: "5", delta: "+1 from last week", icon: Home },
-  { label: "Total Views", value: "820", delta: "+120 this week", icon: Eye },
-  { label: "Total Enquiries", value: "12", delta: "+4 this week", icon: MessageSquare },
-  { label: "Monthly Earnings", value: "LKR 56,300", delta: "+15% this month", icon: TrendingUp, gold: true },
-];
+const commonDashboardImage =
+  "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=1400&q=80";
+const JAFFNA_UNIVERSITY_CENTER = { lat: 9.6848, lng: 80.0220 };
 
-const OCCUPANCY = [
-  { day: "Mon", single: 60, shared: 40 },
-  { day: "Tue", single: 55, shared: 50 },
-  { day: "Wed", single: 70, shared: 45 },
-  { day: "Thu", single: 65, shared: 60 },
-  { day: "Fri", single: 80, shared: 70 },
-  { day: "Sat", single: 90, shared: 75 },
-  { day: "Sun", single: 85, shared: 65 },
-];
+function money(value) {
+  return `LKR ${Number(value || 0).toLocaleString()}`;
+}
 
-const ENQUIRIES = [
-  { id: 1, name: "John Silva", room: "Shared Dorm", detail: "3 nights · Mon", status: "Reply", color: "#c9a84c" },
-  { id: 2, name: "Michael Perera", room: "Single Room", detail: "5 nights · Wed", status: "Pending", color: "#6b7280" },
-];
+function formatWhen(dateValue) {
+  if (!dateValue) return "Recently";
+  const diffMinutes = Math.max(1, Math.floor((Date.now() - new Date(dateValue).getTime()) / 60000));
+  if (diffMinutes < 60) return `${diffMinutes} min ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} hr ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+}
 
-const BOOKINGS = [
-  { label: "Upcoming Bookings", value: 22, icon: CalendarDays },
-  { label: "Check-in Today", value: 3, icon: CalendarCheck },
-];
+function statusChip(status) {
+  const value = String(status || "").toLowerCase();
+  const map = {
+    approved: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    pending: "border-amber-200 bg-amber-50 text-amber-700",
+    rejected: "border-rose-200 bg-rose-50 text-rose-700",
+  };
+  return map[value] || "border-[#ece5d8] bg-[#f8f6f1] text-[#7f786b]";
+}
 
-/* ───────── STAT CARD (UPDATED) ───────── */
-function StatCard({ label, value, delta, icon: Icon, gold }) {
+function normalizeStatus(status) {
+  return String(status || "").trim().toLowerCase();
+}
+
+function StatCard({ label, value, note, icon: Icon, accent = false }) {
   return (
-    <div className={cardCls("p-5 hover:shadow-md transition")} style={cardStyle()}>
-      <div className="flex justify-between">
+    <div
+      className={cardCls("p-5 transition-all duration-300 hover:-translate-y-0.5")}
+      style={cardStyle(accent)}
+    >
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold text-[#6f6a5f]">{label}</p>
-          <p className={`text-2xl font-bold mt-2 ${gold ? "text-[#c9a84c]" : "text-[#1e1d1a]"}`}>
+          <p className="text-sm font-medium text-[#6f6a5f]">{label}</p>
+          <p className={`mt-2 text-[42px] font-black leading-none tracking-tight ${accent ? "text-[#b58c2f]" : "text-[#1e1d1a]"}`}>
             {value}
           </p>
-          <p className="text-xs text-[#9b9588] mt-1 flex items-center gap-1">
-            <ArrowUpRight size={12} /> {delta}
+          <p className="mt-3 flex items-center gap-1 text-xs font-medium text-[#8d8678]">
+            <ArrowUpRight size={12} className={accent ? "text-[#b58c2f]" : "text-[#8d8678]"} />
+            {note}
           </p>
         </div>
-
-        <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-[#fff8e8]">
-          <Icon size={18} className="text-[#c9a84c]" />
+        <div
+          className="grid h-12 w-12 place-items-center rounded-[16px]"
+          style={{
+            background: accent ? "#fff7df" : "#f7f4ee",
+            border: `1px solid ${accent ? "#e7d29d" : "#ebe4d8"}`,
+          }}
+        >
+          <Icon size={20} className={accent ? "text-[#b58c2f]" : "text-[#6f6a5f]"} />
         </div>
       </div>
     </div>
   );
 }
 
-/* ───────── MAIN ───────── */
+function Panel({ title, subtitle, className = "", children, dark = false }) {
+  return (
+    <section
+      className={`${cardCls(`p-5 ${className}`)} `}
+      style={
+        dark
+          ? {
+              background: "linear-gradient(180deg,#1a1a1f 0%, #17171b 100%)",
+              border: "1px solid rgba(212,175,55,0.12)",
+              boxShadow: "0 18px 44px rgba(14,14,18,0.18)",
+            }
+          : cardStyle()
+      }
+    >
+      <div className="mb-4">
+        <h3 className={`text-[18px] font-extrabold tracking-tight ${dark ? "text-white" : "text-[#1e1d1a]"}`}>{title}</h3>
+        {subtitle ? <p className={`mt-1 text-sm ${dark ? "text-white/55" : "text-[#6f6a5f]"}`}>{subtitle}</p> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export default function OwnerDashboard() {
-  const [month, setMonth] = useState("April");
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState({ listings: 0, views: 0, enquiries: 0, revenue: 0 });
+  const [listings, setListings] = useState([]);
+  const [enquiries, setEnquiries] = useState([]);
+
+  useEffect(() => {
+    const loadDashboard = async () => {
+      setLoading(true);
+      try {
+        const [summaryRes, listingsRes, enquiriesRes] = await Promise.all([
+          ownerApi.get("/owner/analytics/summary/"),
+          ownerApi.get("/owner/listings/"),
+          ownerApi.get("/owner/enquiries/"),
+        ]);
+
+        setSummary(summaryRes.data || {});
+        setListings(listingsRes.data?.results || listingsRes.data || []);
+        setEnquiries(enquiriesRes.data || []);
+      } catch (error) {
+        console.error("Failed to load owner dashboard", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboard();
+  }, []);
+
+  const ownerName = user?.first_name || user?.username || "Owner";
+  const dashboardImage = user?.profile?.display_image || commonDashboardImage;
+  const hostelContact = user?.profile?.phone_number || "Phone not updated";
+  const hostelLocation = user?.profile?.address || "Location not updated";
+  const hostelLatitude = Number.parseFloat(user?.profile?.latitude);
+  const hostelLongitude = Number.parseFloat(user?.profile?.longitude);
+  const hasHostelLocation = Number.isFinite(hostelLatitude) && Number.isFinite(hostelLongitude);
+  const hostelMapCenter = hasHostelLocation
+    ? { lat: hostelLatitude, lng: hostelLongitude }
+    : JAFFNA_UNIVERSITY_CENTER;
+  const hostelMapUrl = `https://maps.google.com/maps?q=${hostelMapCenter.lat},${hostelMapCenter.lng}&z=${
+    hasHostelLocation ? 16 : 13
+  }&output=embed`;
+
+  const derived = useMemo(() => {
+    const approvedBookings = enquiries.filter((item) => normalizeStatus(item.status) === "approved");
+    const pendingBookings = enquiries.filter((item) => normalizeStatus(item.status) === "pending");
+    const rejectedBookings = enquiries.filter((item) => normalizeStatus(item.status) === "rejected");
+    const activeListings = listings.filter((item) => item.available || normalizeStatus(item.status) === "approved");
+    const topListing = listings[0] || null;
+
+    const estimatedRevenue = approvedBookings.reduce((sum, booking) => {
+      const room = listings.find((item) => item.id === booking.room_id);
+      return sum + Number(room?.rent || room?.price || 0);
+    }, 0);
+
+    const averageRent =
+      listings.length > 0
+        ? listings.reduce((sum, room) => sum + Number(room.rent || room.price || 0), 0) / listings.length
+        : 0;
+
+    return {
+      approvedBookings,
+      pendingBookings,
+      rejectedBookings,
+      activeListings,
+      estimatedRevenue,
+      averageRent,
+      topListing,
+      featuredListings: listings.slice(0, 2),
+      latestApproved: approvedBookings.slice(0, 2),
+    };
+  }, [enquiries, listings]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton h="h-28" rounded="rounded-[24px]" />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {[1, 2, 3, 4].map((item) => (
+            <Skeleton key={item} h="h-36" rounded="rounded-[24px]" />
+          ))}
+        </div>
+        <div className="grid gap-6 xl:grid-cols-[1.6fr_0.8fr]">
+          <Skeleton h="h-[320px]" rounded="rounded-[24px]" />
+          <Skeleton h="h-[320px]" rounded="rounded-[24px]" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      <section
+        className={cardCls("p-6 md:p-7")}
+        style={{
+          background: "linear-gradient(135deg,#ffffff 0%, #fcfaf6 100%)",
+          border: "1px solid #ece3d3",
+          boxShadow: "0 16px 38px rgba(32,24,12,0.06)",
+        }}
+      >
+        <p className="text-sm font-medium text-[#7f786b]">Here&apos;s what&apos;s happening with your hostel today.</p>
+        <h1 className="mt-2 text-4xl font-black tracking-tight text-[#1e1d1a]">
+          Welcome back, <span className="text-[#b58c2f]">{ownerName}!</span>
+        </h1>
+      </section>
 
-      {/* HEADER */}
-      <div className="flex justify-between items-end">
-        <div>
-          <p className="text-sm text-[#6f6a5f]">Here’s your hostel overview</p>
-          <h1 className="text-3xl font-bold text-[#1e1d1a]">
-            Welcome back, <span className="text-[#c9a84c]">Liam</span>
-          </h1>
-        </div>
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Total Listings"
+          value={summary.listings || listings.length}
+          note={`${derived.activeListings.length} currently active`}
+          icon={BedDouble}
+        />
+        <StatCard
+          label="Total Views"
+          value={Number(summary.views || 0).toLocaleString()}
+          note="Across all published listings"
+          icon={Eye}
+        />
+        <StatCard
+          label="Total Enquiries"
+          value={summary.enquiries || enquiries.length}
+          note={`${derived.pendingBookings.length} waiting for review`}
+          icon={MessageSquare}
+        />
+        <StatCard
+          label="Estimated Revenue"
+          value={money(derived.estimatedRevenue || summary.revenue || 0)}
+          note={`${derived.approvedBookings.length} approved bookings contributing`}
+          icon={TrendingUp}
+          accent
+        />
+      </section>
 
-        <button
-          className={btnGold}
-          style={{ background: "linear-gradient(135deg,#c9a84c,#a07830)" }}
-        >
-          <Plus size={14} /> New Listing
-        </button>
-      </div>
+      <Panel
+        title="Hostel Snapshot"
+        subtitle="Your shared hostel image and the latest room listings in one clean view."
+      >
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.95fr)]">
+          <div className="space-y-4">
+            <div className="overflow-hidden rounded-[24px] border border-[#ece3d3] bg-[#f8f5ef]">
+              <img
+                src={dashboardImage}
+                alt="Hostel dashboard overview"
+                className="h-[360px] w-full bg-[#f1eadf] object-contain"
+              />
+            </div>
 
-      {/* STATS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {STATS.map((s) => (
-          <StatCard key={s.label} {...s} />
-        ))}
-      </div>
-
-      {/* MAIN GRID */}
-      <div className="grid lg:grid-cols-[1fr_300px] gap-6">
-
-        {/* LEFT */}
-        <div className="space-y-6">
-
-          {/* ROOM CARD */}
-          <div className={cardCls("overflow-hidden")} style={cardStyle()}>
-            <img
-              src="https://images.unsplash.com/photo-1555854877-bab0e564b8d5"
-              className="h-52 w-full object-cover"
-            />
-
-            <div className="p-5">
-              <h3 className="text-lg font-bold text-[#1e1d1a]">
-                Premium Shared Dorm
-              </h3>
-              <p className="text-sm text-[#6f6a5f] flex items-center gap-1">
-                <MapPin size={12} /> Colombo
-              </p>
-
-              <div className="flex gap-2 mt-3">
-                <span className="text-xs bg-[#f5f5f5] px-3 py-1 rounded">
-                  <BedDouble size={12} /> 6 Beds
-                </span>
-                <span className="text-xs bg-[#f5f5f5] px-3 py-1 rounded">
-                  <Users size={12} /> 4 Occupied
-                </span>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-[18px] border border-[#ece3d3] bg-[#fcfbf8] px-4 py-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9b9588]">Active Listings</p>
+                <p className="mt-2 text-2xl font-black tracking-tight text-[#1e1d1a]">{derived.activeListings.length}</p>
               </div>
-
-              <div className="mt-4 flex gap-2">
-                <button className={btnOutline}>View</button>
-                <button className={btnGhost}>Edit</button>
+              <div className="rounded-[18px] border border-[#ece3d3] bg-[#fcfbf8] px-4 py-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9b9588]">Pending Requests</p>
+                <p className="mt-2 text-2xl font-black tracking-tight text-[#1e1d1a]">{derived.pendingBookings.length}</p>
+              </div>
+              <div className="rounded-[18px] border border-[#e7d29d] bg-[#fff8e8] px-4 py-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#9a6a00]">Estimated Revenue</p>
+                <p className="mt-2 text-2xl font-black tracking-tight text-[#1e1d1a]">
+                  {money(derived.estimatedRevenue || summary.revenue || 0)}
+                </p>
               </div>
             </div>
           </div>
 
-          {/* CHART */}
-          <div className={cardCls("p-5")} style={cardStyle()}>
-            <h3 className="font-bold mb-4 text-[#1e1d1a]">Room Occupancy</h3>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-[16px] font-extrabold tracking-tight text-[#1e1d1a]">Hostel Details</h4>
+              <span className="rounded-full border border-[#ece3d3] bg-[#fcfbf8] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#8d8678]">
+                Shared Profile
+              </span>
+            </div>
 
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={OCCUPANCY}>
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="single" fill="#c9a84c" />
-                <Bar dataKey="shared" fill="#e5e5e5" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* ENQUIRIES */}
-          <div className={cardCls("p-5")} style={cardStyle()}>
-            <h3 className="font-bold mb-4 text-[#1e1d1a]">Recent Enquiries</h3>
-
-            {ENQUIRIES.map((e) => (
-              <div key={e.id} className="flex justify-between py-3 border-b">
-                <div className="flex gap-3">
-                  <Avatar name={e.name} />
-                  <div>
-                    <p className="font-semibold">{e.name}</p>
-                    <p className="text-xs text-gray-500">{e.room}</p>
+            <div className="space-y-3">
+              <div className="rounded-[22px] border border-[#ece3d3] bg-[#fcfbf8] p-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-[16px] bg-white px-3 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9b9588]">Hostel Contact</p>
+                    <p className="mt-1 text-sm font-extrabold text-[#1e1d1a]">{hostelContact}</p>
+                  </div>
+                  <div className="rounded-[16px] bg-white px-3 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9b9588]">Hostel Location</p>
+                    <p className="mt-1 flex items-start gap-2 text-sm font-semibold text-[#1e1d1a]">
+                      <MapPin size={12} className="mt-0.5 shrink-0 text-[#b58c2f]" />
+                      <span className="line-clamp-2">{hostelLocation}</span>
+                    </p>
                   </div>
                 </div>
-
-                <button
-                  className="text-xs font-semibold"
-                  style={{ color: e.color }}
-                >
-                  {e.status}
-                </button>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* RIGHT */}
-        <div className="space-y-5">
-
-          {/* BOOKINGS */}
-          <div className={cardCls("p-5")} style={cardStyle()}>
-            <h3 className="font-bold mb-4 text-[#1e1d1a]">Bookings</h3>
-
-            {BOOKINGS.map((b) => {
-              const Icon = b.icon;
-              return (
-                <div key={b.label} className="flex justify-between py-2">
-                  <span className="flex items-center gap-2 text-sm">
-                    <Icon size={14} className="text-[#c9a84c]" />
-                    {b.label}
-                  </span>
-                  <span className="font-bold">{b.value}</span>
+              <div className="overflow-hidden rounded-[22px] border border-[#ece3d3] bg-[#fcfbf8]">
+                <div className="border-b border-[#ece3d3] px-4 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9b9588]">Hostel Map</p>
+                  <p className="mt-1 text-xs font-semibold text-[#6f6a5f]">
+                    {hasHostelLocation ? "Shared hostel profile location" : "Default view near University of Jaffna"}
+                  </p>
                 </div>
-              );
-            })}
+                <iframe
+                  title="Hostel location preview"
+                  src={hostelMapUrl}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="h-[240px] w-full border-0"
+                />
+              </div>
+            </div>
           </div>
-
-          {/* EARNINGS */}
-          <div className={cardCls("p-5")} style={cardStyle()}>
-            <h3 className="font-bold text-[#1e1d1a] mb-2">Earnings</h3>
-            <p className="text-2xl font-bold text-[#c9a84c]">LKR 56,300</p>
-
-            <ResponsiveContainer width="100%" height={120}>
-              <AreaChart data={[
-                { m: "Jan", v: 42000 },
-                { m: "Feb", v: 48000 },
-                { m: "Mar", v: 51000 },
-                { m: "Apr", v: 56300 },
-              ]}>
-                <Area type="monotone" dataKey="v" stroke="#c9a84c" fill="#c9a84c33" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
         </div>
-      </div>
+      </Panel>
+
+      <section className="grid gap-6 md:grid-cols-[minmax(0,1.45fr)_360px]">
+        <div className="space-y-6">
+          <Panel
+            title="Featured Rooms"
+            subtitle="Two room listings from your hostel with images and quick details."
+          >
+            {derived.featuredListings.length ? (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {derived.featuredListings.map((listing) => {
+                  const listingImage = listing.images?.[0]?.url || commonDashboardImage;
+                  return (
+                    <article
+                      key={listing.id}
+                      className="overflow-hidden rounded-[22px] border border-[#ece3d3] bg-[#fcfbf8]"
+                    >
+                      <div className="border-b border-[#ece3d3] bg-[#f8f5ef]">
+                        <img
+                          src={listingImage}
+                          alt={listing.title}
+                          className="h-[220px] w-full bg-[#f1eadf] object-contain"
+                        />
+                      </div>
+
+                      <div className="space-y-4 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-[20px] font-black tracking-tight text-[#1e1d1a]">
+                              {listing.title}
+                            </p>
+                            <p className="mt-1 line-clamp-2 text-sm text-[#6f6a5f]">
+                              {listing.description || "No description yet."}
+                            </p>
+                          </div>
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
+                              String(listing.status || "").toUpperCase() === "APPROVED"
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                : "border-amber-200 bg-amber-50 text-amber-700"
+                            }`}
+                          >
+                            {String(listing.status || "pending").replace(/_/g, " ")}
+                          </span>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-[16px] bg-white px-3 py-3">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9b9588]">Monthly Rent</p>
+                            <p className="mt-1 text-sm font-extrabold text-[#1e1d1a]">
+                              {money(listing.rent || listing.price)}
+                            </p>
+                          </div>
+                          <div className="rounded-[16px] bg-white px-3 py-3">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9b9588]">Location</p>
+                            <p className="mt-1 flex items-start gap-2 text-sm font-semibold text-[#1e1d1a]">
+                              <MapPin size={12} className="mt-0.5 shrink-0 text-[#b58c2f]" />
+                              <span className="line-clamp-2">{listing.address || listing.location || "Location not set"}</span>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-[22px] border border-dashed border-[#e7dfd1] bg-[#fbf8f2] px-6 py-14 text-center">
+                <p className="text-sm font-semibold text-[#6f6a5f]">Create your first listing to show room details here.</p>
+              </div>
+            )}
+          </Panel>
+
+          <Panel
+            title="Recent Enquiries"
+            subtitle="Latest student interest across your hostel listings."
+          >
+            {enquiries.length ? (
+              <div className="space-y-3">
+                {enquiries.slice(0, 4).map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-4 rounded-[22px] border border-[#ece3d3] bg-[#fcfbf8] px-4 py-4"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Avatar name={item.student_name || "Student"} size="md" />
+                      <div className="min-w-0">
+                        <p className="truncate text-lg font-extrabold text-[#1e1d1a]">{item.student_name}</p>
+                        <p className="truncate text-sm text-[#6f6a5f]">{item.room_title}</p>
+                        <p className="mt-1 text-xs text-[#9b9588]">{formatWhen(item.created_at)}</p>
+                      </div>
+                    </div>
+                    <div className="inline-flex items-center gap-3">
+                      <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${statusChip(item.status)}`}>
+                        {String(item.status || "pending").replace(/_/g, " ")}
+                      </span>
+                      <span className="grid h-10 w-10 place-items-center rounded-[14px] bg-[linear-gradient(135deg,#c9a84c,#a07830)] text-white">
+                        <ArrowRight size={16} />
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                <div className="pt-2 text-center">
+                  <Link
+                    to="/owner/enquiries"
+                    className="inline-flex items-center justify-center rounded-[14px] border border-[#e7dfd1] bg-white px-6 py-2.5 text-sm font-semibold text-[#5f5a4f] transition hover:bg-[#faf7f1]"
+                  >
+                    View All
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-[22px] border border-dashed border-[#e7dfd1] bg-[#fbf8f2] px-6 py-10 text-center">
+                <p className="text-sm font-semibold text-[#6f6a5f]">No enquiries yet. New student requests will appear here.</p>
+              </div>
+            )}
+          </Panel>
+        </div>
+
+        <div className="space-y-6">
+          <Panel
+            title="Booking Overview"
+            subtitle="The most useful actions and totals from your current room enquiries."
+          >
+            <div
+              className="rounded-[22px] border border-[#e7d29d] px-4 py-4"
+              style={{
+                background: "linear-gradient(135deg,#fff8e8 0%, #fffdf7 100%)",
+                boxShadow: "0 10px 26px rgba(201,168,76,0.14)",
+              }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9a6a00]">Booking Health</p>
+                  <p className="mt-2 text-[30px] font-black leading-none tracking-tight text-[#1e1d1a]">
+                    {derived.approvedBookings.length + derived.pendingBookings.length}
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-[#6f6a5f]">
+                    Total active conversations with students right now.
+                  </p>
+                </div>
+                <div className="grid h-12 w-12 place-items-center rounded-[16px] bg-white text-[#b58c2f] shadow-sm">
+                  <CalendarCheck2 size={20} />
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">
+                  {derived.approvedBookings.length} approved
+                </span>
+                <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">
+                  {derived.pendingBookings.length} pending
+                </span>
+                <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-rose-700">
+                  {derived.rejectedBookings.length} rejected
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3">
+              {[
+                {
+                  label: "Approved",
+                  value: derived.approvedBookings.length,
+                  icon: CheckCircle2,
+                  tone: "border-emerald-200 bg-emerald-50 text-emerald-700",
+                },
+                {
+                  label: "Pending",
+                  value: derived.pendingBookings.length,
+                  icon: CalendarClock,
+                  tone: "border-amber-200 bg-amber-50 text-amber-700",
+                },
+                {
+                  label: "Rejected",
+                  value: derived.rejectedBookings.length,
+                  icon: MailQuestion,
+                  tone: "border-rose-200 bg-rose-50 text-rose-700",
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="flex items-center justify-between rounded-[18px] border border-[#ece3d3] bg-[#fcfbf8] px-4 py-4"
+                >
+                  <div className="flex items-center gap-3 text-sm font-semibold text-[#2b2823]">
+                    <div className={`grid h-10 w-10 place-items-center rounded-[14px] ${item.tone}`}>
+                      <item.icon size={16} />
+                    </div>
+                    {item.label}
+                  </div>
+                  <span className="text-3xl font-black tracking-tight text-[#1e1d1a]">{item.value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Link
+                to="/owner/listings/new"
+                className="inline-flex items-center justify-center gap-2 rounded-[16px] px-4 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                style={{
+                  background: "linear-gradient(135deg,#c9a84c,#a07830)",
+                  boxShadow: "0 10px 24px rgba(201,168,76,0.24)",
+                }}
+              >
+                <Plus size={14} />
+                New Listing
+              </Link>
+              <Link
+                to="/owner/bookings"
+                className="inline-flex items-center justify-center rounded-[16px] border border-[#e7dfd1] bg-white px-6 py-3 text-sm font-semibold text-[#5f5a4f] transition hover:bg-[#faf7f1]"
+              >
+                View Bookings
+              </Link>
+            </div>
+          </Panel>
+
+          <Panel
+            title="Quick Highlights"
+            subtitle="Useful summary details from your latest room activity."
+          >
+            <div className="grid gap-3">
+              <div className="rounded-[18px] border border-[#ece3d3] bg-[#fcfbf8] px-4 py-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9b9588]">Average Room Rent</p>
+                <p className="mt-2 text-xl font-black tracking-tight text-[#1e1d1a]">{money(derived.averageRent)}</p>
+              </div>
+              <div className="rounded-[18px] border border-[#ece3d3] bg-[#fcfbf8] px-4 py-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9b9588]">Hostel Location</p>
+                <p className="mt-2 flex items-start gap-2 text-sm font-semibold text-[#1e1d1a]">
+                  <MapPin size={14} className="mt-0.5 shrink-0 text-[#b58c2f]" />
+                  <span className="line-clamp-2">{hostelLocation}</span>
+                </p>
+              </div>
+              <div className="rounded-[18px] border border-[#e7d29d] bg-[#fff8e8] px-4 py-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9a6a00]">Estimated Revenue</p>
+                <p className="mt-2 text-xl font-black tracking-tight text-[#1e1d1a]">
+                  {money(derived.estimatedRevenue || summary.revenue || 0)}
+                </p>
+              </div>
+              <div
+                className="rounded-[20px] px-4 py-4 text-white"
+                style={{
+                  background: "linear-gradient(180deg,#1a1a1f 0%, #17171b 100%)",
+                  border: "1px solid rgba(212,175,55,0.12)",
+                  boxShadow: "0 18px 44px rgba(14,14,18,0.18)",
+                }}
+              >
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">Revenue Pulse</p>
+                <p className="mt-2 text-2xl font-black tracking-tight text-[#f0d682]">
+                  {money(derived.estimatedRevenue || summary.revenue || 0)}
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-[14px] border border-white/10 bg-white/5 px-3 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">Approved</p>
+                    <p className="mt-1 text-lg font-black text-white">{derived.approvedBookings.length}</p>
+                  </div>
+                  <div className="rounded-[14px] border border-white/10 bg-white/5 px-3 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">Hostel Contact</p>
+                    <p className="mt-1 truncate text-sm font-black text-white">
+                      {hostelContact}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Panel>
+        </div>
+      </section>
     </div>
   );
 }

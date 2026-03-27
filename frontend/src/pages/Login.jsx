@@ -15,7 +15,6 @@ const Login = () => {
     e.preventDefault();
     setError('');
 
-    // Client-side validation
     if (!username || username.length < 3) {
       setError('Please enter a valid username');
       return;
@@ -28,16 +27,13 @@ const Login = () => {
 
     try {
       const data = await login(username, password, { remember });
-      
-      console.log('Login response:', data);
-      
-      // Redirect based on user type
+
       if (data.is_superuser || data.is_staff) {
         navigate('/admin/dashboard');
       } else if (data.user_type === 'delivery') {
         const token = localStorage.getItem('access_token');
         const refresh = localStorage.getItem('refresh_token');
-        window.location.replace(`http://localhost:5174/auth-redirect?token=${encodeURIComponent(token)}&refresh=${encodeURIComponent(refresh)}`);
+        navigate(`/delivery/auth-redirect?token=${encodeURIComponent(token)}&refresh=${encodeURIComponent(refresh)}`);
       } else if (data.user_type === 'restaurant_owner') {
         navigate('/restaurant/dashboard');
       } else if (data.user_type === 'hostel_owner') {
@@ -47,8 +43,23 @@ const Login = () => {
       }
     } catch (err) {
       console.error('Login error:', err);
+
       if (err.response?.status === 403) {
-        setError('⏳ Account pending admin approval. Please wait.');
+        const code = err.response?.data?.code;
+        const detail = err.response?.data?.detail;
+        const reason = err.response?.data?.reason;
+
+        if (code === 'account_blocked') {
+          setError(
+            reason && reason !== 'No reason was provided.'
+              ? `${detail} Reason: ${reason}`
+              : detail || 'Your account has been blocked. Please contact support or the admin team.'
+          );
+        } else if (code === 'account_pending') {
+          setError('Account pending admin approval. Please wait.');
+        } else {
+          setError(detail || 'Access denied');
+        }
       } else {
         setError('Invalid credentials');
       }
@@ -57,13 +68,10 @@ const Login = () => {
 
   return (
     <div style={styles.page}>
-      {/* Background */}
       <div style={styles.bg} />
       <div style={styles.overlay} />
 
-      {/* MAIN LAYOUT */}
       <div className="shellGrid" style={styles.shell}>
-        {/* LEFT SIDE → TEXT */}
         <div style={styles.textCol}>
           <div className="heroText" style={styles.hero}>
             <div style={styles.heroTitleBig}>MAKE YOUR</div>
@@ -71,7 +79,7 @@ const Login = () => {
 
             <p style={styles.heroDesc}>
               Find your perfect room near your university, order meals within your budget,
-              and track deliveries live — all in one platform.
+              and track deliveries live, all in one platform.
             </p>
 
             <div style={styles.heroPills}>
@@ -82,7 +90,6 @@ const Login = () => {
           </div>
         </div>
 
-        {/* RIGHT SIDE → FORM */}
         <div className="loginCardFloat" style={styles.formCol}>
           <form onSubmit={handleSubmit} style={styles.card}>
             <div style={styles.brandRow}>
@@ -97,11 +104,9 @@ const Login = () => {
 
             {error && <div style={styles.error}>{error}</div>}
 
-            {/* USERNAME */}
             <label style={styles.label}>Username</label>
             <div style={styles.inputWrap}>
               <span style={styles.iconLeft} aria-hidden="true">
-                {/* user icon */}
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                   <path
                     d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"
@@ -127,11 +132,9 @@ const Login = () => {
               />
             </div>
 
-            {/* PASSWORD */}
             <label style={styles.label}>Password</label>
             <div style={styles.inputWrap}>
               <span style={styles.iconLeft} aria-hidden="true">
-                {/* lock icon */}
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                   <path
                     d="M17 11H7a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2Z"
@@ -162,7 +165,6 @@ const Login = () => {
                 title={showPw ? 'Hide password' : 'Show password'}
                 onClick={() => setShowPw((s) => !s)}
               >
-                {/* eye icon */}
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                   <path
                     d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"
@@ -178,7 +180,6 @@ const Login = () => {
               </button>
             </div>
 
-            {/* REMEMBER + FORGOT */}
             <div style={styles.rowBetween}>
               <label style={styles.rememberRow}>
                 <input
@@ -190,13 +191,11 @@ const Login = () => {
                 Remember me
               </label>
 
-              {/* Change this link if you have a real route */}
               <Link to="/forgot-password" style={styles.forgotLink}>
                 Forgot password?
               </Link>
             </div>
 
-            {/* BUTTON with hover/press animation */}
             <button
               type="submit"
               style={styles.button}
@@ -218,27 +217,24 @@ const Login = () => {
         </div>
       </div>
 
-      {/* PRO CSS (focus glow + floating + mobile) */}
       <style>
         {`
-          /* Input focus glow */
           .shellGrid input:focus {
             outline: none !important;
             border: 1px solid rgba(147,197,253,0.7) !important;
             box-shadow: 0 0 0 4px rgba(59,130,246,0.25) !important;
           }
 
-          /* Floating glass card */
           @keyframes floaty {
             0% { transform: translateY(0px); }
             50% { transform: translateY(-6px); }
             100% { transform: translateY(0px); }
           }
+
           .loginCardFloat {
             animation: floaty 5s ease-in-out infinite;
           }
 
-          /* Mobile stacking */
           @media (max-width: 900px) {
             .shellGrid {
               grid-template-columns: 1fr !important;
@@ -259,7 +255,6 @@ const styles = {
     overflow: 'hidden',
     fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
   },
-
   bg: {
     position: 'absolute',
     inset: 0,
@@ -271,14 +266,12 @@ const styles = {
     zIndex: 0,
     filter: 'brightness(1.1) saturate(1.05) contrast(1.05)',
   },
-
   overlay: {
     position: 'absolute',
     inset: 0,
     background: 'rgba(0,0,0,0.28)',
     zIndex: 1,
   },
-
   shell: {
     position: 'relative',
     zIndex: 2,
@@ -292,22 +285,18 @@ const styles = {
     gap: '10px',
     alignItems: 'center',
   },
-
   textCol: { justifySelf: 'start' },
   formCol: { justifySelf: 'start' },
-
   hero: {
     color: 'white',
     textShadow: '0 12px 30px rgba(0,0,0,0.25)',
   },
-
   heroTitleBig: {
     fontSize: '56px',
     lineHeight: 1.0,
     fontWeight: 900,
     letterSpacing: '0.02em',
   },
-
   heroDesc: {
     marginTop: '12px',
     fontSize: '16px',
@@ -315,14 +304,12 @@ const styles = {
     maxWidth: '520px',
     opacity: 0.95,
   },
-
   heroPills: {
     display: 'flex',
     gap: '10px',
     marginTop: '18px',
     flexWrap: 'wrap',
   },
-
   pill: {
     padding: '10px 12px',
     borderRadius: '999px',
@@ -332,7 +319,6 @@ const styles = {
     fontWeight: 800,
     fontSize: '13px',
   },
-
   card: {
     width: '100%',
     maxWidth: '420px',
@@ -344,14 +330,12 @@ const styles = {
     WebkitBackdropFilter: 'blur(18px)',
     boxShadow: '0 26px 70px rgba(0,0,0,0.35)',
   },
-
   brandRow: {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
     marginBottom: '10px',
   },
-
   logoCircle: {
     width: '44px',
     height: '44px',
@@ -363,17 +347,14 @@ const styles = {
     background: 'linear-gradient(90deg,#3b82f6,#60a5fa)',
     boxShadow: '0 12px 26px rgba(59,130,246,0.35)',
   },
-
   brandName: { fontWeight: 800, color: 'white', lineHeight: 1.1 },
   brandTag: { fontSize: '12px', color: 'rgba(255,255,255,0.75)' },
-
   title: {
     margin: '12px 0 16px',
     fontSize: '26px',
     color: 'white',
     fontWeight: 800,
   },
-
   label: {
     display: 'block',
     fontSize: '12px',
@@ -382,13 +363,11 @@ const styles = {
     marginBottom: '8px',
     fontWeight: 700,
   },
-
   inputWrap: {
     position: 'relative',
     display: 'flex',
     alignItems: 'center',
   },
-
   iconLeft: {
     position: 'absolute',
     left: '14px',
@@ -396,7 +375,6 @@ const styles = {
     display: 'grid',
     placeItems: 'center',
   },
-
   iconRightBtn: {
     position: 'absolute',
     right: '12px',
@@ -409,7 +387,6 @@ const styles = {
     padding: '6px',
     borderRadius: '999px',
   },
-
   inputPill: {
     width: '100%',
     padding: '14px 44px 14px 44px',
@@ -421,7 +398,6 @@ const styles = {
     outline: 'none',
     boxSizing: 'border-box',
   },
-
   rowBetween: {
     marginTop: '12px',
     display: 'flex',
@@ -429,7 +405,6 @@ const styles = {
     justifyContent: 'space-between',
     gap: '12px',
   },
-
   rememberRow: {
     display: 'flex',
     alignItems: 'center',
@@ -439,21 +414,18 @@ const styles = {
     fontWeight: 700,
     userSelect: 'none',
   },
-
   checkbox: {
     width: '16px',
     height: '16px',
     accentColor: '#60a5fa',
     cursor: 'pointer',
   },
-
   forgotLink: {
     color: '#93c5fd',
     fontWeight: 800,
     textDecoration: 'none',
     fontSize: '13px',
   },
-
   button: {
     width: '100%',
     marginTop: '18px',
@@ -468,7 +440,6 @@ const styles = {
     boxShadow: '0 16px 34px rgba(59,130,246,0.35)',
     transition: 'transform 0.15s ease, box-shadow 0.15s ease',
   },
-
   error: {
     background: 'rgba(220,38,38,0.20)',
     color: 'white',
@@ -477,14 +448,13 @@ const styles = {
     borderRadius: '12px',
     marginBottom: '10px',
     fontWeight: 700,
+    lineHeight: 1.6,
   },
-
   footerText: {
     marginTop: '14px',
     fontSize: '13px',
     color: 'rgba(255,255,255,0.80)',
   },
-
   link: {
     color: '#93c5fd',
     fontWeight: 800,

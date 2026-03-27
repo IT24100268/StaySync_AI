@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import Order
 from .serializers import OrderSerializer
+from admin_panel.utils import create_admin_log
 
 class OrderCreateView(generics.CreateAPIView):
     serializer_class = OrderSerializer
@@ -21,6 +22,18 @@ class OrderCreateView(generics.CreateAPIView):
             student=request.user,
             delivery_charge=delivery_charge,
             status='pending'
+        )
+        create_admin_log(
+            actor=request.user,
+            action='Food order placed',
+            target_type='ORDER',
+            target_id=serializer.instance.id,
+            details={
+                'restaurant_name': serializer.instance.restaurant.name,
+                'order_type': serializer.instance.order_type,
+                'status': serializer.instance.status,
+                'total_price': serializer.instance.total_price,
+            }
         )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 

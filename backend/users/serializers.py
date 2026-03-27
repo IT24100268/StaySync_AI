@@ -2,47 +2,86 @@ from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from .models import User, StudentProfile, HostelOwnerProfile, RestaurantOwnerProfile, DeliveryProfile
 
+
+def build_media_url(request, file_field):
+    if not file_field:
+        return None
+    if request:
+        return request.build_absolute_uri(file_field.url)
+    return file_field.url
+
 class StudentProfileSerializer(serializers.ModelSerializer):
+    display_image = serializers.SerializerMethodField()
+
     class Meta:
         model = StudentProfile
-        fields = ['university', 'gender_preference', 'budget', 'phone_number']
+        fields = ['university', 'gender_preference', 'budget', 'phone_number', 'display_image']
+
+    def get_display_image(self, obj):
+        return build_media_url(self.context.get('request'), obj.display_image)
 
 class HostelOwnerProfileSerializer(serializers.ModelSerializer):
+    display_image = serializers.SerializerMethodField()
+
     class Meta:
         model = HostelOwnerProfile
-        fields = ['hostel_name', 'address', 'phone_number', 'business_reg_no']
+        fields = ['hostel_name', 'address', 'latitude', 'longitude', 'phone_number', 'business_reg_no', 'display_image']
+
+    def get_display_image(self, obj):
+        return build_media_url(self.context.get('request'), obj.display_image)
 
 class RestaurantOwnerProfileSerializer(serializers.ModelSerializer):
+    display_image = serializers.SerializerMethodField()
+
     class Meta:
         model = RestaurantOwnerProfile
-        fields = ['restaurant_name', 'address', 'phone_number']
+        fields = ['restaurant_name', 'address', 'latitude', 'longitude', 'phone_number', 'display_image']
+
+    def get_display_image(self, obj):
+        return build_media_url(self.context.get('request'), obj.display_image)
 
 class DeliveryProfileSerializer(serializers.ModelSerializer):
+    display_image = serializers.SerializerMethodField()
+
     class Meta:
         model = DeliveryProfile
-        fields = ['vehicle_type', 'license_no', 'phone_number']
+        fields = ['vehicle_type', 'license_no', 'phone_number', 'display_image']
+
+    def get_display_image(self, obj):
+        return build_media_url(self.context.get('request'), obj.display_image)
 
 class UserSerializer(serializers.ModelSerializer):
     profile = serializers.SerializerMethodField()
     
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'user_type', 'is_approved', 'is_superuser', 'is_staff', 'profile']
+        fields = [
+            'id',
+            'email',
+            'username',
+            'first_name',
+            'last_name',
+            'user_type',
+            'is_approved',
+            'is_superuser',
+            'is_staff',
+            'profile',
+        ]
     
     def get_profile(self, obj):
         if obj.user_type == 'student' and hasattr(obj, 'student_profile'):
-            return StudentProfileSerializer(obj.student_profile).data
+            return StudentProfileSerializer(obj.student_profile, context=self.context).data
         elif obj.user_type == 'hostel_owner' and hasattr(obj, 'hostel_profile'):
-            return HostelOwnerProfileSerializer(obj.hostel_profile).data
+            return HostelOwnerProfileSerializer(obj.hostel_profile, context=self.context).data
         elif obj.user_type == 'restaurant_owner' and hasattr(obj, 'restaurant_profile'):
-            return RestaurantOwnerProfileSerializer(obj.restaurant_profile).data
+            return RestaurantOwnerProfileSerializer(obj.restaurant_profile, context=self.context).data
         elif obj.user_type == 'delivery' and hasattr(obj, 'delivery_profile'):
-            return DeliveryProfileSerializer(obj.delivery_profile).data
+            return DeliveryProfileSerializer(obj.delivery_profile, context=self.context).data
         return None
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password], min_length=8)
-    profile = serializers.JSONField()
+    profile = serializers.DictField()
     
     class Meta:
         model = User
@@ -80,6 +119,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         profile_data = validated_data.pop('profile')
         user_type = validated_data['user_type']
+        display_image = profile_data.pop('display_image', None)
         
         # Auto-approve only students, others need admin approval
         if user_type == 'student':
@@ -91,13 +131,21 @@ class RegisterSerializer(serializers.ModelSerializer):
         
         # Create appropriate profile
         if user_type == 'student':
-            StudentProfile.objects.create(user=user, **profile_data)
+            StudentProfile.objects.create(user=user, display_image=display_image, **profile_data)
         elif user_type == 'hostel_owner':
-            HostelOwnerProfile.objects.create(user=user, **profile_data)
+            HostelOwnerProfile.objects.create(user=user, display_image=display_image, **profile_data)
         elif user_type == 'restaurant_owner':
-            RestaurantOwnerProfile.objects.create(user=user, **profile_data)
+            RestaurantOwnerProfile.objects.create(user=user, display_image=display_image, **profile_data)
         elif user_type == 'delivery':
-            DeliveryProfile.objects.create(user=user, **profile_data)
+            DeliveryProfile.objects.create(user=user, display_image=display_image, **profile_data)
+            from delivery.models import DeliveryPartner
+            DeliveryPartner.objects.create(
+                user=user,
+                phone=profile_data.get('phone_number', ''),
+                vehicle_type=profile_data.get('vehicle_type', ''),
+                vehicle_number=profile_data.get('license_no', ''),
+                status='APPROVED' if user.is_approved else 'PENDING'
+            )
         
         return user
 
@@ -110,9 +158,9 @@ class PendingUserSerializer(serializers.ModelSerializer):
     
     def get_profile(self, obj):
         if obj.user_type == 'hostel_owner' and hasattr(obj, 'hostel_profile'):
-            return HostelOwnerProfileSerializer(obj.hostel_profile).data
+            return HostelOwnerProfileSerializer(obj.hostel_profile, context=self.context).data
         elif obj.user_type == 'restaurant_owner' and hasattr(obj, 'restaurant_profile'):
-            return RestaurantOwnerProfileSerializer(obj.restaurant_profile).data
+            return RestaurantOwnerProfileSerializer(obj.restaurant_profile, context=self.context).data
         elif obj.user_type == 'delivery' and hasattr(obj, 'delivery_profile'):
-            return DeliveryProfileSerializer(obj.delivery_profile).data
+            return DeliveryProfileSerializer(obj.delivery_profile, context=self.context).data
         return None

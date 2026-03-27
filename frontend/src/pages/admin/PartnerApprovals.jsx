@@ -3,12 +3,19 @@ import { CheckCircle, XCircle, AlertCircle, Eye, RefreshCcw, Search } from "luci
 import api from "../../services/api";
 import GlassCard from "./components/GlassCard";
 
+const PARTNER_IMAGE_FALLBACK = "https://ui-avatars.com/api/?name=P&background=EDE9FE&color=4C1D95";
+
+function getPartnerImage(partner) {
+  return partner.partner_display_image || partner.profile?.display_image || PARTNER_IMAGE_FALLBACK;
+}
+
 export default function PartnerApprovals() {
   const [partners, setPartners] = useState([]);
   const [pendingDeliveryUsers, setPendingDeliveryUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("PENDING");
   const [selected, setSelected] = useState(null);
+  const [selectedPendingPartner, setSelectedPendingPartner] = useState(null);
   const [reviewNote, setReviewNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [query, setQuery] = useState("");
@@ -132,17 +139,30 @@ export default function PartnerApprovals() {
                 className="rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff] p-4"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-extrabold text-slate-900">{u.username}</p>
-                    <p className="text-sm text-slate-500">{u.email}</p>
-                    <p className="mt-1 text-sm text-slate-700">
-                      {u.profile?.phone_number || "No phone"}
-                    </p>
-                    <p className="mt-2 text-xs text-slate-500">
-                      {u.profile?.vehicle_type || "No vehicle type"}
-                      {u.profile?.license_no ? ` • ${u.profile.license_no}` : ""}
-                    </p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPendingPartner(u)}
+                    className="flex flex-1 items-start gap-4 text-left"
+                  >
+                    <div className="overflow-hidden rounded-[20px] border border-[#d9e5f3] bg-white">
+                      <img
+                        src={getPartnerImage(u)}
+                        alt={u.username}
+                        className="h-24 w-24 bg-white object-contain"
+                      />
+                    </div>
+                    <div>
+                      <p className="font-extrabold text-slate-900">{u.username}</p>
+                      <p className="text-sm text-slate-500">{u.email}</p>
+                      <p className="mt-1 text-sm text-slate-700">
+                        {u.profile?.phone_number || "No phone"}
+                      </p>
+                      <p className="mt-2 text-xs text-slate-500">
+                        {u.profile?.vehicle_type || "No vehicle type"}
+                        {u.profile?.license_no ? ` / ${u.profile.license_no}` : ""}
+                      </p>
+                    </div>
+                  </button>
 
                   <button
                     onClick={() => approveDeliveryUser(u.id)}
@@ -170,7 +190,14 @@ export default function PartnerApprovals() {
         <div className="grid gap-4">
           {filtered.map((p) => (
             <GlassCard key={p.id} className="p-6">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                <div className="overflow-hidden rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff] xl:w-[280px]">
+                  <img
+                    src={getPartnerImage(p)}
+                    alt={p.username}
+                    className="h-52 w-full bg-white object-contain"
+                  />
+                </div>
                 <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-3">
                     <h3 className="text-xl font-extrabold text-slate-900">{p.username}</h3>
@@ -179,8 +206,8 @@ export default function PartnerApprovals() {
 
                   <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
                     <Info label="Email" value={p.email} />
-                    <Info label="Rating" value={`${p.rating ?? "—"}/5.0`} />
-                    <Info label="Phone" value={p.phone || "—"} />
+                    <Info label="Rating" value={`${p.rating ?? "-"}/5.0`} />
+                    <Info label="Phone" value={p.phone || "-"} />
                   </div>
 
                   {p.review_note && (
@@ -209,12 +236,33 @@ export default function PartnerApprovals() {
           <h2 className="mb-1 text-2xl font-extrabold text-slate-900">Review Partner</h2>
           <p className="mb-4 text-slate-500">{selected.username}</p>
 
+          <div className="mb-4 overflow-hidden rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff]">
+            <img
+              src={getPartnerImage(selected)}
+              alt={selected.username}
+              className="h-64 w-full bg-white object-contain"
+            />
+          </div>
+
           <div className="mb-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
             <Info label="Email" value={selected.email} />
-            <Info label="Rating" value={`${selected.rating ?? "—"}/5.0`} />
-            <Info label="Phone" value={selected.phone || "—"} />
+            <Info label="Rating" value={`${selected.rating ?? "-"}/5.0`} />
+            <Info label="Phone" value={selected.phone || "-"} />
             <Info label="Status" value={selected.status} />
           </div>
+
+          {selected.partner_profile && (
+            <div className="mb-4 rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff] p-4">
+              <h3 className="mb-3 text-lg font-extrabold text-slate-900">Partner Registration Details</h3>
+              <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                <Info label="Username" value={selected.partner_profile.username} />
+                <Info label="Email" value={selected.partner_profile.email} />
+                <Info label="Phone Number" value={selected.partner_profile.phone_number} />
+                <Info label="Vehicle Type" value={selected.partner_profile.vehicle_type} />
+                <Info label="License No" value={selected.partner_profile.license_no} />
+              </div>
+            </div>
+          )}
 
           <div className="mb-4">
             <label className="mb-2 block text-sm font-bold text-slate-700">Review Note</label>
@@ -241,6 +289,36 @@ export default function PartnerApprovals() {
           </button>
         </Modal>
       )}
+
+      {selectedPendingPartner && (
+        <Modal onClose={() => setSelectedPendingPartner(null)}>
+          <h2 className="mb-1 text-2xl font-extrabold text-slate-900">Pending Delivery Partner</h2>
+          <p className="mb-4 text-slate-500">{selectedPendingPartner.username}</p>
+
+          <div className="mb-4 overflow-hidden rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff]">
+            <img
+              src={getPartnerImage(selectedPendingPartner)}
+              alt={selectedPendingPartner.username}
+              className="h-64 w-full bg-white object-contain"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+            <Info label="Username" value={selectedPendingPartner.username} />
+            <Info label="Email" value={selectedPendingPartner.email} />
+            <Info label="Phone Number" value={selectedPendingPartner.profile?.phone_number || "-"} />
+            <Info label="Vehicle Type" value={selectedPendingPartner.profile?.vehicle_type || "-"} />
+            <Info label="License No" value={selectedPendingPartner.profile?.license_no || "-"} />
+          </div>
+
+          <button
+            onClick={() => setSelectedPendingPartner(null)}
+            className="mt-4 w-full rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] py-3 font-semibold text-slate-700 hover:bg-white"
+          >
+            Close
+          </button>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -249,7 +327,7 @@ function Info({ label, value }) {
   return (
     <div className="rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] p-3">
       <div className="text-xs font-bold uppercase text-slate-500">{label}</div>
-      <div className="mt-1 truncate font-semibold text-slate-900">{value || "—"}</div>
+      <div className="mt-1 truncate font-semibold text-slate-900">{value || "-"}</div>
     </div>
   );
 }

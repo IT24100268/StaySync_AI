@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --student-bg-top: #e8edff;
+  --student-bg-bottom: #dbe4ff;
+  --student-text: #102447;
+  --student-muted: #4f648c;
+  --student-primary: #3655d8;
+  --student-primary-strong: #22308f;
+  --student-primary-deep: #101953;
+  --student-accent: #5e79ff;
+  --student-accent-soft: #8ea2ff;
+  --student-indigo: #7a6dff;
+  --student-surface: #ffffff;
+  --student-surface-glass: rgba(255, 255, 255, 0.9);
+  --student-border: rgba(48, 73, 138, 0.16);
+  --student-shadow: 0 16px 40px rgba(25, 41, 90, 0.18);
+  --student-sidebar-shadow: 0 26px 58px rgba(7, 16, 56, 0.5);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -14,7 +32,17 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #f0f4f0;
+  min-height: 100vh;
+  color: var(--student-text);
+  background:
+    radial-gradient(920px 520px at 62% -8%, rgba(110, 122, 255, 0.44), transparent 70%),
+    radial-gradient(980px 580px at 94% 28%, rgba(185, 133, 255, 0.24), transparent 74%),
+    linear-gradient(180deg, var(--student-bg-top) 0%, var(--student-bg-bottom) 100%);
+  background-attachment: fixed;
+}
+
+#root {
+  min-height: 100vh;
 }
 
 code {
