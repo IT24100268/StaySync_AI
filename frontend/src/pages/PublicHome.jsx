@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   Bike,
-  BadgeCheck,
   BrainCircuit,
-  Clock3,
+  ChevronLeft,
+  ChevronRight,
   GraduationCap,
   Home,
   MapPin,
@@ -16,6 +16,51 @@ import {
 } from 'lucide-react';
 import './PublicHome.css';
 
+const heroSlides = [
+  {
+    id: 'hostel-rooms',
+    label: 'Hostel Rooms',
+    badge: 'HOSTEL ROOMS',
+    title: 'Find Comfortable Hostel Rooms',
+    description:
+      'Discover clean, affordable, and student-friendly rooms with a simple and smooth booking experience.',
+    ctaLabel: 'Explore Rooms',
+    ctaType: 'anchor',
+    ctaTarget: '#rooms',
+    image: '/images/image5.webp',
+    focalPoint: '66% 52%',
+    imageAlt: 'Comfortable student hostel room',
+  },
+  {
+    id: 'restaurant',
+    label: 'Restaurant',
+    badge: 'RESTAURANT',
+    title: 'Order Fresh Meals Easily',
+    description:
+      'Browse restaurants, explore menus, and enjoy a convenient food ordering experience made for students.',
+    ctaLabel: 'View Restaurants',
+    ctaType: 'anchor',
+    ctaTarget: '#food',
+    image: '/images/image6.png',
+    focalPoint: '64% 48%',
+    imageAlt: 'Fresh meals served in a restaurant',
+  },
+  {
+    id: 'delivery-partner',
+    label: 'Delivery Partner',
+    badge: 'DELIVERY PARTNER',
+    title: 'Fast and Reliable Delivery',
+    description:
+      'Connect with delivery partners for smooth, timely, and hassle-free order delivery across your area.',
+    ctaLabel: 'Track Delivery',
+    ctaType: 'link',
+    ctaTarget: '/login',
+    image: '/images/image7.png',
+    focalPoint: '66% 50%',
+    imageAlt: 'Delivery partner carrying an order',
+  },
+];
+
 const featuredRooms = [
   {
     id: 1,
@@ -23,7 +68,8 @@ const featuredRooms = [
     location: 'Near University of Jaffna',
     price: 'LKR 22,000 / month',
     image: '/images/PublicImage1.jpg',
-    description: 'Quiet private room with stable WiFi, study desk, laundry access, and a peaceful evening atmosphere.',
+    description:
+      'Quiet private room with stable WiFi, study desk, laundry access, and a peaceful evening atmosphere.',
     amenities: ['WiFi', 'Desk', 'Laundry', 'Shared Kitchen'],
     size: '120 sq ft',
   },
@@ -33,7 +79,8 @@ const featuredRooms = [
     location: 'Kokuvil',
     price: 'LKR 16,500 / month',
     image: '/images/PublicImage2.jpg',
-    description: 'A social and affordable shared room designed for students who want low monthly cost without losing comfort.',
+    description:
+      'A social and affordable shared room designed for students who want low monthly cost without losing comfort.',
     amenities: ['2 Beds', 'WiFi', 'Common Lounge', 'Fan'],
     size: '180 sq ft',
   },
@@ -43,7 +90,8 @@ const featuredRooms = [
     location: 'Thirunelvely',
     price: 'LKR 29,000 / month',
     image: '/images/PublicImage3.jpg',
-    description: 'A more private option with attached washroom, kitchenette, and enough space for focused routines.',
+    description:
+      'A more private option with attached washroom, kitchenette, and enough space for focused routines.',
     amenities: ['Private Bath', 'Kitchenette', 'AC', 'Parking'],
     size: '240 sq ft',
   },
@@ -56,7 +104,8 @@ const featuredFood = [
     type: 'Home Food',
     location: 'Jaffna Town',
     image: '/images/Restaurant1.jpg',
-    description: 'Affordable home-style rice, curry, and dinner packs that feel familiar and dependable every day.',
+    description:
+      'Affordable home-style rice, curry, and dinner packs that feel familiar and dependable every day.',
     menu: ['Rice and Curry', 'String Hoppers', 'Kottu', 'Parotta Combo'],
     priceRange: 'LKR 220 - 420',
   },
@@ -66,7 +115,8 @@ const featuredFood = [
     type: 'Restaurant',
     location: 'Near Medical Faculty',
     image: '/images/Restaurant2.jpg',
-    description: 'Fast student-friendly meals with generous portions and late-evening ordering when study sessions run long.',
+    description:
+      'Fast student-friendly meals with generous portions and late-evening ordering when study sessions run long.',
     menu: ['Fried Rice', 'Biriyani', 'Chicken Burger', 'Noodles'],
     priceRange: 'LKR 320 - 780',
   },
@@ -76,7 +126,8 @@ const featuredFood = [
     type: 'Healthy Kitchen',
     location: 'Nallur',
     image: '/images/Restaurant3.png',
-    description: 'Balanced meal plans with lighter lunch options, protein bowls, and weekly student packages.',
+    description:
+      'Balanced meal plans with lighter lunch options, protein bowls, and weekly student packages.',
     menu: ['Protein Bowl', 'Veg Wrap', 'Fruit Cup', 'Soup Combo'],
     priceRange: 'LKR 280 - 620',
   },
@@ -87,19 +138,22 @@ const featurePillars = [
     id: 1,
     icon: BrainCircuit,
     title: 'Unified Platform',
-    description: 'Students, hostel owners, restaurants, and delivery partners all work inside one connected flow.',
+    description:
+      'Students, hostel owners, restaurants, and delivery partners all work inside one connected flow.',
   },
   {
     id: 2,
     icon: Wallet,
     title: 'Premium Operations',
-    description: 'Manage listings, orders, deliveries, and growth with polished dashboards and clearer actions.',
+    description:
+      'Manage listings, orders, deliveries, and growth with polished dashboards and clearer actions.',
   },
   {
     id: 3,
     icon: ShieldCheck,
     title: 'Trusted Experience',
-    description: 'Better visibility, structured profiles, and streamlined workflows help every role feel more confident.',
+    description:
+      'Better visibility, structured profiles, and streamlined workflows help every role feel more confident.',
   },
 ];
 
@@ -138,24 +192,21 @@ const journeySteps = [
   {
     id: '01',
     title: 'Choose your role',
-    description: 'Enter as a student, hostel owner, restaurant owner, or delivery partner with a tailored experience.',
+    description:
+      'Enter as a student, hostel owner, restaurant owner, or delivery partner with a tailored experience.',
   },
   {
     id: '02',
     title: 'Operate in one place',
-    description: 'Rooms, menus, deliveries, enquiries, and profile details stay connected instead of spread across tools.',
+    description:
+      'Rooms, menus, deliveries, enquiries, and profile details stay connected instead of spread across tools.',
   },
   {
     id: '03',
     title: 'Grow with clarity',
-    description: 'Use more polished screens, cleaner data, and faster actions to create a high-trust product experience.',
+    description:
+      'Use more polished screens, cleaner data, and faster actions to create a high-trust product experience.',
   },
-];
-
-const spotlightMetrics = [
-  { label: 'Account experiences', value: '4 roles' },
-  { label: 'Connected workflows', value: 'Rooms + Food + Delivery' },
-  { label: 'Premium admin feel', value: 'Unified dashboards' },
 ];
 
 function DetailModal({ item, type, onClose }) {
@@ -167,12 +218,16 @@ function DetailModal({ item, type, onClose }) {
     <div className="ph-modal-overlay" onClick={onClose}>
       <div className="ph-modal" onClick={(event) => event.stopPropagation()}>
         <button type="button" className="ph-modal__close" onClick={onClose}>
-          x
+          ×
         </button>
+
         <img src={item.image} alt={item.name} className="ph-modal__image" />
+
         <div className="ph-modal__body">
           <div className="ph-modal__tag">{isRoom ? 'Room Preview' : 'Food Preview'}</div>
+
           <h2>{item.name}</h2>
+
           <p className="ph-modal__location">
             <MapPin size={16} />
             <span>{item.location}</span>
@@ -227,8 +282,30 @@ function DetailModal({ item, type, onClose }) {
 }
 
 export default function PublicHome() {
+  const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [selectedFood, setSelectedFood] = useState(null);
+
+  const currentHeroSlide = useMemo(
+    () => heroSlides[activeHeroSlide],
+    [activeHeroSlide]
+  );
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setActiveHeroSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeHeroSlide]);
+
+  const goToPreviousHeroSlide = () => {
+    setActiveHeroSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
+  };
+
+  const goToNextHeroSlide = () => {
+    setActiveHeroSlide((prev) => (prev + 1) % heroSlides.length);
+  };
 
   return (
     <div className="public-home">
@@ -257,98 +334,82 @@ export default function PublicHome() {
         </div>
       </nav>
 
-      <section className="ph-hero" id="home">
-        <div className="ph-shell ph-hero__grid">
+      <section className="ph-hero ph-hero--slider" id="home">
+        <div className="ph-hero__bg-track" aria-hidden="true">
+          {heroSlides.map((slide, index) => (
+            <div
+              key={slide.id}
+              className={`ph-hero__bg-slide ${index === activeHeroSlide ? 'is-active' : ''}`}
+              style={{
+                backgroundImage: `url(${slide.image})`,
+                backgroundPosition: slide.focalPoint,
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="ph-hero__gradient" aria-hidden="true" />
+
+        <div className="ph-shell ph-hero__inner">
           <div className="ph-hero__content">
-            <div className="ph-eyebrow">
-              <Sparkles size={15} />
-              <span>Premium ecosystem for all core users</span>
+            <div key={currentHeroSlide.id} className="ph-hero__content-main">
+              <div className="ph-eyebrow ph-hero__badge">
+                <Sparkles size={15} />
+                <span>{currentHeroSlide.badge}</span>
+              </div>
+
+              <h1>{currentHeroSlide.title}</h1>
+
+              <p className="ph-hero__copy">{currentHeroSlide.description}</p>
+
+              <div className="ph-hero__actions">
+                {currentHeroSlide.ctaType === 'link' ? (
+                  <Link to={currentHeroSlide.ctaTarget} className="ph-btn ph-btn--primary ph-btn--hero">
+                    {currentHeroSlide.ctaLabel}
+                  </Link>
+                ) : (
+                  <a href={currentHeroSlide.ctaTarget} className="ph-btn ph-btn--primary ph-btn--hero">
+                    {currentHeroSlide.ctaLabel}
+                  </a>
+                )}
+
+                <a href="#account-types" className="ph-btn ph-btn--soft">
+                  Explore Roles
+                </a>
+              </div>
             </div>
 
-            <h1>
-              One premium platform
-              <span> for students, hostel owners, restaurants, and delivery partners.</span>
-            </h1>
+            <div className="ph-hero__slider-controls" aria-label="Hero slider controls">
+              <button
+                type="button"
+                className="ph-hero__arrow"
+                onClick={goToPreviousHeroSlide}
+                aria-label="Previous slide"
+              >
+                <ChevronLeft size={18} />
+              </button>
 
-            <p className="ph-hero__copy">
-              StaySync AI brings accommodation, food ordering, delivery coordination, and role-based
-              management into one refined product experience with modern dashboards and clearer UX.
-            </p>
-
-            <div className="ph-hero__actions">
-              <Link to="/register" className="ph-btn ph-btn--primary">
-                Create Account
-              </Link>
-              <a href="#account-types" className="ph-btn ph-btn--soft">
-                Explore Roles
-              </a>
-            </div>
-
-            <div className="ph-metrics">
-              {spotlightMetrics.map((metric) => (
-                <div key={metric.label} className="ph-metric">
-                  <strong>{metric.value}</strong>
-                  <span>{metric.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="ph-hero__visual">
-            <div className="ph-dashboard-card ph-dashboard-card--main">
-              <div className="ph-dashboard-card__top">
-                <div>
-                  <p>StaySync AI Control Center</p>
-                  <strong>4 Connected Experiences</strong>
-                </div>
-                <span className="ph-status-pill">Live Platform</span>
+              <div className="ph-hero__dots">
+                {heroSlides.map((slide, index) => (
+                  <button
+                    key={slide.id}
+                    type="button"
+                    className={`ph-hero__dot ${index === activeHeroSlide ? 'is-active' : ''}`}
+                    onClick={() => setActiveHeroSlide(index)}
+                    aria-label={`Go to ${slide.label} slide`}
+                    aria-current={index === activeHeroSlide}
+                  />
+                ))}
               </div>
 
-              <div className="ph-budget-bars">
-                <div>
-                  <span>Student Discovery</span>
-                  <div className="ph-budget-bars__track">
-                    <div style={{ width: '82%' }} />
-                  </div>
-                </div>
-                <div>
-                  <span>Owner Operations</span>
-                  <div className="ph-budget-bars__track">
-                    <div style={{ width: '76%' }} />
-                  </div>
-                </div>
-                <div>
-                  <span>Delivery Flow</span>
-                  <div className="ph-budget-bars__track">
-                    <div style={{ width: '64%' }} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="ph-dashboard-card__footer">
-                <div className="ph-mini-card">
-                  <MapPin size={16} />
-                  <div>
-                    <strong>Multi-role onboarding</strong>
-                    <span>Clear entry points for every user</span>
-                  </div>
-                </div>
-                <div className="ph-mini-card">
-                  <Clock3 size={16} />
-                  <div>
-                    <strong>Faster daily actions</strong>
-                    <span>Cleaner dashboards and workflows</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="ph-dashboard-card ph-dashboard-card--floating">
-                <BadgeCheck size={18} />
-                <div>
-                  <strong>Premium user journeys</strong>
-                  <span>High-trust design across listings, orders, profiles, and delivery</span>
-                </div>
-              </div>
+              <button
+                type="button"
+                className="ph-hero__arrow"
+                onClick={goToNextHeroSlide}
+                aria-label="Next slide"
+              >
+                <ChevronRight size={18} />
+              </button>
             </div>
           </div>
         </div>
