@@ -9,7 +9,7 @@ import DashboardLayout from './components/DashboardLayout';
 import OwnerDashboardLayout from './components/owner/OwnerDashboardLayout';
 import RestaurantLayout from './components/layout/RestaurantLayout';
 import AdminLayout from './components/admin/AdminLayout';
-import PublicHome from './pages/PublicHome';
+import PublicHome from './pages/publicHomePage';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
