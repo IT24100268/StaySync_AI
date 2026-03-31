@@ -7,10 +7,14 @@ import {
   Clock3,
   Mail,
   MapPin,
+  MessageCircle,
   Phone,
+  Paperclip,
   RefreshCcw,
   Search,
+  Send,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import "./Bookings.css";
 
@@ -18,6 +22,67 @@ const toArray = (payload) => {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.results)) return payload.results;
   return [];
+};
+
+const toNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const UNIVERSITY_OF_JAFFNA_COORDINATES = {
+  lat: 9.6848,
+  lng: 80.022,
+};
+
+const parseCoordinate = (value, axis) => {
+  const numeric = toNumber(value);
+  if (numeric === null) return null;
+  if (axis === "lat" && (numeric < -90 || numeric > 90)) return null;
+  if (axis === "lng" && (numeric < -180 || numeric > 180)) return null;
+  return numeric;
+};
+
+const hasValidCoordinatePair = (latitude, longitude) => {
+  if (latitude === null || longitude === null) return false;
+  if (Math.abs(latitude) < 0.000001 && Math.abs(longitude) < 0.000001) return false;
+  return true;
+};
+
+const toRadians = (value) => (value * Math.PI) / 180;
+
+const calculateDistanceKm = (fromLat, fromLng, toLat, toLng) => {
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(toLat - fromLat);
+  const dLng = toRadians(toLng - fromLng);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(fromLat)) * Math.cos(toRadians(toLat)) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+};
+
+const getRoomDistanceKm = (room) => {
+  const latitude = parseCoordinate(room?.latitude, "lat");
+  const longitude = parseCoordinate(room?.longitude, "lng");
+
+  if (hasValidCoordinatePair(latitude, longitude)) {
+    return calculateDistanceKm(
+      latitude,
+      longitude,
+      UNIVERSITY_OF_JAFFNA_COORDINATES.lat,
+      UNIVERSITY_OF_JAFFNA_COORDINATES.lng
+    );
+  }
+
+  const fallbackDistance = toNumber(room?.distance_from_university);
+  if (fallbackDistance === null || fallbackDistance <= 0) return null;
+  return fallbackDistance;
+};
+
+const formatDistanceForChip = (value) => {
+  const numeric = toNumber(value);
+  if (numeric === null || numeric < 0) return "Distance unavailable";
+  return `${numeric.toFixed(2)} km`;
 };
 
 const formatCurrency = (value) => {
@@ -37,6 +102,19 @@ const formatDate = (value) => {
   });
 };
 
+const formatDateTime = (value) => {
+  if (!value) return "N/A";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleString("en-LK", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
 const STATUS_META = {
   pending: { label: "Pending", className: "status-pending", icon: Clock3 },
   approved: { label: "Approved", className: "status-approved", icon: BadgeCheck },
@@ -45,6 +123,7 @@ const STATUS_META = {
 
 export default function Bookings() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +132,14 @@ export default function Bookings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
+  const [chatOpenBookingId, setChatOpenBookingId] = useState(null);
+  const [chatMessagesMap, setChatMessagesMap] = useState({});
+  const [chatLoadingMap, setChatLoadingMap] = useState({});
+  const [chatSendingMap, setChatSendingMap] = useState({});
+  const [chatDrafts, setChatDrafts] = useState({});
+  const [chatImageFiles, setChatImageFiles] = useState({});
+  const [chatImagePreviews, setChatImagePreviews] = useState({});
+  const [chatErrorsMap, setChatErrorsMap] = useState({});
 
   useEffect(() => {
     fetchBookings(true);
@@ -76,6 +163,128 @@ export default function Bookings() {
       setLoading(false);
       setRefreshing(false);
     }
+  };
+
+  const loadChatMessages = async (bookingId, silent = false) => {
+    if (!bookingId) return;
+
+    if (!silent) {
+      setChatLoadingMap((current) => ({ ...current, [bookingId]: true }));
+    }
+    setChatErrorsMap((current) => ({ ...current, [bookingId]: "" }));
+
+    try {
+      const { data } = await api.get(`/bookings/${bookingId}/messages/`);
+      setChatMessagesMap((current) => ({ ...current, [bookingId]: Array.isArray(data) ? data : [] }));
+    } catch (chatError) {
+      console.error("Failed to load booking chat:", chatError);
+      setChatMessagesMap((current) => ({ ...current, [bookingId]: [] }));
+      setChatErrorsMap((current) => ({ ...current, [bookingId]: "Unable to load chat messages." }));
+    } finally {
+      if (!silent) {
+        setChatLoadingMap((current) => ({ ...current, [bookingId]: false }));
+      }
+    }
+  };
+
+  const handleToggleChat = async (bookingId) => {
+    if (chatOpenBookingId === bookingId) {
+      setChatOpenBookingId(null);
+      return;
+    }
+
+    setChatOpenBookingId(bookingId);
+    if (!chatMessagesMap[bookingId]) {
+      await loadChatMessages(bookingId);
+    }
+  };
+
+  const handleSendChatMessage = async (bookingId) => {
+    const text = String(chatDrafts[bookingId] || "").trim();
+    const imageFile = chatImageFiles[bookingId] || null;
+    if (!text && !imageFile) return;
+
+    setChatSendingMap((current) => ({ ...current, [bookingId]: true }));
+    setChatErrorsMap((current) => ({ ...current, [bookingId]: "" }));
+
+    try {
+      if (imageFile) {
+        const payload = new FormData();
+        if (text) payload.append("text", text);
+        payload.append("image", imageFile);
+        await api.post(`/bookings/${bookingId}/messages/`, payload);
+      } else {
+        await api.post(`/bookings/${bookingId}/messages/`, { text });
+      }
+
+      setChatDrafts((current) => ({ ...current, [bookingId]: "" }));
+      setChatImageFiles((current) => ({ ...current, [bookingId]: null }));
+      setChatImagePreviews((current) => {
+        const preview = current[bookingId];
+        if (preview) {
+          URL.revokeObjectURL(preview);
+        }
+        return { ...current, [bookingId]: "" };
+      });
+      await loadChatMessages(bookingId, true);
+    } catch (chatError) {
+      console.error("Failed to send booking chat message:", chatError);
+      setChatErrorsMap((current) => ({ ...current, [bookingId]: "Failed to send message. Please try again." }));
+    } finally {
+      setChatSendingMap((current) => ({ ...current, [bookingId]: false }));
+    }
+  };
+
+  useEffect(() => {
+    if (!chatOpenBookingId) return;
+    const pollId = window.setInterval(() => {
+      void loadChatMessages(chatOpenBookingId, true);
+    }, 8000);
+    return () => window.clearInterval(pollId);
+  }, [chatOpenBookingId]);
+
+  useEffect(
+    () => () => {
+      Object.values(chatImagePreviews).forEach((preview) => {
+        if (preview) {
+          URL.revokeObjectURL(preview);
+        }
+      });
+    },
+    [chatImagePreviews]
+  );
+
+  const handleChatImageSelect = (bookingId, file) => {
+    if (!file) return;
+
+    if (!String(file.type || "").startsWith("image/")) {
+      setChatErrorsMap((current) => ({ ...current, [bookingId]: "Please choose an image file." }));
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setChatErrorsMap((current) => ({ ...current, [bookingId]: "Image size must be 5MB or less." }));
+      return;
+    }
+
+    setChatErrorsMap((current) => ({ ...current, [bookingId]: "" }));
+    setChatImageFiles((current) => ({ ...current, [bookingId]: file }));
+    setChatImagePreviews((current) => {
+      if (current[bookingId]) {
+        URL.revokeObjectURL(current[bookingId]);
+      }
+      return { ...current, [bookingId]: URL.createObjectURL(file) };
+    });
+  };
+
+  const clearChatImage = (bookingId) => {
+    setChatImageFiles((current) => ({ ...current, [bookingId]: null }));
+    setChatImagePreviews((current) => {
+      if (current[bookingId]) {
+        URL.revokeObjectURL(current[bookingId]);
+      }
+      return { ...current, [bookingId]: "" };
+    });
   };
 
   const stats = useMemo(() => {
@@ -238,6 +447,7 @@ export default function Bookings() {
               const statusKey = String(booking.status || "pending").toLowerCase();
               const statusMeta = STATUS_META[statusKey] || STATUS_META.pending;
               const StatusIcon = statusMeta.icon;
+              const roomDistanceKm = getRoomDistanceKm(room);
               const roomImage = room.images?.[0]?.image || "";
               const ownerName = room.hostel_name || "Hostel Owner";
               const ownerPhone = room.hostel_phone || room.owner_contact || "Unavailable";
@@ -267,7 +477,7 @@ export default function Bookings() {
 
                     <div className="booking-card__chips">
                       <span>{formatCurrency(room.price)} / month</span>
-                      <span>{room.distance_from_university || "0"} km</span>
+                      <span>{formatDistanceForChip(roomDistanceKm)}</span>
                       <span>{String(room.gender_allowed || "any").toUpperCase()}</span>
                     </div>
 
@@ -303,7 +513,7 @@ export default function Bookings() {
                     <div className="booking-card__actions">
                       <button
                         type="button"
-                        className="bookings-btn bookings-btn--primary"
+                        className="bookings-btn bookings-btn--outline"
                         onClick={() => navigate(`/rooms/${room.id}`)}
                       >
                         View Room
@@ -314,7 +524,109 @@ export default function Bookings() {
                           Call Owner
                         </a>
                       ) : null}
+
+                      <button
+                        type="button"
+                        className="bookings-btn bookings-btn--outline"
+                        onClick={() => handleToggleChat(booking.id)}
+                      >
+                        <MessageCircle size={14} />
+                        {chatOpenBookingId === booking.id ? "Close Chat" : "Chat"}
+                      </button>
                     </div>
+
+                    {chatOpenBookingId === booking.id ? (
+                      <div className="booking-card__chat">
+                        <div className="booking-card__chat-list">
+                          {chatLoadingMap[booking.id] ? (
+                            <p className="booking-card__chat-empty">Loading messages...</p>
+                          ) : (chatMessagesMap[booking.id] || []).length === 0 ? (
+                            <p className="booking-card__chat-empty">No messages yet. Start the conversation.</p>
+                          ) : (
+                            (chatMessagesMap[booking.id] || []).map((message) => {
+                              const mine = Number(message.sender_id) === Number(user?.id);
+                              return (
+                                <div
+                                  key={message.id}
+                                  className={`booking-card__chat-bubble ${mine ? "is-mine" : "is-other"}`}
+                                >
+                                  <p className="booking-card__chat-author">{message.sender_name}</p>
+                                  {message.image ? (
+                                    <a
+                                      href={message.image}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="booking-card__chat-image-link"
+                                    >
+                                      <img src={message.image} alt="Chat attachment" className="booking-card__chat-image" />
+                                    </a>
+                                  ) : null}
+                                  {message.text ? <p className="booking-card__chat-text">{message.text}</p> : null}
+                                  <p className="booking-card__chat-time">{formatDateTime(message.created_at)}</p>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+
+                        {chatErrorsMap[booking.id] ? (
+                          <p className="booking-card__chat-error">{chatErrorsMap[booking.id]}</p>
+                        ) : null}
+
+                        <div className="booking-card__chat-tools">
+                          <label className="booking-card__chat-attach">
+                            <Paperclip size={14} />
+                            Attach Image
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                handleChatImageSelect(booking.id, file);
+                                event.target.value = "";
+                              }}
+                            />
+                          </label>
+                          {chatImageFiles[booking.id] ? (
+                            <button
+                              type="button"
+                              className="booking-card__chat-remove-image"
+                              onClick={() => clearChatImage(booking.id)}
+                            >
+                              Remove image
+                            </button>
+                          ) : null}
+                        </div>
+
+                        {chatImagePreviews[booking.id] ? (
+                          <div className="booking-card__chat-preview">
+                            <img src={chatImagePreviews[booking.id]} alt="Selected attachment" />
+                          </div>
+                        ) : null}
+
+                        <div className="booking-card__chat-compose">
+                          <textarea
+                            value={chatDrafts[booking.id] || ""}
+                            onChange={(event) =>
+                              setChatDrafts((current) => ({ ...current, [booking.id]: event.target.value }))
+                            }
+                            placeholder="Type your message to owner..."
+                          />
+                          <button
+                            type="button"
+                            className="bookings-btn bookings-btn--outline booking-card__chat-send"
+                            onClick={() => handleSendChatMessage(booking.id)}
+                            disabled={
+                              chatSendingMap[booking.id] ||
+                              (!String(chatDrafts[booking.id] || "").trim() && !chatImageFiles[booking.id])
+                            }
+                          >
+                            <Send size={14} />
+                            {chatSendingMap[booking.id] ? "Sending..." : "Send"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </article>
               );

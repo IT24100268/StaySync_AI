@@ -14,10 +14,10 @@ function AppLayout({ title, subtitle, children }) {
           <Grid size={{ xs: 12, md: 9, lg: 9.85 }}>
             <Box className="page-shell">
               <Box sx={{ mb: 2.2 }}>
-                <Box component="h1" sx={{ m: 0, color: '#23396f', fontSize: { xs: 34, md: 44 }, lineHeight: 1.05 }}>
+                <Box component="h1" className="delivery-page-title">
                   {title}
                 </Box>
-                <Box component="p" sx={{ m: 0, mt: 0.4, color: '#536993', fontSize: { xs: 15, md: 17 } }}>
+                <Box component="p" className="delivery-page-subtitle">
                   {subtitle}
                 </Box>
               </Box>
@@ -33,7 +33,7 @@ function AppLayout({ title, subtitle, children }) {
 export function MiniMap({ label = 'On the way', compact = false }) {
   return (
     <Box className="glass-card" sx={{ p: 1.2 }}>
-      <Box sx={{ fontSize: 36, fontWeight: 700, color: '#1e3367', mb: 1 }}>{label}</Box>
+      <Box sx={{ fontSize: 28, fontWeight: 700, color: 'var(--delivery-text)', mb: 1 }}>{label}</Box>
       <Box
         className="map-placeholder"
         sx={{
@@ -48,9 +48,9 @@ export function MiniMap({ label = 'On the way', compact = false }) {
 
 export function RightMetric({ label, value }) {
   return (
-    <Box sx={{ py: 0.9, borderRight: '1px solid rgba(146,167,210,0.35)', '&:last-of-type': { borderRight: 'none' } }}>
-      <Box sx={{ color: '#52668f', fontSize: 14 }}>{label}</Box>
-      <Box sx={{ color: '#1f3368', fontSize: 33, fontWeight: 700 }}>{value}</Box>
+    <Box sx={{ py: 0.9, borderRight: '1px solid rgba(201,168,76,0.3)', '&:last-of-type': { borderRight: 'none' } }}>
+      <Box sx={{ color: 'var(--delivery-muted)', fontSize: 14 }}>{label}</Box>
+      <Box sx={{ color: 'var(--delivery-text)', fontSize: 33, fontWeight: 700 }}>{value}</Box>
     </Box>
   )
 }
@@ -58,7 +58,7 @@ export function RightMetric({ label, value }) {
 export function RightPanelCard({ title, children }) {
   return (
     <Box className="glass-card" sx={{ p: 1.4 }}>
-      <Box sx={{ fontSize: 38, fontWeight: 700, color: '#243c72', mb: 1 }}>{title}</Box>
+      <Box sx={{ fontSize: 32, fontWeight: 700, color: 'var(--delivery-text)', mb: 1 }}>{title}</Box>
       {children}
     </Box>
   )

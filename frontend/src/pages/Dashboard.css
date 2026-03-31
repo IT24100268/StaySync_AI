@@ -183,6 +183,12 @@
   transform: translateY(-1px);
 }
 
+.dashboard-btn:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .dashboard-btn--primary {
   color: #fff;
   background: linear-gradient(120deg, var(--student-primary), var(--student-accent));
@@ -292,6 +298,23 @@
   margin-bottom: 14px;
 }
 
+.dashboard-filter-meta {
+  display: grid;
+  gap: 5px;
+  justify-items: end;
+}
+
+.dashboard-filter-meta span {
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--student-primary) 24%, transparent);
+  background: rgba(255, 255, 255, 0.84);
+  color: #284a79;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 4px 9px;
+}
+
 .dashboard-field {
   display: grid;
   gap: 6px;
@@ -336,6 +359,66 @@
   background: #fff;
 }
 
+.dashboard-filter-presets {
+  grid-column: 1 / -1;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--student-primary) 18%, transparent);
+  background:
+    radial-gradient(180px 100px at 100% 0%, rgba(124, 158, 255, 0.14), transparent 72%),
+    rgba(255, 255, 255, 0.75);
+  padding: 10px;
+  display: grid;
+  gap: 9px;
+}
+
+.dashboard-filter-presets__label {
+  margin: 0;
+  color: #2d4f7f;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboard-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.dashboard-preset-chip {
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f4c8c;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  padding: 6px 11px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.dashboard-preset-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.48);
+}
+
+.dashboard-preset-chip.is-active {
+  color: #fff;
+  border-color: rgba(30, 64, 175, 0.62);
+  background: linear-gradient(120deg, #205bcc, #2f7be8);
+}
+
+.dashboard-preset-chip:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .dashboard-quick-chips {
   grid-column: 1 / -1;
   display: flex;
@@ -344,28 +427,62 @@
 }
 
 .dashboard-quick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--student-primary) 18%, transparent);
   background: color-mix(in srgb, var(--student-primary) 12%, transparent);
   color: var(--student-primary);
   font-size: 11px;
   font-weight: 800;
-  padding: 4px 9px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.dashboard-quick-chip:hover {
+  transform: translateY(-1px);
+}
+
+.dashboard-quick-chip svg {
+  opacity: 0.82;
 }
 
 .dashboard-quick-chip--muted {
   background: rgba(100, 116, 139, 0.12);
   border-color: rgba(100, 116, 139, 0.16);
   color: #50678e;
+  cursor: default;
+}
+
+.dashboard-filter-error {
+  margin: 0;
+  grid-column: 1 / -1;
+  border-radius: 11px;
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  background: rgba(254, 226, 226, 0.75);
+  color: #9f1239;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 8px 10px;
 }
 
 .dashboard-filter-actions {
   grid-column: 1 / -1;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 10px;
   flex-wrap: wrap;
   margin-top: 6px;
+}
+
+.dashboard-filter-actions__summary {
+  margin: 0 auto 0 0;
+  color: #3f5f89;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .dashboard-card--filters .dashboard-filter-actions .dashboard-btn {
@@ -424,11 +541,29 @@
   background: #dfe8f7;
 }
 
-.dashboard-map__canvas iframe {
+.dashboard-map__google {
   width: 100%;
   height: 100%;
   min-height: 320px;
-  border: 0;
+}
+
+.dashboard-map__placeholder {
+  width: 100%;
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  text-align: center;
+  color: #4a5f85;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dashboard-map__hint {
+  margin: -2px 0 0;
+  color: #4a5f85;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .dashboard-map__empty-note {
@@ -437,6 +572,7 @@
   font-size: 12px;
   font-weight: 700;
 }
+
 
 .dashboard-main-grid {
   display: grid;
@@ -704,6 +840,15 @@
 
   .dashboard-filter-actions {
     justify-content: stretch;
+  }
+
+  .dashboard-filter-actions__summary {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .dashboard-filter-meta {
+    justify-items: start;
   }
 
   .compact-item {

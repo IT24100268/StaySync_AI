@@ -35,8 +35,21 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     
     delivery_address = models.TextField()
+    delivery_latitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    delivery_longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
     preparation_time = models.PositiveIntegerField(null=True, blank=True, help_text='Preparation time in minutes')
     estimated_delivery_time = models.PositiveIntegerField(null=True, blank=True, help_text='Estimated delivery time in minutes')
+    route_distance_km = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
+    route_duration_minutes = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    traffic_eta_minutes = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    total_eta_minutes = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    delivery_fee_raw = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    delivery_fee_rounded = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    maps_route_url = models.URLField(blank=True, default='')
+    pickup_ready_at = models.DateTimeField(null=True, blank=True)
+    estimated_delivery_at = models.DateTimeField(null=True, blank=True)
+    ai_model_version = models.CharField(max_length=128, blank=True, default='')
+    pricing_snapshot = models.JSONField(default=dict, blank=True)
     
     rejection_reason = models.TextField(null=True, blank=True)
     

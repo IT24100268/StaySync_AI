@@ -2,17 +2,24 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import api from '../api/axios'
 
 const AuthContext = createContext(null)
+const DELIVERY_ROLE = 'delivery'
+
+function hasDeliverySession() {
+  const token = localStorage.getItem('access_token')
+  const role = String(localStorage.getItem('user_type') || '').trim().toLowerCase()
+
+  return Boolean(token) && role === DELIVERY_ROLE
+}
 
 export function AuthProvider({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('access_token')))
+  const [isAuthenticated, setIsAuthenticated] = useState(() => hasDeliverySession())
   const [authLoading, setAuthLoading] = useState(false)
   const [currentUsername, setCurrentUsername] = useState(() => localStorage.getItem('current_username') || '')
 
   // Re-check authentication when tokens change
   useEffect(() => {
     const checkTokens = () => {
-      const token = localStorage.getItem('access_token')
-      setIsAuthenticated(Boolean(token))
+      setIsAuthenticated(hasDeliverySession())
     }
     
     // Check immediately
@@ -48,6 +55,7 @@ export function AuthProvider({ children }) {
       if (refresh) {
         localStorage.setItem('refresh_token', refresh)
       }
+      localStorage.setItem('user_type', user_type)
       localStorage.setItem('current_username', username)
       setCurrentUsername(username)
       setIsAuthenticated(true)
@@ -65,6 +73,7 @@ export function AuthProvider({ children }) {
   const logout = () => {
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
+    localStorage.removeItem('user_type')
     localStorage.removeItem('current_username')
     setCurrentUsername('')
     setIsAuthenticated(false)

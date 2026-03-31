@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 # Load environment variables
 load_dotenv()
@@ -12,8 +13,8 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dev-key-change-in-producti
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
-use_sqlite = os.getenv('USE_SQLITE', '').lower() == 'true'
-has_placeholder_mysql_password = os.getenv('DB_PASSWORD', '') == 'your-password'
+db_password = os.getenv('DB_PASSWORD', '')
+has_placeholder_mysql_password = db_password == 'your-password'
 
 INSTALLED_APPS = [
     'daphne',
@@ -73,24 +74,21 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-if use_sqlite or has_placeholder_mysql_password:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
+if not db_password or has_placeholder_mysql_password:
+    raise ImproperlyConfigured(
+        "MySQL configuration is required. Set DB_PASSWORD in backend/.env and do not use placeholder values."
+    )
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.getenv('DB_NAME', 'staysync_db'),
+        'USER': os.getenv('DB_USER', 'root'),
+        'PASSWORD': db_password,
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '3306'),
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.getenv('DB_NAME', 'staysync_db'),
-            'USER': os.getenv('DB_USER', 'root'),
-            'PASSWORD': os.getenv('DB_PASSWORD', ''),
-            'HOST': os.getenv('DB_HOST', 'localhost'),
-            'PORT': os.getenv('DB_PORT', '3306'),
-        }
-    }
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -159,3 +157,19 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'staysyncai26@gmail.com')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'nkbvtwakixjgquzw')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'StaySync AI <staysyncai26@gmail.com>')
+GOOGLE_MAPS_API_KEY = os.getenv('GOOGLE_MAPS_API_KEY', '').strip()
+DELIVERY_ETA_MODEL_PATH = os.getenv(
+    'DELIVERY_ETA_MODEL_PATH',
+    str(BASE_DIR / 'orders' / 'ml' / 'eta_full_model_xgb.joblib'),
+).strip()
+DELIVERY_FEE_MODEL_PATH = os.getenv(
+    'DELIVERY_FEE_MODEL_PATH',
+    str(BASE_DIR / 'orders' / 'ml' / 'delivery_fee_model_xgb.joblib'),
+).strip()
+if DELIVERY_ETA_MODEL_PATH and not os.path.isabs(DELIVERY_ETA_MODEL_PATH):
+    DELIVERY_ETA_MODEL_PATH = str(BASE_DIR / DELIVERY_ETA_MODEL_PATH)
+if DELIVERY_FEE_MODEL_PATH and not os.path.isabs(DELIVERY_FEE_MODEL_PATH):
+    DELIVERY_FEE_MODEL_PATH = str(BASE_DIR / DELIVERY_FEE_MODEL_PATH)
+DELIVERY_AI_TIMEOUT_SECONDS = int(os.getenv('DELIVERY_AI_TIMEOUT_SECONDS', '20'))
+DELIVERY_AI_DEFAULT_SPEED_KMPH = float(os.getenv('DELIVERY_AI_DEFAULT_SPEED_KMPH', '25'))
+DELIVERY_AI_FALLBACK_TRAFFIC_MULTIPLIER = float(os.getenv('DELIVERY_AI_FALLBACK_TRAFFIC_MULTIPLIER', '1.15'))

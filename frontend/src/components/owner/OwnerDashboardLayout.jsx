@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   List,
   BookOpen,
-  MessageSquare,
   DollarSign,
   Settings,
   Bell,
@@ -20,7 +19,6 @@ const NAV = [
   { name: "Dashboard", to: "/owner/dashboard", icon: LayoutDashboard },
   { name: "Listings", to: "/owner/listings", icon: List },
   { name: "Bookings", to: "/owner/bookings", icon: BookOpen },
-  { name: "Enquiries", to: "/owner/enquiries", icon: MessageSquare },
   { name: "Analytics", to: "/owner/analytics", icon: DollarSign },
   { name: "Validation", to: "/owner/verification", icon: Settings },
 ];
@@ -96,7 +94,7 @@ export default function OwnerDashboardLayout() {
             pendingEnquiries.length > 0
               ? "Students are waiting for your reply on room requests."
               : "No pending student enquiries right now.",
-          to: "/owner/enquiries",
+          to: "/owner/bookings",
           highlight: pendingEnquiries.length > 0,
         },
         {
@@ -142,7 +140,7 @@ export default function OwnerDashboardLayout() {
         id: `booking-${item.id}`,
         title: `${item.student_name || "Student"} asked about ${item.room_title || "your room"}`,
         body: item.message || "A new booking enquiry needs your response.",
-        to: "/owner/enquiries",
+        to: "/owner/bookings",
         highlight: true,
       }));
 
@@ -182,70 +180,65 @@ export default function OwnerDashboardLayout() {
     <div
       className="min-h-screen"
       style={{
-        background: "linear-gradient(180deg,#f7f4ee 0%, #f3efe8 55%, #f8f5ef 100%)",
+        background:
+          "radial-gradient(900px 420px at 8% -10%, rgba(212,175,55,0.16), transparent 60%), linear-gradient(180deg,#f7f4ee 0%, #f3efe8 55%, #f8f5ef 100%)",
       }}
     >
-      <div
-        className="h-[88px] w-full"
+      <header
+        className="sticky top-0 z-50 w-full border-b"
         style={{
           background:
-            "radial-gradient(circle at top center, rgba(255,255,255,0.04), transparent 32%), linear-gradient(180deg,#151519 0%, #1b1b20 100%)",
-        }}
-      />
-
-      <header
-        className="sticky top-0 z-50 -mt-[20px] mx-auto flex max-w-[1400px] items-center gap-4 border-y px-6 py-3"
-        style={{
-          background: "rgba(12,12,15,0.97)",
-          borderColor: "rgba(212,175,55,0.10)",
-          backdropFilter: "blur(12px)",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
+            "linear-gradient(118deg, rgba(14,14,18,0.97) 0%, rgba(22,22,28,0.94) 58%, rgba(12,12,16,0.96) 100%)",
+          borderColor: "rgba(212,175,55,0.18)",
+          backdropFilter: "blur(14px)",
+          boxShadow: "0 12px 30px rgba(14,14,18,0.22), inset 0 1px 0 rgba(255,255,255,0.04)",
         }}
       >
-        <div className="flex min-w-[185px] items-center gap-3">
-          <Building2 size={22} className="text-[#d4af37]" />
+        <div className="mx-auto flex w-full max-w-[1400px] items-center gap-4 px-5 py-3.5 md:px-6">
+        <div className="flex min-w-[200px] items-center gap-3">
+          <span className="grid h-9 w-9 place-items-center rounded-[12px] border border-[#d4af37]/35 bg-[#d4af37]/10">
+            <Building2 size={20} className="text-[#d4af37]" />
+          </span>
           <div className="leading-tight">
             <p className="text-[15px] font-extrabold tracking-wide text-white">
               StaySync <span className="text-[#d4af37]">AI</span>
             </p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">Owner Console</p>
           </div>
         </div>
 
-        <nav className="flex flex-1 items-center justify-center gap-1">
+        <nav className="flex flex-1 items-center justify-center gap-1.5">
           {NAV.map(({ name: label, to }) => (
             <NavLink
               key={to}
               to={to}
               end={to === "/owner/dashboard"}
               className={({ isActive }) =>
-                `relative px-4 py-2 text-[15px] font-medium transition ${
-                  isActive ? "text-white" : "text-white/80 hover:text-white"
+                `relative rounded-full px-4 py-2 text-[14px] font-semibold transition ${
+                  isActive ? "text-[#2a1e08]" : "text-white/80 hover:text-white"
                 }`
               }
+              style={({ isActive }) =>
+                isActive
+                  ? {
+                      background: "linear-gradient(135deg,#f0d682,#c9a84c)",
+                      boxShadow: "0 10px 22px rgba(201,168,76,0.35)",
+                    }
+                  : {
+                      background: "transparent",
+                    }
+              }
             >
-              {({ isActive }) => (
-                <span className="relative">
-                  {label}
-                  {isActive && (
-                    <span
-                      className="absolute left-0 top-[30px] h-[2.5px] w-full rounded-full"
-                      style={{
-                        background: "linear-gradient(90deg,#c9a84c,#f0d682,#c9a84c)",
-                        boxShadow: "0 0 12px rgba(201,168,76,0.55)",
-                      }}
-                    />
-                  )}
-                </span>
-              )}
+              {label}
             </NavLink>
           ))}
         </nav>
 
-        <div className="flex min-w-[220px] items-center justify-end gap-3">
+        <div className="flex min-w-[230px] items-center justify-end gap-3">
           <div className="relative" ref={notificationRef}>
             <button
               onClick={() => setNotificationsOpen((open) => !open)}
-              className="relative text-white/85 transition hover:text-[#d4af37]"
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/85 transition hover:border-[#d4af37]/35 hover:text-[#d4af37]"
               aria-label="Open owner notifications"
             >
               <Bell size={18} />
@@ -336,7 +329,7 @@ export default function OwnerDashboardLayout() {
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setProfileOpen((v) => !v)}
-              className="flex items-center gap-3 rounded-full px-2 py-1 transition hover:bg-white/5"
+              className="flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1.5 transition hover:border-[#d4af37]/35 hover:bg-white/[0.06]"
             >
               <div
                 className="grid h-9 w-9 place-items-center rounded-full text-xs font-extrabold text-white"
@@ -400,9 +393,10 @@ export default function OwnerDashboardLayout() {
             )}
           </div>
         </div>
+        </div>
       </header>
 
-      <main className="mx-auto max-w-[1400px] px-6 py-8">
+      <main className="mx-auto max-w-[1400px] px-6 pb-8 pt-5">
         <Outlet />
       </main>
     </div>

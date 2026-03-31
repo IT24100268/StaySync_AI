@@ -8,7 +8,6 @@ import {
   MapPin,
   Pencil,
   Plus,
-  Sparkles,
   ToggleLeft,
   ToggleRight,
 } from "lucide-react";
@@ -74,10 +73,6 @@ function ListingCard({ listing, onToggleAvailability }) {
             alt={listing.title}
             className="h-[220px] w-full bg-[#f1eadf] object-cover"
           />
-          <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/30 bg-black/55 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white backdrop-blur">
-            <Sparkles size={12} />
-            Listing
-          </div>
         </div>
 
         <div className="p-5">
@@ -166,15 +161,15 @@ function ListingCard({ listing, onToggleAvailability }) {
                 Edit
               </Link>
 
-              <button
-                onClick={() => alert("Connect view enquiries for this listing")}
+              <Link
+                to={`/owner/bookings?roomId=${listing.id}`}
                 className="inline-flex items-center gap-2 rounded-[16px] border border-[#e4d9c5] bg-white px-4 py-3 text-sm font-black text-[#5f5a4f] shadow-[0_10px_22px_rgba(49,37,17,0.04)] transition hover:-translate-y-0.5 hover:border-[#d7be8c] hover:bg-[#faf6ef] hover:text-[#1e1d1a]"
               >
                 <span className="grid h-8 w-8 place-items-center rounded-[12px] bg-[#f7f2e8] text-[#8a7b62]">
                   <Eye size={15} />
                 </span>
                 View
-              </button>
+              </Link>
             </div>
           </div>
         </div>

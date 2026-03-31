@@ -24,6 +24,56 @@ from .serializers import (
 logger = logging.getLogger(__name__)
 
 
+def sync_profile_and_public_restaurant(user, legacy_restaurant):
+    """
+    Mirror restaurant location/contact updates to owner profile and public restaurants table.
+    """
+    if getattr(user, 'user_type', None) == 'restaurant_owner' and hasattr(user, 'restaurant_profile'):
+        profile = user.restaurant_profile
+        profile_updates = []
+
+        profile_mapping = {
+            'restaurant_name': legacy_restaurant.name,
+            'phone_number': legacy_restaurant.phone,
+            'address': legacy_restaurant.address,
+            'latitude': legacy_restaurant.latitude,
+            'longitude': legacy_restaurant.longitude,
+        }
+
+        for field, value in profile_mapping.items():
+            if getattr(profile, field) != value:
+                setattr(profile, field, value)
+                profile_updates.append(field)
+
+        if profile_updates:
+            profile.save(update_fields=profile_updates)
+
+    from restaurants.models import Restaurant as PublicRestaurant
+
+    payload = {
+        'name': legacy_restaurant.name,
+        'email': legacy_restaurant.email,
+        'phone': legacy_restaurant.phone,
+        'address': legacy_restaurant.address,
+        'latitude': legacy_restaurant.latitude,
+        'longitude': legacy_restaurant.longitude,
+    }
+
+    public_restaurant = PublicRestaurant.objects.filter(owner=user).order_by('id').first()
+    if public_restaurant is None:
+        PublicRestaurant.objects.create(owner=user, **payload)
+        return
+
+    update_fields = []
+    for field, value in payload.items():
+        if getattr(public_restaurant, field) != value:
+            setattr(public_restaurant, field, value)
+            update_fields.append(field)
+
+    if update_fields:
+        public_restaurant.save(update_fields=update_fields)
+
+
 class RestaurantRegisterView(APIView):
     permission_classes = [AllowAny]
 
@@ -80,13 +130,17 @@ class RestaurantScopedMixin:
         user = self.request.user
         if getattr(user, 'user_type', None) == 'restaurant_owner' and hasattr(user, 'restaurant_profile'):
             profile = user.restaurant_profile
-            return Restaurant.objects.create(
+            restaurant = Restaurant.objects.create(
                 owner=user,
                 name=(profile.restaurant_name or user.username or 'Restaurant').strip()[:255],
                 email=(user.email or '').strip(),
                 phone=(profile.phone_number or '').strip()[:32],
                 address=(profile.address or '').strip(),
+                latitude=profile.latitude,
+                longitude=profile.longitude,
             )
+            sync_profile_and_public_restaurant(user, restaurant)
+            return restaurant
 
         return generics.get_object_or_404(Restaurant, owner=self.request.user)
 
@@ -101,7 +155,8 @@ class RestaurantProfileView(RestaurantScopedMixin, APIView):
         restaurant = self.get_restaurant()
         serializer = RestaurantSerializer(restaurant, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        updated_restaurant = serializer.save()
+        sync_profile_and_public_restaurant(request.user, updated_restaurant)
         return Response(serializer.data)
 
 

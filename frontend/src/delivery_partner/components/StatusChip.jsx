@@ -1,10 +1,10 @@
 import Chip from '@mui/material/Chip'
 
 const styleByStatus = {
-  active: { bgcolor: 'rgba(42, 185, 122, 0.14)', color: '#168b5a' },
-  completed: { bgcolor: 'rgba(47, 124, 251, 0.12)', color: '#2f7cfb' },
-  pending: { bgcolor: 'rgba(239, 154, 43, 0.2)', color: '#b56f10' },
-  default: { bgcolor: 'rgba(64, 108, 165, 0.12)', color: '#4b6287' },
+  active: { bgcolor: 'rgba(47, 123, 75, 0.14)', color: '#2f7b4b' },
+  completed: { bgcolor: 'rgba(201, 168, 76, 0.18)', color: '#7f6222' },
+  pending: { bgcolor: 'rgba(201, 168, 76, 0.18)', color: '#7f6222' },
+  default: { bgcolor: 'rgba(125, 102, 79, 0.14)', color: '#7d664f' },
 }
 
 function StatusChip({ status = 'default', label }) {

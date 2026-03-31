@@ -30,6 +30,8 @@ class StudentProfile(models.Model):
     gender_preference = models.CharField(max_length=10, choices=GENDER_CHOICES, default='any')
     budget = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     phone_number = models.CharField(max_length=20)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     display_image = models.ImageField(upload_to='student_profiles/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

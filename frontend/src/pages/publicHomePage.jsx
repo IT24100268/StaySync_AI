@@ -99,6 +99,7 @@ export default function PublicHomePage() {
   const [openFaq, setOpenFaq] = useState(null);
   const [heroIndex, setHeroIndex] = useState(0);
   const [modal, setModal] = useState(null); // { type: 'room'|'food', data: {} }
+  const [navScrolled, setNavScrolled] = useState(false);
 
   const closeModal = () => setModal(null);
 
@@ -114,10 +115,21 @@ export default function PublicHomePage() {
     return () => { document.body.style.overflow = ''; };
   }, [modal]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setNavScrolled(window.scrollY > 24);
+    };
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <div className="ph-page">
 
-      <nav className="ph-nav">
+      <nav className={`ph-nav${navScrolled ? ' is-scrolled' : ''}`}>
         <div className="ph-nav__inner ph-container">
           <Link to="/" className="ph-logo">
             <span className="ph-logo__mark">SS</span>

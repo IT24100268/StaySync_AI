@@ -2,6 +2,7 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
+from django.db.models import F
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter
 from .models import Room, Favorite
@@ -27,6 +28,17 @@ class RoomDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         # Only show APPROVED rooms
         return Room.objects.filter(status='APPROVED')
+
+    def retrieve(self, request, *args, **kwargs):
+        room = self.get_object()
+
+        # Count real student detail-page views for owner analytics.
+        if getattr(request.user, 'user_type', None) == 'student':
+            Room.objects.filter(id=room.id).update(views=F('views') + 1)
+            room.refresh_from_db(fields=['views'])
+
+        serializer = self.get_serializer(room)
+        return Response(serializer.data)
 
 class FavoriteToggleView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]

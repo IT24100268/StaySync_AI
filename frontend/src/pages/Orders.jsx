@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
-  CheckCircle2,
   ClipboardList,
   Clock3,
   MapPin,
@@ -10,10 +9,17 @@ import {
   Search,
   Store,
   Truck,
-  XCircle,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import "./Orders.css";
+
+const normalizeOrderStatus = (status) => {
+  const raw = String(status || "").trim().toLowerCase();
+  if (raw === "completed") return "delivered";
+  if (raw === "canceled" || raw === "cancelled") return "rejected";
+  return raw;
+};
 
 const ACTIVE_STATUSES = ["pending", "accepted", "preparing", "ready", "out_for_delivery"];
 
@@ -24,7 +30,10 @@ const STATUS_META = {
   ready: { label: "Ready", className: "status-ready" },
   out_for_delivery: { label: "On the Way", className: "status-delivery" },
   delivered: { label: "Delivered", className: "status-delivered" },
+  completed: { label: "Delivered", className: "status-delivered" },
   rejected: { label: "Canceled", className: "status-canceled" },
+  canceled: { label: "Canceled", className: "status-canceled" },
+  cancelled: { label: "Canceled", className: "status-canceled" },
 };
 
 const TRACK_STEPS = [
@@ -34,6 +43,14 @@ const TRACK_STEPS = [
   { key: "ready", label: "Ready" },
   { key: "out_for_delivery", label: "On the Way" },
   { key: "delivered", label: "Delivered" },
+];
+
+const TAKEAWAY_TRACK_STEPS = [
+  { key: "pending", label: "Placed" },
+  { key: "accepted", label: "Confirmed" },
+  { key: "preparing", label: "Preparing" },
+  { key: "ready", label: "Ready for Pickup" },
+  { key: "picked_up", label: "Picked Up" },
 ];
 
 const toArray = (payload) => {
@@ -86,6 +103,32 @@ const getOrderItemsSummary = (order) => {
   return `${names.slice(0, 3).join(", ")} +${names.length - 3} more`;
 };
 
+const getDeliveryPartnerName = (order) => {
+  const name = String(order?.delivery_partner_name || "").trim();
+  return name || "";
+};
+
+const getDeliveryPartnerAvatar = (order) => {
+  return String(order?.delivery_partner_display_image || "").trim();
+};
+
+const getDeliveryPartnerPhone = (order) => {
+  return String(order?.delivery_partner_phone || "").trim();
+};
+
+const getDeliveryPartnerVehicle = (order) => {
+  const type = String(order?.delivery_partner_vehicle_type || "").trim();
+  const number = String(order?.delivery_partner_vehicle_number || "").trim();
+  return [type, number].filter(Boolean).join(" - ");
+};
+
+const getInitials = (value = "") => {
+  const clean = String(value || "").trim();
+  if (!clean) return "DP";
+  const parts = clean.split(/\s+/).slice(0, 2);
+  return parts.map((part) => part[0]).join("").toUpperCase();
+};
+
 const parseCoordinate = (value, axis) => {
   if (value === null || value === undefined || value === "") return null;
   const numeric = Number(value);
@@ -101,10 +144,27 @@ const hasValidCoordinatePair = (latitude, longitude) => {
   return true;
 };
 
+const getOrderType = (order) =>
+  String(order?.order_type || "delivery").trim().toLowerCase() === "takeaway" ? "takeaway" : "delivery";
+
+const getProgressStatusKey = (order) => {
+  const normalized = normalizeOrderStatus(order?.status || "pending");
+  if (getOrderType(order) === "takeaway") {
+    if (normalized === "accepted") return "preparing";
+    if (normalized === "delivered") return "picked_up";
+    if (normalized === "completed") return "picked_up";
+    if (normalized === "out_for_delivery") return "ready";
+  }
+  return normalized;
+};
+
 const statusForFilter = (order, filter) => {
-  const status = String(order?.status || "").toLowerCase();
+  const status = normalizeOrderStatus(order?.status);
+  const orderType = getOrderType(order);
   if (filter === "all") return true;
   if (filter === "active") return ACTIVE_STATUSES.includes(status);
+  if (filter === "pending_delivery") return orderType === "delivery" && status === "pending";
+  if (filter === "pending_takeaway") return orderType === "takeaway" && status === "pending";
   if (filter === "completed") return status === "delivered";
   if (filter === "canceled") return status === "rejected";
   return true;
@@ -112,6 +172,7 @@ const statusForFilter = (order, filter) => {
 
 export default function Orders() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -122,6 +183,32 @@ export default function Orders() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const [selectedActiveOrderId, setSelectedActiveOrderId] = useState(null);
+  const [studentLocation, setStudentLocation] = useState(null);
+  const [locatingStudent, setLocatingStudent] = useState(false);
+  const [studentLocationStatus, setStudentLocationStatus] = useState("");
+  const [locationAutoAttempted, setLocationAutoAttempted] = useState(false);
+  const [deliveryTracking, setDeliveryTracking] = useState(null);
+  const [deliveryTrackingLoading, setDeliveryTrackingLoading] = useState(false);
+
+  const savedStudentLocation = useMemo(() => {
+    const latitude = parseCoordinate(user?.profile?.latitude, "lat");
+    const longitude = parseCoordinate(user?.profile?.longitude, "lng");
+    if (!hasValidCoordinatePair(latitude, longitude)) {
+      return null;
+    }
+    return { lat: latitude, lng: longitude };
+  }, [user?.profile?.latitude, user?.profile?.longitude]);
+
+  useEffect(() => {
+    if (!savedStudentLocation) return;
+    setStudentLocation((current) => {
+      if (current && hasValidCoordinatePair(current.lat, current.lng)) {
+        return current;
+      }
+      return savedStudentLocation;
+    });
+    setStudentLocationStatus((currentStatus) => currentStatus || "Using your saved profile location for route preview.");
+  }, [savedStudentLocation?.lat, savedStudentLocation?.lng]);
 
   useEffect(() => {
     fetchOrders(true);
@@ -148,19 +235,63 @@ export default function Orders() {
     }
   };
 
+  const requestStudentCurrentLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setStudentLocationStatus("Current location is not supported by this browser.");
+      return;
+    }
+
+    setLocatingStudent(true);
+    setStudentLocationStatus("Detecting your current location...");
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const nextLocation = {
+          lat: Number(position.coords.latitude),
+          lng: Number(position.coords.longitude),
+        };
+
+        if (!hasValidCoordinatePair(nextLocation.lat, nextLocation.lng)) {
+          setStudentLocationStatus("Location detected, but coordinates were invalid.");
+          setLocatingStudent(false);
+          return;
+        }
+
+        setStudentLocation(nextLocation);
+        setStudentLocationStatus("Current location updated for pickup route.");
+        setLocatingStudent(false);
+      },
+      (geoError) => {
+        if (geoError.code === 1) {
+          setStudentLocationStatus("Location permission denied. Enable it to view route path.");
+        } else if (geoError.code === 2) {
+          setStudentLocationStatus("Location unavailable right now.");
+        } else if (geoError.code === 3) {
+          setStudentLocationStatus("Location request timed out.");
+        } else {
+          setStudentLocationStatus("Failed to fetch current location.");
+        }
+        setLocatingStudent(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  }, []);
+
   const stats = useMemo(() => {
-    const active = orders.filter((order) => ACTIVE_STATUSES.includes(String(order.status || "").toLowerCase())).length;
-    const completed = orders.filter((order) => String(order.status || "").toLowerCase() === "delivered").length;
-    const canceled = orders.filter((order) => String(order.status || "").toLowerCase() === "rejected").length;
+    const active = orders.filter((order) => ACTIVE_STATUSES.includes(normalizeOrderStatus(order.status))).length;
+    const completed = orders.filter((order) => normalizeOrderStatus(order.status) === "delivered").length;
+    const canceled = orders.filter((order) => normalizeOrderStatus(order.status) === "rejected").length;
     return { active, completed, canceled, total: orders.length };
   }, [orders]);
 
-  const visibleOrders = useMemo(() => {
+  const searchedOrders = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    const filtered = orders.filter((order) => {
-      if (!statusForFilter(order, statusFilter)) return false;
-
+    return orders.filter((order) => {
       if (!query) return true;
       const searchText = [
         `order ${order.id}`,
@@ -176,8 +307,10 @@ export default function Orders() {
 
       return searchText.includes(query);
     });
+  }, [orders, searchQuery]);
 
-    const sorted = [...filtered];
+  const sortedOrders = useMemo(() => {
+    const sorted = [...searchedOrders];
     sorted.sort((a, b) => {
       if (sortBy === "oldest") {
         return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
@@ -190,60 +323,300 @@ export default function Orders() {
       }
       return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
     });
-
     return sorted;
-  }, [orders, searchQuery, statusFilter, sortBy]);
+  }, [searchedOrders, sortBy]);
+
+  const panelOrders = useMemo(
+    () => sortedOrders.filter((order) => statusForFilter(order, statusFilter)),
+    [sortedOrders, statusFilter]
+  );
 
   const activeOrders = useMemo(
-    () => visibleOrders.filter((order) => ACTIVE_STATUSES.includes(String(order.status || "").toLowerCase())),
-    [visibleOrders]
+    () => sortedOrders.filter((order) => ACTIVE_STATUSES.includes(normalizeOrderStatus(order.status))),
+    [sortedOrders]
   );
 
   const completedOrders = useMemo(
-    () => visibleOrders.filter((order) => String(order.status || "").toLowerCase() === "delivered"),
-    [visibleOrders]
+    () => sortedOrders.filter((order) => normalizeOrderStatus(order.status) === "delivered"),
+    [sortedOrders]
   );
 
   const canceledOrders = useMemo(
-    () => visibleOrders.filter((order) => String(order.status || "").toLowerCase() === "rejected"),
-    [visibleOrders]
+    () => sortedOrders.filter((order) => normalizeOrderStatus(order.status) === "rejected"),
+    [sortedOrders]
   );
 
+  const panelTitle = useMemo(() => {
+    if (statusFilter === "pending_delivery") return "Pending Delivery Orders";
+    if (statusFilter === "pending_takeaway") return "Pending Takeaway Orders";
+    if (statusFilter === "completed") return "Completed Orders";
+    if (statusFilter === "canceled") return "Canceled Orders";
+    if (statusFilter === "all") return "All Orders";
+    return "Active Orders";
+  }, [statusFilter]);
+
   useEffect(() => {
-    if (activeOrders.length === 0) {
+    if (panelOrders.length === 0) {
       setSelectedActiveOrderId(null);
       return;
     }
 
-    const exists = activeOrders.some((order) => order.id === selectedActiveOrderId);
+    const exists = panelOrders.some((order) => order.id === selectedActiveOrderId);
     if (!exists) {
-      setSelectedActiveOrderId(activeOrders[0].id);
+      setSelectedActiveOrderId(panelOrders[0].id);
     }
-  }, [activeOrders, selectedActiveOrderId]);
+  }, [panelOrders, selectedActiveOrderId]);
 
-  const focusedActiveOrder = useMemo(() => {
-    if (activeOrders.length === 0) return null;
-    return activeOrders.find((order) => order.id === selectedActiveOrderId) || activeOrders[0];
-  }, [activeOrders, selectedActiveOrderId]);
+  const focusedPanelOrder = useMemo(() => {
+    if (panelOrders.length === 0) return null;
+    return panelOrders.find((order) => order.id === selectedActiveOrderId) || panelOrders[0];
+  }, [panelOrders, selectedActiveOrderId]);
+
+  const focusedOrderType = getOrderType(focusedPanelOrder);
+  const isFocusedTakeaway = focusedOrderType === "takeaway";
+  const isFocusedDelivery = focusedOrderType === "delivery";
 
   const mapEmbedUrl = useMemo(() => {
-    if (!focusedActiveOrder) {
+    if (!focusedPanelOrder) {
       return "https://maps.google.com/maps?q=Jaffna%2C%20Sri%20Lanka&z=11&output=embed";
     }
 
-    const latitude = parseCoordinate(focusedActiveOrder.restaurant?.latitude, "lat");
-    const longitude = parseCoordinate(focusedActiveOrder.restaurant?.longitude, "lng");
+    const latitude = parseCoordinate(focusedPanelOrder.restaurant?.latitude, "lat");
+    const longitude = parseCoordinate(focusedPanelOrder.restaurant?.longitude, "lng");
 
     const query = hasValidCoordinatePair(latitude, longitude)
       ? `${latitude},${longitude}`
-      : focusedActiveOrder.restaurant?.address || focusedActiveOrder.delivery_address || "Jaffna, Sri Lanka";
+      : focusedPanelOrder.restaurant?.address || focusedPanelOrder.delivery_address || "Jaffna, Sri Lanka";
 
     const zoom = hasValidCoordinatePair(latitude, longitude) ? 14 : 11;
     return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=${zoom}&output=embed`;
-  }, [focusedActiveOrder]);
+  }, [focusedPanelOrder]);
 
-  const focusedStatus = String(focusedActiveOrder?.status || "pending").toLowerCase();
-  const focusedStepIndex = TRACK_STEPS.findIndex((step) => step.key === focusedStatus);
+  const focusedProgressStatus = getProgressStatusKey(focusedPanelOrder);
+  const focusedTrackSteps = isFocusedTakeaway ? TAKEAWAY_TRACK_STEPS : TRACK_STEPS;
+  const focusedStepIndex = focusedTrackSteps.findIndex((step) => step.key === focusedProgressStatus);
+  const focusedStatus = normalizeOrderStatus(focusedPanelOrder?.status || "pending");
+  const focusedPickupReadyAt = focusedPanelOrder?.pickup_ready_at || focusedPanelOrder?.estimated_delivery_at;
+  const isTakeawayPickedUp = isFocusedTakeaway && focusedProgressStatus === "picked_up";
+  const showTakeawayRoute = isFocusedTakeaway && !isTakeawayPickedUp && focusedStatus !== "rejected";
+
+  const focusedDeliveryFlow = useMemo(() => {
+    const snapshot = focusedPanelOrder?.pricing_snapshot;
+    if (!snapshot || typeof snapshot !== "object") return {};
+    const flow = snapshot?._delivery_flow;
+    if (!flow || typeof flow !== "object") return {};
+    return flow;
+  }, [focusedPanelOrder?.pricing_snapshot]);
+
+  const deliveryPartnerAssigned = Boolean(focusedPanelOrder?.delivery_partner_id);
+  const isDeliveryPickedConfirmed =
+    isFocusedDelivery &&
+    (Boolean(focusedDeliveryFlow?.picked_confirmed) ||
+      focusedStatus === "out_for_delivery" ||
+      focusedStatus === "delivered");
+
+  const focusedRestaurantLatitude = parseCoordinate(focusedPanelOrder?.restaurant?.latitude, "lat");
+  const focusedRestaurantLongitude = parseCoordinate(focusedPanelOrder?.restaurant?.longitude, "lng");
+  const focusedStudentDropLatitude = parseCoordinate(focusedPanelOrder?.delivery_latitude, "lat");
+  const focusedStudentDropLongitude = parseCoordinate(focusedPanelOrder?.delivery_longitude, "lng");
+  const hasStudentLocation = hasValidCoordinatePair(studentLocation?.lat, studentLocation?.lng);
+  const hasRestaurantCoords = hasValidCoordinatePair(focusedRestaurantLatitude, focusedRestaurantLongitude);
+  const hasStudentDropCoords = hasValidCoordinatePair(focusedStudentDropLatitude, focusedStudentDropLongitude);
+
+  const restaurantPoint = useMemo(() => {
+    if (hasRestaurantCoords) {
+      return `${focusedRestaurantLatitude},${focusedRestaurantLongitude}`;
+    }
+    return String(focusedPanelOrder?.restaurant?.address || "").trim();
+  }, [focusedPanelOrder?.restaurant?.address, hasRestaurantCoords, focusedRestaurantLatitude, focusedRestaurantLongitude]);
+
+  const studentDropPoint = useMemo(() => {
+    if (hasStudentDropCoords) {
+      return `${focusedStudentDropLatitude},${focusedStudentDropLongitude}`;
+    }
+    return String(focusedPanelOrder?.delivery_address || "").trim();
+  }, [focusedPanelOrder?.delivery_address, hasStudentDropCoords, focusedStudentDropLatitude, focusedStudentDropLongitude]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadTracking = async () => {
+      if (!focusedPanelOrder || !isFocusedDelivery || !focusedPanelOrder.delivery_partner_id) {
+        setDeliveryTracking(null);
+        setDeliveryTrackingLoading(false);
+        return;
+      }
+
+      setDeliveryTrackingLoading(true);
+      try {
+        const response = await api.get(`/tracking/${focusedPanelOrder.id}/`);
+        if (!isMounted) return;
+        setDeliveryTracking(response?.data || null);
+      } catch {
+        if (!isMounted) return;
+        setDeliveryTracking(null);
+      } finally {
+        if (isMounted) {
+          setDeliveryTrackingLoading(false);
+        }
+      }
+    };
+
+    loadTracking();
+    return () => {
+      isMounted = false;
+    };
+  }, [focusedPanelOrder?.id, focusedPanelOrder?.delivery_partner_id, isFocusedDelivery]);
+
+  const riderLatitude = parseCoordinate(
+    deliveryTracking?.current_latitude ?? focusedPanelOrder?.rider_current_latitude,
+    "lat"
+  );
+  const riderLongitude = parseCoordinate(
+    deliveryTracking?.current_longitude ?? focusedPanelOrder?.rider_current_longitude,
+    "lng"
+  );
+  const hasRiderCoords = hasValidCoordinatePair(riderLatitude, riderLongitude);
+  const riderPoint = hasRiderCoords ? `${riderLatitude},${riderLongitude}` : "";
+
+  const showPickupThenDropRoute =
+    isFocusedDelivery &&
+    deliveryPartnerAssigned &&
+    !isDeliveryPickedConfirmed &&
+    Boolean(riderPoint) &&
+    Boolean(restaurantPoint) &&
+    Boolean(studentDropPoint);
+
+  const showRestaurantToStudentRoute =
+    isFocusedDelivery && Boolean(restaurantPoint) && Boolean(studentDropPoint);
+
+  const deliveryRouteEmbedUrl = useMemo(() => {
+    if (!isFocusedDelivery) return "";
+
+    if (showPickupThenDropRoute) {
+      const destinationWithWaypoint = `${restaurantPoint}+to:${studentDropPoint}`;
+      return `https://maps.google.com/maps?saddr=${encodeURIComponent(riderPoint)}&daddr=${encodeURIComponent(
+        destinationWithWaypoint
+      )}&dirflg=d&output=embed`;
+    }
+
+    if (showRestaurantToStudentRoute) {
+      return `https://maps.google.com/maps?saddr=${encodeURIComponent(restaurantPoint)}&daddr=${encodeURIComponent(
+        studentDropPoint
+      )}&dirflg=d&output=embed`;
+    }
+
+    return "";
+  }, [
+    isFocusedDelivery,
+    showPickupThenDropRoute,
+    showRestaurantToStudentRoute,
+    riderPoint,
+    restaurantPoint,
+    studentDropPoint,
+  ]);
+
+  const deliveryRouteLink = useMemo(() => {
+    if (!isFocusedDelivery) return "";
+
+    if (showPickupThenDropRoute) {
+      const destinationWithWaypoint = `${restaurantPoint}+to:${studentDropPoint}`;
+      return `https://maps.google.com/maps?saddr=${encodeURIComponent(riderPoint)}&daddr=${encodeURIComponent(
+        destinationWithWaypoint
+      )}&dirflg=d`;
+    }
+
+    if (showRestaurantToStudentRoute) {
+      return `https://maps.google.com/maps?saddr=${encodeURIComponent(restaurantPoint)}&daddr=${encodeURIComponent(
+        studentDropPoint
+      )}&dirflg=d`;
+    }
+
+    return String(focusedPanelOrder?.maps_route_url || "").trim();
+  }, [
+    isFocusedDelivery,
+    showPickupThenDropRoute,
+    showRestaurantToStudentRoute,
+    riderPoint,
+    restaurantPoint,
+    studentDropPoint,
+    focusedPanelOrder?.maps_route_url,
+  ]);
+
+  const deliveryRouteHint = useMemo(() => {
+    if (!isFocusedDelivery) return "";
+
+    if (showPickupThenDropRoute) {
+      return "Rider -> Restaurant -> Your location";
+    }
+
+    if (deliveryPartnerAssigned && !isDeliveryPickedConfirmed && !riderPoint) {
+      return deliveryTrackingLoading
+        ? "Fetching rider location..."
+        : "Rider accepted. Showing restaurant-to-you route until live rider GPS is available.";
+    }
+
+    if (showRestaurantToStudentRoute) {
+      return isDeliveryPickedConfirmed
+        ? "Picked up. Route from restaurant to your location."
+        : "Route from restaurant to your location.";
+    }
+
+    return "Route preview unavailable for this delivery.";
+  }, [
+    isFocusedDelivery,
+    showPickupThenDropRoute,
+    showRestaurantToStudentRoute,
+    deliveryPartnerAssigned,
+    isDeliveryPickedConfirmed,
+    riderPoint,
+    deliveryTrackingLoading,
+  ]);
+
+  const deliveryMapEmbedUrl = deliveryRouteEmbedUrl || mapEmbedUrl;
+
+  const pickupDestination = useMemo(() => {
+    if (!showTakeawayRoute) return "";
+    return restaurantPoint;
+  }, [showTakeawayRoute, restaurantPoint]);
+
+  const takeawayRouteEmbedUrl = useMemo(() => {
+    if (!showTakeawayRoute || !hasStudentLocation || !pickupDestination) {
+      return "";
+    }
+    const origin = `${studentLocation.lat},${studentLocation.lng}`;
+    return `https://maps.google.com/maps?saddr=${encodeURIComponent(origin)}&daddr=${encodeURIComponent(
+      pickupDestination
+    )}&dirflg=d&output=embed`;
+  }, [showTakeawayRoute, hasStudentLocation, pickupDestination, studentLocation?.lat, studentLocation?.lng]);
+
+  const takeawayRouteLink = useMemo(() => {
+    if (!showTakeawayRoute || !hasStudentLocation || !pickupDestination) {
+      return "";
+    }
+    const origin = `${studentLocation.lat},${studentLocation.lng}`;
+    return `https://maps.google.com/maps?saddr=${encodeURIComponent(origin)}&daddr=${encodeURIComponent(
+      pickupDestination
+    )}&dirflg=d`;
+  }, [showTakeawayRoute, hasStudentLocation, pickupDestination, studentLocation?.lat, studentLocation?.lng]);
+
+  useEffect(() => {
+    if (!showTakeawayRoute) {
+      setLocationAutoAttempted(false);
+      return;
+    }
+    if (hasStudentLocation || locatingStudent || locationAutoAttempted) {
+      return;
+    }
+    setLocationAutoAttempted(true);
+    requestStudentCurrentLocation();
+  }, [
+    showTakeawayRoute,
+    hasStudentLocation,
+    locatingStudent,
+    locationAutoAttempted,
+    requestStudentCurrentLocation,
+  ]);
 
   return (
     <div className="orders-page">
@@ -296,6 +669,8 @@ export default function Orders() {
             {[
               { key: "all", label: "All" },
               { key: "active", label: "Active" },
+              { key: "pending_delivery", label: "Pending Delivery" },
+              { key: "pending_takeaway", label: "Pending Takeaway" },
               { key: "completed", label: "Completed" },
               { key: "canceled", label: "Canceled" },
             ].map((item) => (
@@ -330,19 +705,19 @@ export default function Orders() {
             <section className="orders-active-panel">
               <div className="orders-active-card">
                 <div className="orders-active-card__head">
-                  <h2>Active Orders</h2>
-                  <span>{activeOrders.length} active</span>
+                  <h2>{panelTitle}</h2>
+                  <span>{panelOrders.length} items</span>
                 </div>
 
-                {activeOrders.length > 0 ? (
+                {panelOrders.length > 0 ? (
                   <div className="orders-active-list">
-                    {activeOrders.map((order) => {
-                      const meta = STATUS_META[String(order.status || "").toLowerCase()] || STATUS_META.pending;
+                    {panelOrders.map((order) => {
+                      const meta = STATUS_META[normalizeOrderStatus(order.status)] || STATUS_META.pending;
                       return (
                         <button
                           key={order.id}
                           type="button"
-                          className={`orders-active-pill ${order.id === focusedActiveOrder?.id ? "is-active" : ""}`}
+                          className={`orders-active-pill ${order.id === focusedPanelOrder?.id ? "is-active" : ""}`}
                           onClick={() => setSelectedActiveOrderId(order.id)}
                         >
                           #{order.id} {meta.label}
@@ -352,14 +727,39 @@ export default function Orders() {
                   </div>
                 ) : null}
 
-                {!focusedActiveOrder ? (
-                  <div className="orders-feedback">No active orders right now.</div>
+                {!focusedPanelOrder ? (
+                  <div className="orders-feedback">No orders found for this filter.</div>
                 ) : (
                   <div className="orders-active-content">
+                    {getDeliveryPartnerName(focusedPanelOrder) ? (
+                      <div className="orders-rider-card">
+                        {getDeliveryPartnerAvatar(focusedPanelOrder) ? (
+                          <img
+                            className="orders-rider-card__avatar"
+                            src={getDeliveryPartnerAvatar(focusedPanelOrder)}
+                            alt={getDeliveryPartnerName(focusedPanelOrder)}
+                          />
+                        ) : (
+                          <span className="orders-rider-card__avatar orders-rider-card__avatar--fallback">
+                            {getInitials(getDeliveryPartnerName(focusedPanelOrder))}
+                          </span>
+                        )}
+
+                        <div className="orders-rider-card__meta">
+                          <p>Delivery Partner</p>
+                          <strong>{getDeliveryPartnerName(focusedPanelOrder)}</strong>
+                          <span>{getDeliveryPartnerPhone(focusedPanelOrder) || "Phone not available"}</span>
+                          {getDeliveryPartnerVehicle(focusedPanelOrder) ? (
+                            <span>{getDeliveryPartnerVehicle(focusedPanelOrder)}</span>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+
                     <div className="orders-active-summary">
                       <div>
-                        <h3>{focusedActiveOrder.restaurant?.name || `Order #${focusedActiveOrder.id}`}</h3>
-                        <p>{getOrderItemsSummary(focusedActiveOrder)}</p>
+                        <h3>{focusedPanelOrder.restaurant?.name || `Order #${focusedPanelOrder.id}`}</h3>
+                        <p>{getOrderItemsSummary(focusedPanelOrder)}</p>
                       </div>
 
                       <span
@@ -369,53 +769,131 @@ export default function Orders() {
                       </span>
                     </div>
 
-                    <div className="orders-active-meta">
+                    <div className={`orders-active-meta ${isFocusedTakeaway ? "orders-active-meta--takeaway" : ""}`}>
                       <span>
-                        <Store size={14} /> {focusedActiveOrder.order_type === "delivery" ? "Delivery" : "Takeaway"}
+                        <Store size={14} /> {isFocusedTakeaway ? "Takeaway" : "Delivery"}
                       </span>
-                      <span>{formatCurrency(focusedActiveOrder.total_price)}</span>
+                      <span>{formatCurrency(focusedPanelOrder.total_price)}</span>
                       <span>
-                        <CalendarDays size={14} /> {formatDateTime(focusedActiveOrder.created_at)}
+                        <CalendarDays size={14} /> {formatDateTime(focusedPanelOrder.created_at)}
                       </span>
-                      {focusedActiveOrder.estimated_delivery_time ? (
-                        <span>
-                          <Clock3 size={14} /> ETA {focusedActiveOrder.estimated_delivery_time} min
-                        </span>
-                      ) : null}
+
+                      {isFocusedTakeaway ? (
+                        <>
+                          {focusedPickupReadyAt ? (
+                            <span>
+                              <Clock3 size={14} /> Ready by {formatDateTime(focusedPickupReadyAt)}
+                            </span>
+                          ) : focusedPanelOrder.estimated_delivery_time ? (
+                            <span>
+                              <Clock3 size={14} /> Ready in ~{focusedPanelOrder.estimated_delivery_time} min
+                            </span>
+                          ) : null}
+                          {focusedPanelOrder.restaurant_contact ? <span>Contact: {focusedPanelOrder.restaurant_contact}</span> : null}
+                        </>
+                      ) : (
+                        <>
+                          <span>Delivery Fee: {formatCurrency(focusedPanelOrder.delivery_charge)}</span>
+                          {focusedPanelOrder.route_distance_km ? (
+                            <span>Distance: {Number(focusedPanelOrder.route_distance_km).toFixed(2)} km</span>
+                          ) : null}
+                          {focusedPanelOrder.estimated_delivery_time ? (
+                            <span>
+                              <Clock3 size={14} /> ETA {focusedPanelOrder.estimated_delivery_time} min
+                            </span>
+                          ) : null}
+                        </>
+                      )}
                     </div>
 
-                    <div className="orders-progress">
-                      {TRACK_STEPS.map((step, index) => {
+                    {isFocusedTakeaway ? (
+                      <div className="orders-takeaway-focus">
+                        <div className="orders-takeaway-focus__head">
+                          <strong>Pickup Summary</strong>
+                          <span>Important details only</span>
+                        </div>
+
+                        <div className="orders-takeaway-focus__grid">
+                          <article className="orders-takeaway-focus__tile">
+                            <p>Order ID</p>
+                            <h4>#{focusedPanelOrder.id}</h4>
+                          </article>
+                          <article className="orders-takeaway-focus__tile">
+                            <p>Pickup At</p>
+                            <h4>{focusedPanelOrder.restaurant?.name || "Restaurant"}</h4>
+                          </article>
+                          <article className="orders-takeaway-focus__tile">
+                            <p>Ready Time</p>
+                            <h4>
+                              {focusedPickupReadyAt
+                                ? formatDateTime(focusedPickupReadyAt)
+                                : focusedPanelOrder.estimated_delivery_time
+                                  ? `~${focusedPanelOrder.estimated_delivery_time} min`
+                                  : "Updating soon"}
+                            </h4>
+                          </article>
+                          <article className="orders-takeaway-focus__tile">
+                            <p>Pickup Address</p>
+                            <h4>{focusedPanelOrder.restaurant?.address || "Address not available"}</h4>
+                          </article>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className={`orders-progress ${isFocusedTakeaway ? "orders-progress--takeaway" : ""}`}>
+                      {focusedTrackSteps.map((step, index) => {
                         const isDone = focusedStepIndex >= 0 && index <= focusedStepIndex;
                         const isCurrent = focusedStepIndex === index;
                         return (
-                          <div key={step.key} className="orders-progress-step">
-                            <div className={`orders-progress-dot ${isDone ? "is-done" : ""} ${isCurrent ? "is-current" : ""}`} />
+                          <div
+                            key={step.key}
+                            className={`orders-progress-step ${isFocusedTakeaway ? "orders-progress-step--takeaway" : ""} ${
+                              isDone ? "is-done" : ""
+                            } ${isCurrent ? "is-current" : ""}`}
+                          >
+                            <div className={`orders-progress-dot ${isDone ? "is-done" : ""} ${isCurrent ? "is-current" : ""}`}>
+                              {isFocusedTakeaway ? <span className="orders-progress-index">{index + 1}</span> : null}
+                            </div>
                             <span>{step.label}</span>
                           </div>
                         );
                       })}
                     </div>
 
-                    <div className="orders-active-actions">
-                      {focusedStatus === "out_for_delivery" ? (
+                    {!isFocusedTakeaway ? (
+                      <div className="orders-active-actions orders-active-actions--premium">
+                        {deliveryRouteHint ? <p className="orders-active-actions__hint">{deliveryRouteHint}</p> : null}
+
+                        {deliveryRouteLink ? (
+                          <a
+                            className="orders-btn orders-btn--route"
+                            href={deliveryRouteLink}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <MapPin size={15} /> Open Smart Route
+                          </a>
+                        ) : null}
+
+                        {focusedStatus === "out_for_delivery" ? (
+                          <button
+                            type="button"
+                            className="orders-btn orders-btn--track"
+                            onClick={() => navigate(`/tracking/${focusedPanelOrder.id}`)}
+                          >
+                            <Truck size={15} /> Live Track
+                          </button>
+                        ) : null}
+
                         <button
                           type="button"
-                          className="orders-btn orders-btn--primary"
-                          onClick={() => navigate(`/tracking/${focusedActiveOrder.id}`)}
+                          className="orders-btn orders-btn--restaurant"
+                          onClick={() => navigate(`/restaurants/${focusedPanelOrder.restaurant?.id}`)}
                         >
-                          <Truck size={15} /> Track Order
+                          View Restaurant
                         </button>
-                      ) : null}
-
-                      <button
-                        type="button"
-                        className="orders-btn orders-btn--outline"
-                        onClick={() => navigate(`/restaurants/${focusedActiveOrder.restaurant?.id}`)}
-                      >
-                        View Restaurant
-                      </button>
-                    </div>
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -423,17 +901,80 @@ export default function Orders() {
               <div className="orders-map-card">
                 <div className="orders-map-card__head">
                   <h2>
-                    <MapPin size={16} /> Map Preview
+                    <MapPin size={16} /> {isFocusedTakeaway ? "Pickup Details" : "Delivery Route Map"}
                   </h2>
                 </div>
-                <div className="orders-map-wrap">
-                  <iframe
-                    title="Order map preview"
-                    src={mapEmbedUrl}
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                  />
-                </div>
+
+                {isFocusedTakeaway ? (
+                  <div className="orders-pickup-card">
+                    <div className={`orders-pickup-route ${isTakeawayPickedUp ? "is-complete" : ""}`}>
+                      <div className="orders-pickup-route__head">
+                        <strong>Route to Pickup</strong>
+                        {!isTakeawayPickedUp ? (
+                          <button
+                            type="button"
+                            className="orders-btn orders-btn--outline orders-pickup-route__locate"
+                            onClick={requestStudentCurrentLocation}
+                            disabled={locatingStudent}
+                          >
+                            <MapPin size={14} /> {locatingStudent ? "Locating..." : "Use Current Location"}
+                          </button>
+                        ) : null}
+                      </div>
+
+                      {isTakeawayPickedUp ? (
+                        <p className="orders-pickup-route__status">
+                          Pickup completed. Route tracking is hidden after order is picked up.
+                        </p>
+                      ) : takeawayRouteEmbedUrl ? (
+                        <>
+                          {studentLocationStatus ? (
+                            <p className="orders-pickup-route__status">{studentLocationStatus}</p>
+                          ) : null}
+
+                          <div className="orders-pickup-route__map">
+                            <iframe
+                              title="Takeaway pickup route"
+                              src={takeawayRouteEmbedUrl}
+                              loading="lazy"
+                              referrerPolicy="no-referrer-when-downgrade"
+                            />
+                          </div>
+
+                          {takeawayRouteLink ? (
+                            <a
+                              className="orders-btn orders-btn--outline orders-pickup-route__open"
+                              href={takeawayRouteLink}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              <MapPin size={14} /> Open Full Route
+                            </a>
+                          ) : null}
+                        </>
+                      ) : (
+                        <p className="orders-pickup-route__status">
+                          Add or allow your current location to display a clear route from you to this restaurant.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="orders-delivery-map-shell">
+                    {deliveryRouteHint ? <p className="orders-delivery-map-shell__hint">{deliveryRouteHint}</p> : null}
+                    {deliveryTrackingLoading && deliveryPartnerAssigned && !isDeliveryPickedConfirmed ? (
+                      <p className="orders-delivery-map-shell__status">Updating rider position...</p>
+                    ) : null}
+                    <div className="orders-map-wrap">
+                      <iframe
+                        title="Order map preview"
+                        src={deliveryMapEmbedUrl}
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -458,11 +999,20 @@ export default function Orders() {
                       </div>
                       <div className="orders-card__body">
                         <h3>{order.restaurant?.name || `Order #${order.id}`}</h3>
+                        <p className="orders-card__meta">Order #{order.id}</p>
+                        <p className="orders-card__meta">{getOrderItemsSummary(order)}</p>
                         <p className="orders-card__price">{formatCurrency(order.total_price)}</p>
-                        <p className="orders-card__meta">{formatDate(order.created_at)}</p>
+                        <p className="orders-card__meta">
+                          Completed: {formatDateTime(order.updated_at || order.created_at)}
+                        </p>
+                        {order.order_type === "delivery" ? (
+                          <p className="orders-card__meta">
+                            Drop: {order.delivery_address || "Address not available"}
+                          </p>
+                        ) : null}
                         <button
                           type="button"
-                          className="orders-btn orders-btn--primary"
+                          className="orders-btn orders-btn--completed"
                           onClick={() => navigate(`/restaurants/${order.restaurant?.id}`)}
                         >
                           Order Again
@@ -488,8 +1038,14 @@ export default function Orders() {
                     <article key={order.id} className="orders-canceled-card">
                       <div>
                         <h3>{order.restaurant?.name || `Order #${order.id}`}</h3>
-                        <p>{formatDateTime(order.created_at)}</p>
-                        {order.rejection_reason ? <small>Reason: {order.rejection_reason}</small> : null}
+                        <p>Order #{order.id}</p>
+                        <p>{getOrderItemsSummary(order)}</p>
+                        <p>Total: {formatCurrency(order.total_price)}</p>
+                        <p>Canceled: {formatDateTime(order.updated_at || order.created_at)}</p>
+                        {order.order_type === "delivery" ? (
+                          <p>Drop: {order.delivery_address || "Address not available"}</p>
+                        ) : null}
+                        <small>Reason: {order.rejection_reason || "Not specified"}</small>
                       </div>
                       <span className="orders-status-badge status-canceled">Canceled</span>
                     </article>
@@ -503,3 +1059,4 @@ export default function Orders() {
     </div>
   );
 }
+
