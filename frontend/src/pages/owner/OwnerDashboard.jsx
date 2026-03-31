@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowRight,
   ArrowUpRight,
   BedDouble,
-  CalendarCheck2,
   CalendarClock,
   CheckCircle2,
   Eye,
@@ -388,46 +386,93 @@ export default function OwnerDashboard() {
           </Panel>
 
           <Panel
-            title="Recent Enquiries"
-            subtitle="Latest student interest across your hostel listings."
+            title="Recent Bookings"
+            subtitle="Latest booking requests with student profile details."
           >
             {enquiries.length ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {enquiries.slice(0, 4).map((item) => (
-                  <div
+                  <article
                     key={item.id}
-                    className="flex items-center justify-between gap-4 rounded-[22px] border border-[#ece3d3] bg-[#fcfbf8] px-4 py-4"
+                    className="rounded-[22px] border border-[#ece3d3] bg-[#fcfbf8] px-4 py-4"
                   >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <Avatar name={item.student_name || "Student"} size="md" />
-                      <div className="min-w-0">
-                        <p className="truncate text-lg font-extrabold text-[#1e1d1a]">{item.student_name}</p>
-                        <p className="truncate text-sm text-[#6f6a5f]">{item.room_title}</p>
-                        <p className="mt-1 text-xs text-[#9b9588]">{formatWhen(item.created_at)}</p>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex min-w-0 items-start gap-3">
+                        {item.student_display_image ? (
+                          <img
+                            src={item.student_display_image}
+                            alt={item.student_name || "Student profile"}
+                            className="h-12 w-12 rounded-full border border-[#ece3d3] object-cover"
+                          />
+                        ) : (
+                          <Avatar name={item.student_name || "Student"} size="md" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="truncate text-lg font-extrabold text-[#1e1d1a]">
+                            {item.student_name || "Student"}
+                          </p>
+                          <p className="truncate text-sm font-semibold text-[#6f6a5f]">
+                            {item.student_email || "Email not provided"}
+                          </p>
+                          <p className="truncate text-xs text-[#9b9588]">
+                            {item.student_university || "University not provided"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="inline-flex items-center gap-3">
+                        <span className="rounded-full border border-[#ece3d3] bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8d8678]">
+                          {formatWhen(item.created_at)}
+                        </span>
+                        <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${statusChip(item.status)}`}>
+                          {String(item.status || "pending").replace(/_/g, " ")}
+                        </span>
                       </div>
                     </div>
-                    <div className="inline-flex items-center gap-3">
-                      <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${statusChip(item.status)}`}>
-                        {String(item.status || "pending").replace(/_/g, " ")}
-                      </span>
-                      <span className="grid h-10 w-10 place-items-center rounded-[14px] bg-[linear-gradient(135deg,#c9a84c,#a07830)] text-white">
-                        <ArrowRight size={16} />
-                      </span>
+
+                    <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-[14px] border border-[#ece3d3] bg-white px-3 py-2.5">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9b9588]">Booking ID</p>
+                        <p className="mt-1 text-sm font-extrabold text-[#1e1d1a]">BK-{item.id}</p>
+                      </div>
+                      <div className="rounded-[14px] border border-[#ece3d3] bg-white px-3 py-2.5">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9b9588]">Room</p>
+                        <p className="mt-1 truncate text-sm font-extrabold text-[#1e1d1a]">{item.room_title}</p>
+                      </div>
+                      <div className="rounded-[14px] border border-[#ece3d3] bg-white px-3 py-2.5">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9b9588]">Student Phone</p>
+                        <p className="mt-1 text-sm font-extrabold text-[#1e1d1a]">{item.student_phone || "Not shared"}</p>
+                      </div>
                     </div>
-                  </div>
+
+                    {item.message ? (
+                      <p className="mt-3 rounded-[12px] border border-[#ece3d3] bg-white px-3 py-2 text-xs text-[#5f5a4f]">
+                        Student message: {item.message}
+                      </p>
+                    ) : null}
+
+                    <div className="mt-3 flex justify-end">
+                      <Link
+                        to="/owner/bookings"
+                        className="inline-flex items-center justify-center rounded-[12px] border border-[#e7dfd1] bg-white px-4 py-2 text-xs font-semibold text-[#5f5a4f] transition hover:bg-[#faf7f1]"
+                      >
+                        Open Booking
+                      </Link>
+                    </div>
+                  </article>
                 ))}
-                <div className="pt-2 text-center">
+                <div className="pt-1 text-center">
                   <Link
-                    to="/owner/enquiries"
+                    to="/owner/bookings"
                     className="inline-flex items-center justify-center rounded-[14px] border border-[#e7dfd1] bg-white px-6 py-2.5 text-sm font-semibold text-[#5f5a4f] transition hover:bg-[#faf7f1]"
                   >
-                    View All
+                    Open Full Bookings Inbox
                   </Link>
                 </div>
               </div>
             ) : (
               <div className="rounded-[22px] border border-dashed border-[#e7dfd1] bg-[#fbf8f2] px-6 py-10 text-center">
-                <p className="text-sm font-semibold text-[#6f6a5f]">No enquiries yet. New student requests will appear here.</p>
+                <p className="text-sm font-semibold text-[#6f6a5f]">No bookings yet. Student profiles will appear here with each new booking.</p>
               </div>
             )}
           </Panel>
@@ -435,45 +480,60 @@ export default function OwnerDashboard() {
 
         <div className="space-y-6">
           <Panel
-            title="Booking Overview"
-            subtitle="The most useful actions and totals from your current room enquiries."
+            title="Quick Highlights"
+            subtitle="Useful summary details from your latest room activity."
           >
-            <div
-              className="rounded-[22px] border border-[#e7d29d] px-4 py-4"
-              style={{
-                background: "linear-gradient(135deg,#fff8e8 0%, #fffdf7 100%)",
-                boxShadow: "0 10px 26px rgba(201,168,76,0.14)",
-              }}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9a6a00]">Booking Health</p>
-                  <p className="mt-2 text-[30px] font-black leading-none tracking-tight text-[#1e1d1a]">
-                    {derived.approvedBookings.length + derived.pendingBookings.length}
-                  </p>
-                  <p className="mt-2 text-sm font-semibold text-[#6f6a5f]">
-                    Total active conversations with students right now.
-                  </p>
-                </div>
-                <div className="grid h-12 w-12 place-items-center rounded-[16px] bg-white text-[#b58c2f] shadow-sm">
-                  <CalendarCheck2 size={20} />
-                </div>
+            <div className="grid gap-3">
+              <div className="rounded-[18px] border border-[#ece3d3] bg-[#fcfbf8] px-4 py-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9b9588]">Average Room Rent</p>
+                <p className="mt-2 text-xl font-black tracking-tight text-[#1e1d1a]">{money(derived.averageRent)}</p>
               </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">
-                  {derived.approvedBookings.length} approved
-                </span>
-                <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">
-                  {derived.pendingBookings.length} pending
-                </span>
-                <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-rose-700">
-                  {derived.rejectedBookings.length} rejected
-                </span>
+              <div className="rounded-[18px] border border-[#ece3d3] bg-[#fcfbf8] px-4 py-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9b9588]">Hostel Location</p>
+                <p className="mt-2 flex items-start gap-2 text-sm font-semibold text-[#1e1d1a]">
+                  <MapPin size={14} className="mt-0.5 shrink-0 text-[#b58c2f]" />
+                  <span className="line-clamp-2">{hostelLocation}</span>
+                </p>
+              </div>
+              <div className="rounded-[18px] border border-[#e7d29d] bg-[#fff8e8] px-4 py-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9a6a00]">Estimated Revenue</p>
+                <p className="mt-2 text-xl font-black tracking-tight text-[#1e1d1a]">
+                  {money(derived.estimatedRevenue || summary.revenue || 0)}
+                </p>
+              </div>
+              <div
+                className="rounded-[20px] px-4 py-4 text-white"
+                style={{
+                  background: "linear-gradient(180deg,#1a1a1f 0%, #17171b 100%)",
+                  border: "1px solid rgba(212,175,55,0.12)",
+                  boxShadow: "0 18px 44px rgba(14,14,18,0.18)",
+                }}
+              >
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">Revenue Pulse</p>
+                <p className="mt-2 text-2xl font-black tracking-tight text-[#f0d682]">
+                  {money(derived.estimatedRevenue || summary.revenue || 0)}
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-[14px] border border-white/10 bg-white/5 px-3 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">Approved</p>
+                    <p className="mt-1 text-lg font-black text-white">{derived.approvedBookings.length}</p>
+                  </div>
+                  <div className="rounded-[14px] border border-white/10 bg-white/5 px-3 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">Hostel Contact</p>
+                    <p className="mt-1 truncate text-sm font-black text-white">
+                      {hostelContact}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
+          </Panel>
 
-            <div className="mt-4 grid gap-3">
+          <Panel
+            title="Booking Overview"
+            subtitle="Quick booking actions and status totals."
+          >
+            <div className="grid gap-3">
               {[
                 {
                   label: "Approved",
@@ -527,56 +587,6 @@ export default function OwnerDashboard() {
               >
                 View Bookings
               </Link>
-            </div>
-          </Panel>
-
-          <Panel
-            title="Quick Highlights"
-            subtitle="Useful summary details from your latest room activity."
-          >
-            <div className="grid gap-3">
-              <div className="rounded-[18px] border border-[#ece3d3] bg-[#fcfbf8] px-4 py-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9b9588]">Average Room Rent</p>
-                <p className="mt-2 text-xl font-black tracking-tight text-[#1e1d1a]">{money(derived.averageRent)}</p>
-              </div>
-              <div className="rounded-[18px] border border-[#ece3d3] bg-[#fcfbf8] px-4 py-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9b9588]">Hostel Location</p>
-                <p className="mt-2 flex items-start gap-2 text-sm font-semibold text-[#1e1d1a]">
-                  <MapPin size={14} className="mt-0.5 shrink-0 text-[#b58c2f]" />
-                  <span className="line-clamp-2">{hostelLocation}</span>
-                </p>
-              </div>
-              <div className="rounded-[18px] border border-[#e7d29d] bg-[#fff8e8] px-4 py-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9a6a00]">Estimated Revenue</p>
-                <p className="mt-2 text-xl font-black tracking-tight text-[#1e1d1a]">
-                  {money(derived.estimatedRevenue || summary.revenue || 0)}
-                </p>
-              </div>
-              <div
-                className="rounded-[20px] px-4 py-4 text-white"
-                style={{
-                  background: "linear-gradient(180deg,#1a1a1f 0%, #17171b 100%)",
-                  border: "1px solid rgba(212,175,55,0.12)",
-                  boxShadow: "0 18px 44px rgba(14,14,18,0.18)",
-                }}
-              >
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">Revenue Pulse</p>
-                <p className="mt-2 text-2xl font-black tracking-tight text-[#f0d682]">
-                  {money(derived.estimatedRevenue || summary.revenue || 0)}
-                </p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-[14px] border border-white/10 bg-white/5 px-3 py-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">Approved</p>
-                    <p className="mt-1 text-lg font-black text-white">{derived.approvedBookings.length}</p>
-                  </div>
-                  <div className="rounded-[14px] border border-white/10 bg-white/5 px-3 py-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">Hostel Contact</p>
-                    <p className="mt-1 truncate text-sm font-black text-white">
-                      {hostelContact}
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
           </Panel>
         </div>

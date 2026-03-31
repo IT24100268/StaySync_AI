@@ -16,6 +16,7 @@ function AuthRedirect() {
     if (token && refresh) {
       localStorage.setItem('access_token', token)
       localStorage.setItem('refresh_token', refresh)
+      localStorage.setItem('user_type', 'delivery')
       console.log('Tokens saved, redirecting to dashboard')
       // Use setTimeout to ensure localStorage is written
       setTimeout(() => {

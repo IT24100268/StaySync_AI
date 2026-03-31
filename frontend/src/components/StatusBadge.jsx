@@ -9,9 +9,12 @@ const statusStyles = {
 };
 
 export default function StatusBadge({ status }) {
+  const statusKey = String(status || '').toUpperCase();
+  const label = statusKey.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+
   return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyles[status] || 'bg-slate-100 text-slate-700'}`}>
-      {status.replaceAll('_', ' ')}
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyles[statusKey] || 'bg-slate-100 text-slate-700'}`}>
+      {label}
     </span>
   );
 }

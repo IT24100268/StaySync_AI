@@ -1,3 +1,6 @@
+import logging
+
+from django.db.models import Sum
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -5,9 +8,20 @@ from rest_framework.permissions import IsAuthenticated
 from rooms.models import Room, RoomImage
 from bookings.models import Booking
 from .serializers import OwnerRoomSerializer
-import logging
 
 logger = logging.getLogger(__name__)
+
+
+def build_media_url(request, file_field):
+    if not file_field:
+        return None
+    try:
+        return request.build_absolute_uri(file_field.url)
+    except Exception:
+        try:
+            return file_field.url
+        except Exception:
+            return None
 
 
 def get_owner_contacts(user):
@@ -41,6 +55,11 @@ def get_owner_contacts(user):
 def get_primary_owner_contact(user):
     contacts = get_owner_contacts(user)
     return contacts[0] if contacts else ''
+
+
+def get_owner_rooms(user):
+    owner_contacts = get_owner_contacts(user)
+    return Room.objects.filter(owner_contact__in=owner_contacts)
 
 
 def sync_room_images(room, request):
@@ -214,10 +233,11 @@ def owner_analytics_summary(request):
     estimated_revenue = 0
     for booking in approved_bookings:
         estimated_revenue += getattr(booking.room, 'price', 0) or 0
+    total_views = rooms.aggregate(total=Sum('views')).get('total') or 0
     
     return Response({
         'listings': rooms.count(),
-        'views': sum(getattr(r, 'views', 0) for r in rooms),
+        'views': int(total_views),
         'enquiries': bookings.count(),
         'revenue': estimated_revenue,
     })
@@ -231,16 +251,24 @@ def owner_enquiries(request):
     rooms = Room.objects.filter(owner_contact__in=owner_contacts)
     room_ids = list(rooms.values_list('id', flat=True))
     
-    bookings = Booking.objects.filter(room_id__in=room_ids).select_related('student', 'room').order_by('-created_at')
+    bookings = (
+        Booking.objects.filter(room_id__in=room_ids)
+        .select_related('student', 'student__student_profile', 'room')
+        .order_by('-created_at')
+    )
     
     data = []
     for booking in bookings:
+        student_profile = getattr(booking.student, 'student_profile', None)
         data.append({
             'id': booking.id,
             'room_title': booking.room.title,
             'room_id': booking.room.id,
             'student_name': f"{booking.student.first_name} {booking.student.last_name}".strip() or booking.student.email,
             'student_email': booking.student.email,
+            'student_phone': getattr(student_profile, 'phone_number', ''),
+            'student_university': getattr(student_profile, 'university', ''),
+            'student_display_image': build_media_url(request, getattr(student_profile, 'display_image', None)),
             'message': booking.message or '',
             'status': booking.status,
             'created_at': booking.created_at,

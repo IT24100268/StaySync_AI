@@ -32,6 +32,32 @@ def normalize_coordinate(value, field_name):
 
     return numeric_value
 
+
+def sync_restaurant_records(owner, payload):
+    """
+    Keep both restaurant tables aligned with the latest owner profile data.
+    """
+    if not payload:
+        return
+
+    from restaurants.models import Restaurant as PublicRestaurant
+    from restaurant.models import Restaurant as LegacyRestaurant
+
+    for model in (PublicRestaurant, LegacyRestaurant):
+        restaurant_obj = model.objects.filter(owner=owner).order_by('id').first()
+        if restaurant_obj is None:
+            model.objects.create(owner=owner, **payload)
+            continue
+
+        update_fields = []
+        for field, value in payload.items():
+            if getattr(restaurant_obj, field) != value:
+                setattr(restaurant_obj, field, value)
+                update_fields.append(field)
+
+        if update_fields:
+            restaurant_obj.save(update_fields=update_fields)
+
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
@@ -141,10 +167,14 @@ class LoginView(APIView):
             details={'user_type': get_effective_role(user)}
         )
 
+        effective_role = get_effective_role(user)
+
         return Response({
             'refresh': str(refresh),
             'access': str(refresh.access_token),
-            'user_type': user.user_type,
+            'user_type': effective_role,
+            'effective_role': effective_role,
+            'raw_user_type': user.user_type,
             'is_superuser': user.is_superuser,
             'is_staff': user.is_staff,
             'user': user_data
@@ -196,7 +226,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
                     allowed = ('restaurant_name', 'address', 'latitude', 'longitude', 'phone_number')
                 elif user.user_type == 'student' and hasattr(user, 'student_profile'):
                     profile_obj = user.student_profile
-                    allowed = ('university', 'gender_preference', 'budget', 'phone_number')
+                    allowed = ('university', 'gender_preference', 'budget', 'phone_number', 'latitude', 'longitude')
                 elif user.user_type == 'delivery' and hasattr(user, 'delivery_profile'):
                     profile_obj = user.delivery_profile
                     allowed = ('vehicle_type', 'license_no', 'phone_number')
@@ -246,21 +276,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
                         }
 
             if restaurant_sync_payload:
-                from restaurants.models import Restaurant
-
-                restaurant, created = Restaurant.objects.get_or_create(
-                    owner=user,
-                    defaults=restaurant_sync_payload,
-                )
-
-                if not created:
-                    restaurant_fields = []
-                    for field, value in restaurant_sync_payload.items():
-                        if getattr(restaurant, field) != value:
-                            setattr(restaurant, field, value)
-                            restaurant_fields.append(field)
-                    if restaurant_fields:
-                        restaurant.save(update_fields=restaurant_fields)
+                sync_restaurant_records(user, restaurant_sync_payload)
 
             if changed_fields:
                 create_admin_log(

@@ -83,6 +83,17 @@ const Tracking = () => {
     }
   };
 
+  const getInitials = (value = "") => {
+    const clean = String(value || "").trim();
+    if (!clean) return "DP";
+    return clean
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase();
+  };
+
   if (!tracking || !order) {
     return (
       <div style={STUDENT_LAYOUT.page}>
@@ -104,6 +115,12 @@ const Tracking = () => {
   const isPreparing = order.status === "preparing" || order.status === "on_the_way" || order.status === "delivered";
   const isOTW = order.status === "on_the_way" || order.status === "delivered";
   const isDelivered = order.status === "delivered";
+  const riderName = order.delivery_partner_name || tracking.rider_name || "Delivery partner";
+  const riderPhone = order.delivery_partner_phone || tracking.rider_phone || "Not available";
+  const riderAvatar = order.delivery_partner_display_image || "";
+  const riderVehicle = [order.delivery_partner_vehicle_type, order.delivery_partner_vehicle_number]
+    .filter(Boolean)
+    .join(" • ");
 
   return (
     <div style={STUDENT_LAYOUT.page}>
@@ -134,9 +151,21 @@ const Tracking = () => {
                 <div style={STUDENT_LAYOUT.cardTitle}>Rider Information</div>
                 <span style={STUDENT_LAYOUT.pill}>ETA {tracking.eta_minutes} mins</span>
               </div>
+              <div style={styles.riderProfile}>
+                {riderAvatar ? (
+                  <img src={riderAvatar} alt={riderName} style={styles.riderAvatar} />
+                ) : (
+                  <div style={styles.riderAvatarFallback}>{getInitials(riderName)}</div>
+                )}
+                <div style={styles.riderMeta}>
+                  <strong>{riderName}</strong>
+                  <span>{riderPhone}</span>
+                  {riderVehicle ? <span>{riderVehicle}</span> : null}
+                </div>
+              </div>
               <div style={styles.kvGrid}>
-                <div style={styles.kv}><div style={styles.k}>Name</div><div style={styles.v}>{tracking.rider_name}</div></div>
-                <div style={styles.kv}><div style={styles.k}>Phone</div><div style={styles.v}>{tracking.rider_phone}</div></div>
+                <div style={styles.kv}><div style={styles.k}>Name</div><div style={styles.v}>{riderName}</div></div>
+                <div style={styles.kv}><div style={styles.k}>Phone</div><div style={styles.v}>{riderPhone}</div></div>
               </div>
             </div>
 
@@ -192,6 +221,42 @@ const styles = {
   },
   k: { fontSize: 12, fontWeight: 900, color: THEME.muted },
   v: { marginTop: 6, fontSize: 13, fontWeight: 900, color: THEME.text },
+
+  riderProfile: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 14,
+    border: `1px solid ${THEME.border}`,
+    background: "rgba(255,255,255,0.94)",
+    padding: 10,
+    marginBottom: 10,
+  },
+  riderAvatar: {
+    width: 54,
+    height: 54,
+    borderRadius: 14,
+    objectFit: "cover",
+    border: `1px solid ${THEME.border}`,
+    flexShrink: 0,
+  },
+  riderAvatarFallback: {
+    width: 54,
+    height: 54,
+    borderRadius: 14,
+    display: "grid",
+    placeItems: "center",
+    fontWeight: 900,
+    color: THEME.navy,
+    border: `1px solid ${THEME.border}`,
+    background: "rgba(59,130,246,0.14)",
+    flexShrink: 0,
+  },
+  riderMeta: {
+    display: "grid",
+    gap: 2,
+    color: THEME.text,
+  },
 
   timeline: { display: "grid", gap: 10 },
   tRow: { display: "flex", alignItems: "center", gap: 10 },

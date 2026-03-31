@@ -11,6 +11,7 @@ import {
   UserRound,
 } from "lucide-react";
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import "./RoomDetail.css";
 
 const formatCurrency = (value) => {
@@ -36,9 +37,48 @@ const parseCoordinate = (value, axis) => {
   return numeric;
 };
 
+const hasValidCoordinatePair = (latitude, longitude) => {
+  if (latitude === null || longitude === null) return false;
+  if (Math.abs(latitude) < 0.000001 && Math.abs(longitude) < 0.000001) return false;
+  return true;
+};
+
+const UNIVERSITY_OF_JAFFNA_COORDINATES = {
+  lat: 9.6848,
+  lng: 80.022,
+};
+
+const toRadians = (value) => (value * Math.PI) / 180;
+
+const calculateDistanceKm = (fromLat, fromLng, toLat, toLng) => {
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(toLat - fromLat);
+  const dLng = toRadians(toLng - fromLng);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(fromLat)) * Math.cos(toRadians(toLat)) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+};
+
+const formatDistanceKm = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) return null;
+  return `${numeric.toFixed(2)} km`;
+};
+
+const formatCurrentDistance = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) return null;
+  if (numeric < 0.001) return "At your current location";
+  if (numeric < 1) return `${Math.max(1, Math.round(numeric * 1000))} m`;
+  return `${numeric.toFixed(2)} km`;
+};
+
 export default function RoomDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -47,6 +87,8 @@ export default function RoomDetail() {
   const [submitting, setSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState("");
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [userCoordinates, setUserCoordinates] = useState(null);
+  const [userDistanceStatus, setUserDistanceStatus] = useState("");
 
   useEffect(() => {
     fetchRoom();
@@ -86,10 +128,124 @@ export default function RoomDetail() {
 
   const latitude = parseCoordinate(room?.latitude, "lat");
   const longitude = parseCoordinate(room?.longitude, "lng");
-  const hasMapCoordinates = latitude !== null && longitude !== null;
-  const mapEmbedUrl = hasMapCoordinates
-    ? `https://maps.google.com/maps?q=${latitude},${longitude}&z=15&output=embed`
+  const hasMapCoordinates = hasValidCoordinatePair(latitude, longitude);
+  const addressQuery = String(room?.address || room?.hostel_address || "").trim();
+  const mapQuery = hasMapCoordinates ? `${latitude},${longitude}` : addressQuery;
+  const hasMapQuery = Boolean(mapQuery);
+  const mapEmbedUrl = hasMapQuery
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=${hasMapCoordinates ? 15 : 14}&output=embed`
     : "";
+
+  const computedUniversityDistanceKm = useMemo(() => {
+    if (!hasMapCoordinates) return null;
+    return calculateDistanceKm(
+      latitude,
+      longitude,
+      UNIVERSITY_OF_JAFFNA_COORDINATES.lat,
+      UNIVERSITY_OF_JAFFNA_COORDINATES.lng
+    );
+  }, [hasMapCoordinates, latitude, longitude]);
+
+  const fallbackUniversityDistanceKm = useMemo(() => {
+    const numeric = Number(room?.distance_from_university);
+    if (!Number.isFinite(numeric) || numeric < 0) return null;
+    return numeric;
+  }, [room?.distance_from_university]);
+
+  const universityDistanceText = useMemo(() => {
+    const computed = formatDistanceKm(computedUniversityDistanceKm);
+    if (computed) return computed;
+    const fallback = formatDistanceKm(fallbackUniversityDistanceKm);
+    if (fallback) return fallback;
+    return "Unavailable";
+  }, [computedUniversityDistanceKm, fallbackUniversityDistanceKm]);
+
+  const computedUserDistanceKm = useMemo(() => {
+    if (!hasMapCoordinates || !userCoordinates) return null;
+    return calculateDistanceKm(latitude, longitude, userCoordinates.lat, userCoordinates.lng);
+  }, [hasMapCoordinates, userCoordinates, latitude, longitude]);
+
+  const userDistanceText = useMemo(() => {
+    const computed = formatCurrentDistance(computedUserDistanceKm);
+    if (computed) return computed;
+    if (!hasMapCoordinates) return "Room coordinates unavailable.";
+    if (userDistanceStatus) return userDistanceStatus;
+    return "Allow location permission to calculate.";
+  }, [computedUserDistanceKm, hasMapCoordinates, userDistanceStatus]);
+
+  const heroUserDistanceSummary = useMemo(() => {
+    const computed = formatCurrentDistance(computedUserDistanceKm);
+    if (computed) return `${computed} from your location`;
+    return "Distance from your location unavailable";
+  }, [computedUserDistanceKm]);
+
+  const savedUserCoordinates = useMemo(() => {
+    const savedLatitude = parseCoordinate(user?.profile?.latitude, "lat");
+    const savedLongitude = parseCoordinate(user?.profile?.longitude, "lng");
+    if (!hasValidCoordinatePair(savedLatitude, savedLongitude)) {
+      return null;
+    }
+    return { lat: savedLatitude, lng: savedLongitude };
+  }, [user?.profile?.latitude, user?.profile?.longitude]);
+
+  useEffect(() => {
+    if (!hasMapCoordinates) {
+      setUserCoordinates(null);
+      setUserDistanceStatus("Room coordinates unavailable.");
+      return;
+    }
+
+    if (savedUserCoordinates) {
+      setUserCoordinates(savedUserCoordinates);
+      setUserDistanceStatus("Using your saved location from dashboard map.");
+      return;
+    }
+
+    setUserCoordinates(null);
+
+    if (!navigator.geolocation) {
+      setUserDistanceStatus("Geolocation not supported in this browser.");
+      return;
+    }
+
+    setUserDistanceStatus("Getting your current location...");
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const userLat = parseCoordinate(position.coords.latitude, "lat");
+        const userLng = parseCoordinate(position.coords.longitude, "lng");
+
+        if (!hasValidCoordinatePair(userLat, userLng)) {
+          setUserDistanceStatus("Could not read your current location.");
+          return;
+        }
+
+        setUserCoordinates({ lat: userLat, lng: userLng });
+        const accuracy = Number(position.coords.accuracy);
+        if (Number.isFinite(accuracy) && accuracy > 800) {
+          setUserDistanceStatus(`Live location is low accuracy (~${Math.round(accuracy)} m). Set location on dashboard map for exact distance.`);
+        } else {
+          setUserDistanceStatus("Using your live browser location.");
+        }
+      },
+      (geoError) => {
+        if (geoError.code === 1) {
+          setUserDistanceStatus("Location permission denied.");
+        } else if (geoError.code === 2) {
+          setUserDistanceStatus("Current location unavailable.");
+        } else if (geoError.code === 3) {
+          setUserDistanceStatus("Current location request timed out.");
+        } else {
+          setUserDistanceStatus("Could not get current location.");
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  }, [id, hasMapCoordinates, latitude, longitude, savedUserCoordinates]);
 
   const handleBooking = async () => {
     setBookingError("");
@@ -136,7 +292,8 @@ export default function RoomDetail() {
           <div className="rd-hero__left">
             <h1>{room.title || "Room Details"}</h1>
             <p>
-              <MapPin size={14} /> {room.distance_from_university || "0"} km from university | Gender: {toTitleCase(room.gender_allowed)}
+              <MapPin size={14} /> {universityDistanceText} from University of Jaffna |{" "}
+              {heroUserDistanceSummary} | Gender: {toTitleCase(room.gender_allowed)}
             </p>
           </div>
           <div className="rd-price-pill">
@@ -191,8 +348,13 @@ export default function RoomDetail() {
                   <strong>{toTitleCase(room.gender_allowed) || "Any"}</strong>
                 </div>
                 <div className="rd-info-row">
-                  <span>Distance</span>
-                  <strong>{room.distance_from_university || "0"} km</strong>
+                  <span>Distance from University of Jaffna</span>
+                  <strong>{universityDistanceText}</strong>
+                </div>
+                <div className="rd-info-row">
+                  <span>Distance from Your Location</span>
+                  <strong>{userDistanceText}</strong>
+                  {userDistanceStatus ? <p className="rd-info-note">{userDistanceStatus}</p> : null}
                 </div>
                 <div className="rd-info-row">
                   <span>Location</span>
@@ -274,7 +436,7 @@ export default function RoomDetail() {
               </div>
             </section>
 
-            {hasMapCoordinates ? (
+            {hasMapQuery ? (
               <section className="rd-card rd-map-card">
                 <h2>
                   <MapPin size={16} /> Room Location
@@ -305,7 +467,7 @@ export default function RoomDetail() {
               <div className="rd-booking-actions">
                 <button
                   type="button"
-                  className="rd-btn rd-btn--primary"
+                  className="rd-btn rd-btn--outline"
                   onClick={handleBooking}
                   disabled={submitting}
                 >

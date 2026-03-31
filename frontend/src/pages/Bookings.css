@@ -347,6 +347,169 @@
   flex-wrap: wrap;
 }
 
+.booking-card__chat {
+  margin-top: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 14px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.booking-card__chat-list {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  background: rgba(250, 252, 255, 0.9);
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.booking-card__chat-empty {
+  margin: 0;
+  color: #61759a;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  padding: 14px 8px;
+}
+
+.booking-card__chat-bubble {
+  max-width: 88%;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  padding: 8px 10px;
+}
+
+.booking-card__chat-bubble.is-mine {
+  margin-left: auto;
+  background: #eff6ff;
+  border-color: rgba(37, 99, 235, 0.24);
+}
+
+.booking-card__chat-bubble.is-other {
+  margin-right: auto;
+  background: #fff;
+}
+
+.booking-card__chat-author {
+  margin: 0;
+  color: #61759a;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.booking-card__chat-text {
+  margin: 4px 0 0;
+  color: #102647;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.booking-card__chat-image-link {
+  display: block;
+  margin-top: 6px;
+}
+
+.booking-card__chat-image {
+  max-width: 220px;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+}
+
+.booking-card__chat-time {
+  margin: 6px 0 0;
+  color: #6f6a5f;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.booking-card__chat-error {
+  margin: 0;
+  color: #991b1b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.booking-card__chat-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.booking-card__chat-attach {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 10px;
+  background: #fff;
+  color: #1f4f96;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.booking-card__chat-attach input {
+  display: none;
+}
+
+.booking-card__chat-remove-image {
+  border: 1px solid rgba(185, 28, 28, 0.18);
+  border-radius: 10px;
+  background: rgba(254, 226, 226, 0.6);
+  color: #991b1b;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.booking-card__chat-preview img {
+  max-width: 180px;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+}
+
+.booking-card__chat-compose {
+  display: grid;
+  gap: 8px;
+}
+
+.booking-card__chat-compose textarea {
+  width: 100%;
+  min-height: 86px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #122b53;
+  font-weight: 700;
+  background: #fff;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.booking-card__chat-send {
+  width: fit-content;
+}
+
 .bookings-btn {
   height: 40px;
   border-radius: 12px;

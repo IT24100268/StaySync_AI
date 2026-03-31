@@ -255,6 +255,61 @@
   gap: 10px;
 }
 
+.orders-rider-card {
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: linear-gradient(120deg, rgba(31, 79, 150, 0.08), rgba(255, 255, 255, 0.95));
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.orders-rider-card__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  object-fit: cover;
+  display: block;
+  flex-shrink: 0;
+}
+
+.orders-rider-card__avatar--fallback {
+  display: grid;
+  place-items: center;
+  background: rgba(31, 79, 150, 0.16);
+  color: #1f4f96;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.orders-rider-card__meta {
+  display: grid;
+  gap: 2px;
+}
+
+.orders-rider-card__meta p {
+  margin: 0;
+  color: #6c7b98;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.orders-rider-card__meta strong {
+  color: #11274b;
+  font-size: 16px;
+  line-height: 1.1;
+}
+
+.orders-rider-card__meta span {
+  color: #445372;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .orders-active-summary {
   display: flex;
   justify-content: space-between;
@@ -332,16 +387,131 @@
   gap: 5px;
 }
 
+.orders-active-meta--takeaway span {
+  border-color: rgba(31, 79, 150, 0.18);
+  background:
+    linear-gradient(120deg, rgba(31, 79, 150, 0.12), rgba(107, 156, 248, 0.2)),
+    rgba(255, 255, 255, 0.9);
+  color: #143d76;
+}
+
+.orders-takeaway-focus {
+  border-radius: 14px;
+  border: 1px solid rgba(31, 79, 150, 0.2);
+  background:
+    radial-gradient(220px 120px at 100% 0%, rgba(109, 154, 240, 0.2), transparent 72%),
+    linear-gradient(120deg, rgba(31, 79, 150, 0.08), rgba(255, 255, 255, 0.96));
+  padding: 11px;
+  display: grid;
+  gap: 10px;
+}
+
+.orders-takeaway-focus__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.orders-takeaway-focus__head strong {
+  color: #0f2d58;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+}
+
+.orders-takeaway-focus__head span {
+  color: #4f678f;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.orders-takeaway-focus__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.orders-takeaway-focus__tile {
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 9px 10px;
+}
+
+.orders-takeaway-focus__tile p {
+  margin: 0;
+  color: #5a6e92;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.orders-takeaway-focus__tile h4 {
+  margin: 6px 0 0;
+  color: #11274b;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
 .orders-progress {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 6px;
 }
 
+.orders-progress--takeaway {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .orders-progress-step {
   display: grid;
   gap: 5px;
   justify-items: center;
+}
+
+.orders-progress-step--takeaway {
+  position: relative;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background:
+    radial-gradient(140px 80px at 100% 0%, rgba(128, 168, 245, 0.16), transparent 72%),
+    rgba(255, 255, 255, 0.96);
+  min-height: 88px;
+  padding: 9px 8px 10px;
+  align-content: start;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+
+.orders-progress-step--takeaway:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 23px;
+  right: -10px;
+  width: 12px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(75, 142, 246, 0.4);
+}
+
+.orders-progress-step--takeaway:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(17, 39, 75, 0.12);
+}
+
+.orders-progress-step--takeaway.is-done {
+  border-color: rgba(31, 79, 150, 0.26);
+  background:
+    radial-gradient(180px 120px at 100% 0%, rgba(91, 145, 248, 0.34), transparent 72%),
+    linear-gradient(130deg, rgba(31, 79, 150, 0.16), rgba(255, 255, 255, 0.97));
+}
+
+.orders-progress-step--takeaway.is-current {
+  border-color: rgba(31, 79, 150, 0.45);
+  box-shadow: 0 0 0 4px rgba(75, 142, 246, 0.2), 0 14px 26px rgba(21, 49, 97, 0.2);
 }
 
 .orders-progress-dot {
@@ -353,12 +523,43 @@
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.16);
 }
 
+.orders-progress--takeaway .orders-progress-dot {
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: linear-gradient(130deg, rgba(31, 79, 150, 0.08), rgba(255, 255, 255, 0.92));
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 14px rgba(17, 39, 75, 0.14);
+}
+
 .orders-progress-dot.is-done {
   background: #3b82f6;
 }
 
 .orders-progress-dot.is-current {
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.22);
+}
+
+.orders-progress--takeaway .orders-progress-dot.is-done {
+  color: #fff;
+  border-color: rgba(31, 79, 150, 0.4);
+  background: linear-gradient(130deg, #1f4f96, #4b8ef6);
+}
+
+.orders-progress--takeaway .orders-progress-dot.is-current {
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.26), 0 8px 16px rgba(31, 79, 150, 0.34);
+}
+
+.orders-progress-index {
+  color: #1b4a8f;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.orders-progress--takeaway .orders-progress-dot.is-done .orders-progress-index {
+  color: #fff;
 }
 
 .orders-progress-step span {
@@ -368,10 +569,34 @@
   text-align: center;
 }
 
+.orders-progress--takeaway .orders-progress-step span {
+  color: #455a80;
+  font-weight: 800;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
 .orders-active-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.orders-active-actions--premium {
+  border-radius: 14px;
+  border: 1px solid rgba(31, 79, 150, 0.2);
+  background:
+    radial-gradient(200px 100px at 0% 0%, rgba(107, 156, 248, 0.22), transparent 72%),
+    linear-gradient(130deg, rgba(31, 79, 150, 0.1), rgba(255, 255, 255, 0.97));
+  padding: 10px;
+}
+
+.orders-active-actions__hint {
+  width: 100%;
+  margin: 0;
+  color: #1f4f96;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .orders-map-wrap {
@@ -384,6 +609,101 @@
   width: 100%;
   min-height: 318px;
   border: none;
+}
+
+.orders-delivery-map-shell {
+  display: grid;
+  gap: 8px;
+}
+
+.orders-delivery-map-shell__hint {
+  margin: 0;
+  color: #1f4f96;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.orders-delivery-map-shell__status {
+  margin: 0;
+  color: #5b6b8a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.orders-pickup-card {
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background:
+    radial-gradient(180px 120px at 0% 100%, rgba(31, 79, 150, 0.12), transparent 72%),
+    rgba(255, 255, 255, 0.94);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  min-height: 318px;
+  align-content: start;
+}
+
+.orders-pickup-route {
+  border-radius: 12px;
+  border: 1px solid rgba(31, 79, 150, 0.18);
+  background:
+    radial-gradient(180px 100px at 100% 0%, rgba(109, 154, 240, 0.2), transparent 72%),
+    rgba(255, 255, 255, 0.97);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.orders-pickup-route.is-complete {
+  border-color: rgba(34, 197, 94, 0.24);
+  background: linear-gradient(130deg, rgba(22, 163, 74, 0.1), rgba(255, 255, 255, 0.98));
+}
+
+.orders-pickup-route__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.orders-pickup-route__head strong {
+  color: #102a52;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+}
+
+.orders-pickup-route__locate {
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+.orders-pickup-route__status {
+  margin: 0;
+  color: #4d6389;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.orders-pickup-route__map {
+  border-radius: 11px;
+  border: 1px solid rgba(15, 23, 42, 0.11);
+  overflow: hidden;
+}
+
+.orders-pickup-route__map iframe {
+  width: 100%;
+  min-height: 240px;
+  border: none;
+}
+
+.orders-pickup-route__open {
+  height: 36px;
+  border-radius: 10px;
+  width: fit-content;
+  padding: 0 12px;
+  font-size: 12px;
 }
 
 .orders-grid {
@@ -501,6 +821,11 @@
   cursor: pointer;
   font-size: 13px;
   font-weight: 800;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.orders-btn:hover {
+  transform: translateY(-1px);
 }
 
 .orders-btn--primary {
@@ -513,6 +838,39 @@
   color: #1f4f96;
   background: rgba(255, 255, 255, 0.92);
   border-color: rgba(15, 23, 42, 0.14);
+}
+
+.orders-btn--route {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(120deg, #1f4f96, #3579dd);
+  box-shadow: 0 10px 20px rgba(31, 79, 150, 0.28);
+}
+
+.orders-btn--track {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(120deg, #0f766e, #0ea5a4);
+  box-shadow: 0 10px 20px rgba(14, 165, 164, 0.28);
+}
+
+.orders-btn--restaurant {
+  color: #1f4f96;
+  border-color: rgba(31, 79, 150, 0.24);
+  background:
+    radial-gradient(160px 90px at 100% 0%, rgba(116, 157, 241, 0.2), transparent 72%),
+    rgba(255, 255, 255, 0.96);
+}
+
+.orders-btn--completed {
+  height: 34px;
+  border-radius: 999px;
+  padding: 0 12px;
+  font-size: 12px;
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(120deg, #1f4f96, #4b8ef6);
+  box-shadow: 0 8px 16px rgba(31, 79, 150, 0.24);
 }
 
 .orders-btn:disabled {
@@ -563,6 +921,14 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     row-gap: 10px;
   }
+
+  .orders-progress--takeaway {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .orders-progress-step--takeaway:not(:last-child)::after {
+    display: none;
+  }
 }
 
 @media (max-width: 760px) {
@@ -584,6 +950,28 @@
 
   .orders-canceled-card {
     flex-direction: column;
+  }
+
+  .orders-takeaway-focus__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .orders-progress--takeaway {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .orders-pickup-route__head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .orders-pickup-route__open,
+  .orders-pickup-route__locate {
+    width: 100%;
+  }
+
+  .orders-pickup-card {
+    min-height: auto;
   }
 
   .orders-btn {

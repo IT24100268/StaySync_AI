@@ -1,8 +1,12 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { getHomePathForRole, resolveRole } from "../../utils/authRole";
 
 export default function OwnerProtectedRoute({ children }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
+  const token = localStorage.getItem("access_token");
+  const role = resolveRole(user);
 
   if (loading) {
     return (
@@ -26,5 +30,13 @@ export default function OwnerProtectedRoute({ children }) {
     );
   }
 
-  return user && user.user_type === "hostel_owner" ? children : <Navigate to="/login" />;
+  if (!token) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  if (role !== "hostel_owner") {
+    return <Navigate to={getHomePathForRole(role)} replace />;
+  }
+
+  return children;
 }
