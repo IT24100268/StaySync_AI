@@ -11,7 +11,7 @@ import {
   ShoppingCart,
   Trash2,
 } from "lucide-react";
-import api from "../services/api";
+import api from "../../services/api";
 import "./RestaurantMenu.css";
 
 const toArray = (payload) => {

@@ -8,7 +8,7 @@ import {
   BedDouble,
   MapPin,
 } from "lucide-react";
-import api from "../services/api";
+import api from "../../services/api";
 import "./StudentReviews.css";
 
 const toArray = (payload) => {

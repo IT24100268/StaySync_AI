@@ -13,8 +13,8 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
-import StatusBadge from '../components/StatusBadge';
-import { restaurantApi } from '../services/restaurantApi';
+import StatusBadge from '../../components/StatusBadge';
+import { restaurantApi } from '../../services/restaurantApi';
 
 const mockFoodImages = [
   'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80',

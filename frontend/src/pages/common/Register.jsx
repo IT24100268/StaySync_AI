@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 const JAFFNA_UNIVERSITY_CENTER = { lat: 9.6848, lng: 80.0220 };
 const GOOGLE_MAP_SCRIPT_ID = 'google-maps-script';

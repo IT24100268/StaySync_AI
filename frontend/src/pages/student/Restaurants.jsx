@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   MapPin,
@@ -10,8 +10,7 @@ import {
   UtensilsCrossed,
   ChevronRight,
 } from "lucide-react";
-import api from "../services/api";
-import { hasGoogleMapsApiKey, isGoogleMapsReady, loadGoogleMaps } from "../utils/googleMapsLoader";
+import api from "../../services/api";
 import "./Restaurants.css";
 
 const toArray = (payload) => {
@@ -46,14 +45,6 @@ const formatCurrency = (value) => {
   return `LKR ${safe.toLocaleString("en-LK")}`;
 };
 
-const escapeHtml = (value) =>
-  String(value || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-
 const haversineDistanceKm = (origin, destination) => {
   const R = 6371;
   const dLat = ((destination.lat - origin.lat) * Math.PI) / 180;
@@ -69,28 +60,8 @@ const haversineDistanceKm = (origin, destination) => {
   return R * c;
 };
 
-const DEFAULT_RESTAURANT_MAP_CENTER = { lat: 9.6848, lng: 80.022 };
-
-const RESTAURANT_MARKER_ICON = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-<svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M19 1.6C11.27 1.6 5 7.87 5 15.6c0 9.72 10.59 20.73 13.14 23.22a1.2 1.2 0 0 0 1.72 0C22.41 36.33 33 25.32 33 15.6 33 7.87 26.73 1.6 19 1.6Z" fill="#EF7F1A"/>
-  <rect x="11" y="13" width="2.2" height="10.6" rx="1" fill="white"/>
-  <rect x="14" y="13" width="2.2" height="6.2" rx="1" fill="white"/>
-  <rect x="17" y="13" width="2.2" height="6.2" rx="1" fill="white"/>
-  <rect x="21.8" y="13" width="5.2" height="10.6" rx="2.2" fill="white"/>
-</svg>
-`)}`;
-
-const SELECTED_RESTAURANT_MARKER_ICON = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-<svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M22 2.2C13.08 2.2 5.8 9.48 5.8 18.4c0 10.6 11.55 22.39 14.33 25.04a1.35 1.35 0 0 0 1.87 0C26.65 40.79 38.2 29 38.2 18.4 38.2 9.48 30.92 2.2 22 2.2Z" fill="#D9511E"/>
-  <circle cx="22" cy="19" r="6.4" fill="white"/>
-</svg>
-`)}`;
-
 export default function Restaurants() {
   const navigate = useNavigate();
-  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
   const [restaurants, setRestaurants] = useState([]);
   const [menuMeta, setMenuMeta] = useState({});
@@ -108,49 +79,10 @@ export default function Restaurants() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
-  const [mapsReady, setMapsReady] = useState(false);
-  const [mapError, setMapError] = useState("");
-  const mapContainerRef = useRef(null);
-  const mapRef = useRef(null);
-  const mapMarkersRef = useRef([]);
-  const infoWindowRef = useRef(null);
 
   useEffect(() => {
     fetchRestaurants(true);
   }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    if (!hasGoogleMapsApiKey(googleMapsApiKey)) {
-      setMapsReady(false);
-      setMapError("Google Maps API key is missing. Configure VITE_GOOGLE_MAPS_API_KEY.");
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    loadGoogleMaps(googleMapsApiKey)
-      .then(() => {
-        if (!isMounted) return;
-        if (!isGoogleMapsReady()) {
-          setMapsReady(false);
-          setMapError("Google Maps loaded, but map constructors are not ready.");
-          return;
-        }
-        setMapsReady(true);
-        setMapError("");
-      })
-      .catch((loadError) => {
-        if (!isMounted) return;
-        setMapsReady(false);
-        setMapError(loadError.message || "Unable to load Google Maps.");
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [googleMapsApiKey]);
 
   const fetchRestaurants = async (initialLoad = false) => {
     if (initialLoad) {
@@ -307,133 +239,18 @@ export default function Restaurants() {
     return filteredRestaurants.find((item) => item.id === selectedRestaurantId) || filteredRestaurants[0];
   }, [filteredRestaurants, selectedRestaurantId]);
 
-  const mapPoints = useMemo(() => {
-    return filteredRestaurants
-      .filter((restaurant) => restaurant.hasCoordinates)
-      .map((restaurant) => ({
-        id: restaurant.id,
-        name: restaurant.name,
-        address: restaurant.address,
-        latitude: restaurant.latitude,
-        longitude: restaurant.longitude,
-      }));
-  }, [filteredRestaurants]);
-
-  const derivedMapCenter = useMemo(() => {
-    if (selectedRestaurant?.hasCoordinates) {
-      return {
-        lat: selectedRestaurant.latitude,
-        lng: selectedRestaurant.longitude,
-      };
+  const mapEmbedUrl = useMemo(() => {
+    if (!selectedRestaurant) {
+      return "https://maps.google.com/maps?q=Jaffna%2C%20Sri%20Lanka&z=11&output=embed";
     }
 
-    if (mapPoints.length > 0) {
-      const lat = mapPoints.reduce((sum, point) => sum + point.latitude, 0) / mapPoints.length;
-      const lng = mapPoints.reduce((sum, point) => sum + point.longitude, 0) / mapPoints.length;
-      return { lat, lng };
-    }
+    const query = selectedRestaurant.hasCoordinates
+      ? `${selectedRestaurant.latitude},${selectedRestaurant.longitude}`
+      : selectedRestaurant.address || selectedRestaurant.name || "Jaffna, Sri Lanka";
 
-    return DEFAULT_RESTAURANT_MAP_CENTER;
-  }, [selectedRestaurant?.hasCoordinates, selectedRestaurant?.latitude, selectedRestaurant?.longitude, mapPoints]);
-
-  useEffect(() => {
-    if (!mapsReady || !mapContainerRef.current || !isGoogleMapsReady()) {
-      return;
-    }
-
-    const maps = window.google.maps;
-    const defaultZoom = mapPoints.length > 0 ? 13 : 11;
-
-    if (!mapRef.current) {
-      mapRef.current = new maps.Map(mapContainerRef.current, {
-        center: derivedMapCenter,
-        zoom: defaultZoom,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: true,
-        gestureHandling: "greedy",
-      });
-      infoWindowRef.current = new maps.InfoWindow();
-    } else {
-      mapRef.current.setCenter(derivedMapCenter);
-      mapRef.current.setZoom(defaultZoom);
-    }
-
-    const map = mapRef.current;
-    if (!map) {
-      return;
-    }
-
-    mapMarkersRef.current.forEach((marker) => marker.setMap(null));
-    mapMarkersRef.current = [];
-
-    const bounds = new maps.LatLngBounds();
-    let boundedPoints = 0;
-
-    mapPoints.forEach((point) => {
-      const isSelected = point.id === selectedRestaurant?.id;
-      const marker = new maps.Marker({
-        map,
-        position: { lat: point.latitude, lng: point.longitude },
-        title: point.name || "Restaurant",
-        zIndex: isSelected ? 999 : 100,
-        icon: {
-          url: isSelected ? SELECTED_RESTAURANT_MARKER_ICON : RESTAURANT_MARKER_ICON,
-          scaledSize: isSelected ? new maps.Size(44, 44) : new maps.Size(38, 38),
-          anchor: isSelected ? new maps.Point(22, 43) : new maps.Point(19, 37),
-        },
-      });
-
-      marker.addListener("click", () => {
-        setSelectedRestaurantId(point.id);
-        if (!infoWindowRef.current) return;
-
-        infoWindowRef.current.setContent(`<div style="min-width:170px;padding:4px 2px;">
-          <div style="font-weight:700;color:#11274b;font-size:12px;">${escapeHtml(point.name)}</div>
-          <div style="color:#5b6b8a;font-size:11px;line-height:1.4;">${escapeHtml(point.address || "Address unavailable")}</div>
-        </div>`);
-        infoWindowRef.current.open({ map, anchor: marker });
-      });
-
-      mapMarkersRef.current.push(marker);
-      const markerPosition = marker.getPosition();
-      if (markerPosition) {
-        bounds.extend(markerPosition);
-        boundedPoints += 1;
-      }
-    });
-
-    if (boundedPoints > 1) {
-      map.fitBounds(bounds, 44);
-    } else if (boundedPoints === 1) {
-      map.setCenter(bounds.getCenter());
-      map.setZoom(selectedRestaurant?.hasCoordinates ? 15 : 14);
-    } else {
-      map.setCenter(DEFAULT_RESTAURANT_MAP_CENTER);
-      map.setZoom(11);
-    }
-  }, [
-    mapsReady,
-    mapPoints,
-    derivedMapCenter.lat,
-    derivedMapCenter.lng,
-    selectedRestaurant?.id,
-    selectedRestaurant?.hasCoordinates,
-  ]);
-
-  useEffect(() => {
-    return () => {
-      mapMarkersRef.current.forEach((marker) => marker.setMap(null));
-      mapMarkersRef.current = [];
-      if (mapRef.current) {
-        if (window.google?.maps?.event) {
-          window.google.maps.event.clearInstanceListeners(mapRef.current);
-        }
-        mapRef.current = null;
-      }
-      infoWindowRef.current = null;
-    };
-  }, []);
+    const zoom = selectedRestaurant.hasCoordinates ? 14 : 11;
+    return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=${zoom}&output=embed`;
+  }, [selectedRestaurant]);
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -584,7 +401,7 @@ export default function Restaurants() {
                   <div className="restaurant-feature-card__actions">
                     <button
                       type="button"
-                      className="restaurants-btn restaurants-btn--outline"
+                      className="restaurants-btn restaurants-btn--primary"
                       onClick={() => navigate(`/restaurants/${selectedRestaurant?.id}`)}
                     >
                       View Menu
@@ -613,13 +430,13 @@ export default function Restaurants() {
                   ) : null}
                 </div>
                 <div className="restaurant-map-wrap">
-                  {mapsReady ? (
-                    <div ref={mapContainerRef} className="restaurant-map-canvas" />
-                  ) : (
-                    <div className="restaurant-map-placeholder">{mapError || "Loading map..."}</div>
-                  )}
+                  <iframe
+                    title="Restaurant map preview"
+                    src={mapEmbedUrl}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
                 </div>
-                <p className="restaurant-map-note">{mapPoints.length} mapped restaurants</p>
               </article>
             </section>
 
@@ -675,7 +492,7 @@ export default function Restaurants() {
                         <div className="restaurant-card__actions">
                           <button
                             type="button"
-                            className="restaurants-btn restaurants-btn--outline"
+                            className="restaurants-btn restaurants-btn--primary"
                             onClick={() => navigate(`/restaurants/${restaurant.id}`)}
                           >
                             View Menu

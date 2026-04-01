@@ -23,13 +23,13 @@ import {
   YAxis,
 } from 'recharts';
 import { Link } from 'react-router-dom';
-import api from '../services/api';
-import restaurantApi from '../services/restaurantApi';
-import StatusBadge from '../components/StatusBadge';
-import MenuItemModal from '../components/menu/MenuItemModal';
-import { useFoodItems } from '../context/FoodItemsContext';
-import { useToast } from '../context/ToastContext';
-import { useAuth } from '../context/AuthContext';
+import api from '../../services/api';
+import restaurantApi from '../../services/restaurantApi';
+import StatusBadge from '../../components/StatusBadge';
+import MenuItemModal from '../../components/menu/MenuItemModal';
+import { useFoodItems } from '../../context/FoodItemsContext';
+import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import './RestaurantDashboard.css';
 
 const defaultDashboardImage =

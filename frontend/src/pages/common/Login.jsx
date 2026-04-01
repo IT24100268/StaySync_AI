@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { getHomePathForRole, normalizeRole } from '../utils/authRole';
+import { useAuth } from '../../context/AuthContext';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -28,17 +27,19 @@ const Login = () => {
 
     try {
       const data = await login(username, password, { remember });
-      const resolvedRole = normalizeRole(data?.user_type || data?.user?.user_type || localStorage.getItem('user_type'));
 
-      if (resolvedRole === 'delivery') {
+      if (data.is_superuser || data.is_staff) {
+        navigate('/admin/dashboard');
+      } else if (data.user_type === 'delivery') {
         const token = localStorage.getItem('access_token');
         const refresh = localStorage.getItem('refresh_token');
-        navigate(
-          `/delivery/auth-redirect?token=${encodeURIComponent(token)}&refresh=${encodeURIComponent(refresh)}`,
-          { replace: true }
-        );
+        navigate(`/delivery/auth-redirect?token=${encodeURIComponent(token)}&refresh=${encodeURIComponent(refresh)}`);
+      } else if (data.user_type === 'restaurant_owner') {
+        navigate('/restaurant/dashboard');
+      } else if (data.user_type === 'hostel_owner') {
+        navigate('/owner/dashboard');
       } else {
-        navigate(getHomePathForRole(resolvedRole || 'student'), { replace: true });
+        navigate('/student/dashboard');
       }
     } catch (err) {
       console.error('Login error:', err);

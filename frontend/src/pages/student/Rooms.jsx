@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   BedDouble,
@@ -6,8 +6,7 @@ import {
   Heart,
   Search,
 } from "lucide-react";
-import api from "../services/api";
-import { hasGoogleMapsApiKey, isGoogleMapsReady, loadGoogleMaps } from "../utils/googleMapsLoader";
+import api from "../../services/api";
 import "./Rooms.css";
 
 const INITIAL_FILTERS = {
@@ -48,21 +47,9 @@ const hasValidCoordinatePair = (latitude, longitude) => {
 
 const formatCurrency = (value) => `LKR ${safeNumber(value).toLocaleString("en-LK")}`;
 
-const JAFFNA_UNIVERSITY_CENTER = { lat: 9.6848, lng: 80.022 };
-
-const ROOM_MARKER_ICON = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-<svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M19 1.6C11.27 1.6 5 7.87 5 15.6c0 9.72 10.59 20.73 13.14 23.22a1.2 1.2 0 0 0 1.72 0C22.41 36.33 33 25.32 33 15.6 33 7.87 26.73 1.6 19 1.6Z" fill="#1F4F96"/>
-  <rect x="10.8" y="13.2" width="16.4" height="6.1" rx="2" fill="white"/>
-  <rect x="10.8" y="19.4" width="16.4" height="4.2" rx="1.4" fill="white"/>
-  <rect x="13.4" y="14.6" width="4.8" height="3.1" rx="0.8" fill="#1F4F96"/>
-</svg>
-`)}`;
-
 export default function Rooms() {
   const location = useLocation();
   const navigate = useNavigate();
-  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
   const ownerContactFromQuery = useMemo(
     () => new URLSearchParams(location.search).get("owner_contact") || "",
     [location.search]
@@ -78,45 +65,6 @@ export default function Rooms() {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState("");
-  const [mapsReady, setMapsReady] = useState(false);
-  const [mapError, setMapError] = useState("");
-  const mapContainerRef = useRef(null);
-  const mapRef = useRef(null);
-  const mapMarkersRef = useRef([]);
-  const infoWindowRef = useRef(null);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    if (!hasGoogleMapsApiKey(googleMapsApiKey)) {
-      setMapsReady(false);
-      setMapError("Google Maps API key is missing. Configure VITE_GOOGLE_MAPS_API_KEY.");
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    loadGoogleMaps(googleMapsApiKey)
-      .then(() => {
-        if (!isMounted) return;
-        if (!isGoogleMapsReady()) {
-          setMapsReady(false);
-          setMapError("Google Maps loaded, but map constructors are not ready.");
-          return;
-        }
-        setMapsReady(true);
-        setMapError("");
-      })
-      .catch((loadError) => {
-        if (!isMounted) return;
-        setMapsReady(false);
-        setMapError(loadError.message || "Unable to load Google Maps.");
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [googleMapsApiKey]);
 
   useEffect(() => {
     const nextFilters = { ...INITIAL_FILTERS, owner_contact: ownerContactFromQuery };
@@ -194,18 +142,16 @@ export default function Rooms() {
   const mapPoints = useMemo(() => {
     return displayedRooms
       .map((room) => ({
-        id: room.id,
-        title: room.title || room.hostel_name || "Room",
-        address: room.address || room.hostel_address || "Address unavailable",
         latitude: parseCoordinate(room.latitude, "lat"),
         longitude: parseCoordinate(room.longitude, "lng"),
       }))
-      .filter((point) => hasValidCoordinatePair(point.latitude, point.longitude));
+      .filter((point) => hasValidCoordinatePair(point.latitude, point.longitude))
+      .slice(0, 8);
   }, [displayedRooms]);
 
   const mapCenter = useMemo(() => {
     if (mapPoints.length === 0) {
-      return JAFFNA_UNIVERSITY_CENTER;
+      return { lat: 9.6848, lng: 80.022 };
     }
 
     const lat = mapPoints.reduce((sum, point) => sum + point.latitude, 0) / mapPoints.length;
@@ -213,75 +159,8 @@ export default function Rooms() {
     return { lat, lng };
   }, [mapPoints]);
 
-  useEffect(() => {
-    if (!mapsReady || !mapContainerRef.current || !isGoogleMapsReady()) {
-      return;
-    }
-
-    const defaultZoom = mapPoints.length > 0 ? 13 : 11;
-
-    if (!mapRef.current) {
-      mapRef.current = new window.google.maps.Map(mapContainerRef.current, {
-        center: mapCenter,
-        zoom: defaultZoom,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        gestureHandling: "greedy",
-      });
-      infoWindowRef.current = new window.google.maps.InfoWindow();
-    } else {
-      mapRef.current.setCenter(mapCenter);
-      mapRef.current.setZoom(defaultZoom);
-    }
-
-    mapMarkersRef.current.forEach((marker) => marker.setMap(null));
-    mapMarkersRef.current = [];
-
-    const bounds = new window.google.maps.LatLngBounds();
-
-    mapPoints.forEach((point) => {
-      const marker = new window.google.maps.Marker({
-        map: mapRef.current,
-        position: { lat: point.latitude, lng: point.longitude },
-        title: point.title,
-        icon: {
-          url: ROOM_MARKER_ICON,
-          scaledSize: new window.google.maps.Size(38, 38),
-          anchor: new window.google.maps.Point(19, 38),
-        },
-      });
-
-      marker.addListener("click", () => {
-        if (!infoWindowRef.current) return;
-        const content = `
-          <div style="min-width:180px;max-width:240px;padding:6px 2px;">
-            <div style="font-weight:700;color:#11284c;font-size:13px;margin-bottom:4px;">${point.title}</div>
-            <div style="color:#4d648a;font-size:12px;line-height:1.35;">${point.address}</div>
-          </div>
-        `;
-        infoWindowRef.current.setContent(content);
-        infoWindowRef.current.open({ map: mapRef.current, anchor: marker });
-      });
-
-      mapMarkersRef.current.push(marker);
-      bounds.extend(marker.getPosition());
-    });
-
-    if (mapPoints.length > 1) {
-      mapRef.current.fitBounds(bounds, 44);
-    } else if (mapPoints.length === 1) {
-      mapRef.current.setCenter({ lat: mapPoints[0].latitude, lng: mapPoints[0].longitude });
-      mapRef.current.setZoom(15);
-    }
-  }, [mapsReady, mapPoints, mapCenter]);
-
-  useEffect(() => {
-    return () => {
-      mapMarkersRef.current.forEach((marker) => marker.setMap(null));
-      mapMarkersRef.current = [];
-    };
-  }, []);
+  const mapZoom = mapPoints.length > 0 ? 13 : 11;
+  const mapEmbedUrl = `https://maps.google.com/maps?q=${mapCenter.lat},${mapCenter.lng}&z=${mapZoom}&output=embed`;
 
   const handleFilterChange = (event) => {
     const { name, value } = event.target;
@@ -437,7 +316,7 @@ export default function Rooms() {
                   </label>
 
                   <div className="rooms-filter-form__actions">
-                    <button type="submit" className="rooms-btn rooms-btn--outline">
+                    <button type="submit" className="rooms-btn rooms-btn--primary">
                       <Search size={15} />
                       {searching ? "Searching..." : "Search"}
                     </button>
@@ -448,13 +327,12 @@ export default function Rooms() {
                 </form>
 
                 <div className="rooms-map">
-                  {mapsReady ? (
-                    <div ref={mapContainerRef} className="rooms-map__canvas" />
-                  ) : (
-                    <div className="rooms-map__placeholder">
-                      {mapError || "Loading map..."}
-                    </div>
-                  )}
+                  <iframe
+                    title="Rooms map preview"
+                    src={mapEmbedUrl}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
                   <p>{mapPoints.length} mapped points</p>
                 </div>
               </div>
@@ -516,7 +394,7 @@ export default function Rooms() {
                           </div>
                           <button
                             type="button"
-                            className="rooms-btn rooms-btn--outline"
+                            className="rooms-btn rooms-btn--primary"
                             onClick={() => navigate(`/rooms/${room.id}`)}
                           >
                             View Details

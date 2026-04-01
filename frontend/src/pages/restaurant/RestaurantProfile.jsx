@@ -11,8 +11,8 @@ import {
   Trash2,
   User,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
 const JAFFNA_UNIVERSITY_CENTER = { lat: 9.6848, lng: 80.0220 };
 const GOOGLE_MAP_SCRIPT_ID = 'google-maps-script';
