@@ -32,7 +32,6 @@ import PlaceholderPage from './pages/PlaceholderPage';
 import OwnerDashboard from './pages/owner/OwnerDashboard';
 import OwnerListings from './pages/owner/OwnerListings';
 import OwnerListingForm from './pages/owner/OwnerListingForm';
-import OwnerEnquiries from './pages/owner/OwnerEnquiries';
 import OwnerAnalytics from './pages/owner/OwnerAnalytics';
 import OwnerVerification from './pages/owner/OwnerVerification';
 import OwnerProfile from './pages/owner/OwnerProfile';
@@ -81,7 +80,7 @@ function App() {
               <Route path="listings" element={<OwnerListings />} />
               <Route path="listings/new" element={<OwnerListingForm />} />
               <Route path="listings/:id/edit" element={<OwnerListingForm />} />
-              <Route path="enquiries" element={<OwnerEnquiries />} />
+              <Route path="enquiries" element={<Navigate to="/owner/bookings" replace />} />
               <Route path="analytics" element={<OwnerAnalytics />} />
               <Route path="verification" element={<OwnerVerification />} />
               <Route path="reviews" element={<OwnerReviews />} />
@@ -89,22 +88,22 @@ function App() {
               <Route path="bookings" element={<OwnerBookings />} />
             </Route>
             
-            <Route path="/student/dashboard" element={<PrivateRoute><ProtectedLayout><Dashboard /></ProtectedLayout></PrivateRoute>} />
-            <Route path="/profile" element={<PrivateRoute><ProtectedLayout><Profile /></ProtectedLayout></PrivateRoute>} />
-            <Route path="/rooms" element={<PrivateRoute><ProtectedLayout><Rooms /></ProtectedLayout></PrivateRoute>} />
-            <Route path="/rooms/:id" element={<PrivateRoute><ProtectedLayout><RoomDetail /></ProtectedLayout></PrivateRoute>} />
-            <Route path="/favorites" element={<PrivateRoute><ProtectedLayout><Favorites /></ProtectedLayout></PrivateRoute>} />
-            <Route path="/bookings" element={<PrivateRoute><ProtectedLayout><Bookings /></ProtectedLayout></PrivateRoute>} />
-            <Route path="/restaurants" element={<PrivateRoute><ProtectedLayout><Restaurants /></ProtectedLayout></PrivateRoute>} />
-            <Route path="/restaurants/:id" element={<PrivateRoute><ProtectedLayout><RestaurantMenu /></ProtectedLayout></PrivateRoute>} />
-            <Route path="/checkout" element={<PrivateRoute><ProtectedLayout><Checkout /></ProtectedLayout></PrivateRoute>} />
-            <Route path="/orders" element={<PrivateRoute><ProtectedLayout><Orders /></ProtectedLayout></PrivateRoute>} />
-            <Route path="/reviews" element={<PrivateRoute><ProtectedLayout><StudentReviews /></ProtectedLayout></PrivateRoute>} />
-            <Route path="/tracking/:orderId" element={<PrivateRoute><ProtectedLayout><Tracking /></ProtectedLayout></PrivateRoute>} />
+            <Route path="/student/dashboard" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><Dashboard /></ProtectedLayout></PrivateRoute>} />
+            <Route path="/profile" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><Profile /></ProtectedLayout></PrivateRoute>} />
+            <Route path="/rooms" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><Rooms /></ProtectedLayout></PrivateRoute>} />
+            <Route path="/rooms/:id" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><RoomDetail /></ProtectedLayout></PrivateRoute>} />
+            <Route path="/favorites" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><Favorites /></ProtectedLayout></PrivateRoute>} />
+            <Route path="/bookings" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><Bookings /></ProtectedLayout></PrivateRoute>} />
+            <Route path="/restaurants" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><Restaurants /></ProtectedLayout></PrivateRoute>} />
+            <Route path="/restaurants/:id" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><RestaurantMenu /></ProtectedLayout></PrivateRoute>} />
+            <Route path="/checkout" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><Checkout /></ProtectedLayout></PrivateRoute>} />
+            <Route path="/orders" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><Orders /></ProtectedLayout></PrivateRoute>} />
+            <Route path="/reviews" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><StudentReviews /></ProtectedLayout></PrivateRoute>} />
+            <Route path="/tracking/:orderId" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><Tracking /></ProtectedLayout></PrivateRoute>} />
             
             <Route path="/delivery/*" element={<DeliveryApp />} />
             
-            <Route path="/restaurant" element={<PrivateRoute><RestaurantLayout /></PrivateRoute>}>
+            <Route path="/restaurant" element={<PrivateRoute allowedRoles={['restaurant_owner']}><RestaurantLayout /></PrivateRoute>}>
               <Route index element={<Navigate to="/restaurant/dashboard" replace />} />
               <Route path="dashboard" element={<RestaurantDashboard />} />
               <Route path="menu" element={<MenuManagementPage />} />
@@ -116,7 +115,7 @@ function App() {
               <Route path="settings" element={<SettingsPage />} />
             </Route>
             
-            <Route path="/admin" element={<PrivateRoute><AdminLayout /></PrivateRoute>}>
+            <Route path="/admin" element={<PrivateRoute allowedRoles={['admin', 'administrator', 'superadmin', 'super_admin']}><AdminLayout /></PrivateRoute>}>
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<AdminHome2 />} />
               <Route path="rooms" element={<RoomApprovals />} />

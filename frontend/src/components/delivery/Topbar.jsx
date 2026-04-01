@@ -12,7 +12,7 @@ import api from '../../services/api'
 function Topbar() {
   const location = useLocation()
   const showDate = location.pathname === '/earnings'
-  const showFilter = location.pathname === '/deliveries' || location.pathname === '/activity'
+  const showFilter = location.pathname === '/deliveries'
   const [isOnline, setIsOnline] = useState(false)
   const [loadingStatus, setLoadingStatus] = useState(true)
   const [updatingStatus, setUpdatingStatus] = useState(false)

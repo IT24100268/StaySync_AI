@@ -12,11 +12,18 @@ export const restaurantApi = {
   deleteFoodItem: (id) => api.delete(`restaurant/foods/${id}/`),
   toggleFoodAvailability: (id) => api.patch(`restaurant/foods/${id}/toggle-availability/`),
   getOrders: (status = '') =>
-    api.get('restaurant/orders/', {
+    api.get('orders/restaurant/orders/', {
       params: status ? { status } : {},
     }),
-  getOrderById: (id) => api.get(`restaurant/orders/${id}/`),
-  updateOrderStatus: (id, status) => api.patch(`restaurant/orders/${id}/status/`, { status }),
+  getOrderById: (id) => api.get(`orders/${id}/`),
+  acceptOrder: (id, preparationTime) =>
+    api.post(`orders/restaurant/${id}/accept/`, { preparation_time: preparationTime }),
+  rejectOrder: (id, reason) =>
+    api.post(`orders/restaurant/${id}/reject/`, { reason }),
+  markTakeawayReady: (id) =>
+    api.post(`orders/restaurant/${id}/ready-for-pickup/`),
+  markCollectedByPartner: (id) =>
+    api.post(`orders/restaurant/${id}/collected/`),
 };
 
 export default restaurantApi;

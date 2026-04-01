@@ -5,7 +5,6 @@ import Dashboard from './pages/Dashboard'
 import Jobs from './pages/Jobs'
 import Deliveries from './pages/Deliveries'
 import Earnings from './pages/Earnings'
-import Activity from './pages/Activity'
 import Profile from './pages/Profile'
 import AuthRedirect from './pages/AuthRedirect'
 import RequireAuth from './auth/RequireAuth'
@@ -20,7 +19,6 @@ function ProtectedLayout() {
     '/delivery/jobs': 'Available Jobs',
     '/delivery/deliveries': 'My Deliveries',
     '/delivery/earnings': 'Earnings',
-    '/delivery/activity': 'Activity Log',
     '/delivery/profile': 'Profile Settings',
   }
 
@@ -29,7 +27,6 @@ function ProtectedLayout() {
     '/delivery/jobs': 'Pick a delivery near you and start earning.',
     '/delivery/deliveries': 'Track and manage all your deliveries.',
     '/delivery/earnings': 'Track your delivery earnings and performance.',
-    '/delivery/activity': 'View your recent activities and delivery history.',
     '/delivery/profile': 'Update your personal and vehicle information.',
   }
 
@@ -55,7 +52,6 @@ function DeliveryRoutes() {
         <Route path="jobs" element={<Jobs />} />
         <Route path="deliveries" element={<Deliveries />} />
         <Route path="earnings" element={<Earnings />} />
-        <Route path="activity" element={<Activity />} />
         <Route path="profile" element={<Profile />} />
       </Route>
 

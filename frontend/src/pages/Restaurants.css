@@ -240,6 +240,32 @@
   border-radius: 12px;
   border: 1px solid rgba(15, 23, 42, 0.1);
   overflow: hidden;
+  background: #dfe8f7;
+}
+
+.restaurant-map-canvas {
+  width: 100%;
+  min-height: 298px;
+  height: 100%;
+}
+
+.restaurant-map-placeholder {
+  width: 100%;
+  min-height: 298px;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  text-align: center;
+  color: #4a5f85;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.restaurant-map-note {
+  margin: -2px 0 0;
+  color: #4d648a;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .restaurant-map-wrap iframe {

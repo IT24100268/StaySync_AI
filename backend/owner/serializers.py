@@ -41,7 +41,7 @@ class OwnerRoomSerializer(serializers.ModelSerializer):
         return obj.status == 'APPROVED'
     
     def get_views(self, obj):
-        return 0  # TODO: Implement view tracking
+        return int(getattr(obj, 'views', 0) or 0)
     
     def get_location(self, obj):
         if obj.latitude and obj.longitude:

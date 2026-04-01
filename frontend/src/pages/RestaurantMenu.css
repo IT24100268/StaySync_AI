@@ -429,9 +429,15 @@
 }
 
 .rm-btn--primary {
-  color: #fff;
-  background: linear-gradient(120deg, #1f4f96, #4b8ef6);
-  box-shadow: 0 10px 20px rgba(31, 79, 150, 0.24);
+  color: #1f4f96;
+  background: rgba(31, 79, 150, 0.1);
+  border-color: rgba(15, 23, 42, 0.1);
+  box-shadow: 0 6px 14px rgba(18, 39, 75, 0.08);
+}
+
+.rm-btn--primary:hover {
+  background: rgba(31, 79, 150, 0.16);
+  border-color: rgba(31, 79, 150, 0.28);
 }
 
 .rm-btn--outline {
