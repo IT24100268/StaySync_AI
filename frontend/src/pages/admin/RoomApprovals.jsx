@@ -92,18 +92,14 @@ function getRoomOwnerDetails(room, pendingHostelUsers) {
 export default function RoomApprovals() {
   const [rooms, setRooms] = useState([]);
   const [pendingHostelUsers, setPendingHostelUsers] = useState([]);
-  const [approvedHostelUsers, setApprovedHostelUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("PENDING");
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [selectedHostelOwner, setSelectedHostelOwner] = useState(null);
-  const [selectedApprovedOwner, setSelectedApprovedOwner] = useState(null);
   const [selectedOwnerRoom, setSelectedOwnerRoom] = useState(null);
   const [reviewNote, setReviewNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [query, setQuery] = useState("");
-  const isApprovedView = filter === "APPROVED";
-  const selectedRoomOwner = selectedRoom ? getRoomOwnerDetails(selectedRoom, pendingHostelUsers) : null;
   const selectedOwnerRoomDetails = selectedOwnerRoom ? getRoomOwnerDetails(selectedOwnerRoom, pendingHostelUsers) : null;
 
   useEffect(() => {
@@ -114,27 +110,16 @@ export default function RoomApprovals() {
   const fetchRooms = async () => {
     setLoading(true);
     try {
-      const roomEndpoint = filter === "APPROVED" ? "/admin/rooms/" : `/admin/rooms/?status=${filter}`;
-      const requests = [
-        api.get(roomEndpoint),
+      const [roomsResponse, pendingUsersResponse] = await Promise.all([
+        api.get(`/admin/rooms/?status=${filter}`),
         api.get(`/admin/users/?is_approved=false&user_type=hostel_owner`),
-      ];
+      ]);
 
-      if (filter === "APPROVED") {
-        requests.push(api.get(`/admin/users/?is_approved=true&user_type=hostel_owner`));
-      }
-
-      const [roomsResponse, pendingUsersResponse, approvedUsersResponse] = await Promise.all(requests);
       const roomsData = roomsResponse.data;
       const usersData = pendingUsersResponse.data;
 
       setRooms(roomsData.results || roomsData || []);
       setPendingHostelUsers(usersData.results || usersData || []);
-      setApprovedHostelUsers(
-        filter === "APPROVED"
-          ? (approvedUsersResponse?.data?.results || approvedUsersResponse?.data || [])
-          : []
-      );
     } catch (error) {
       console.error("Failed to fetch rooms:", error);
     } finally {
@@ -162,29 +147,6 @@ export default function RoomApprovals() {
         String(r.owner_contact || "").toLowerCase().includes(q)
     );
   }, [rooms, query]);
-
-  const filteredApprovedHostelUsers = useMemo(() => {
-    if (!isApprovedView) return [];
-    if (!query.trim()) return approvedHostelUsers;
-
-    const q = query.toLowerCase();
-    return approvedHostelUsers.filter((user) => {
-      const ownerRooms = getOwnerRooms(user, rooms);
-      const roomText = ownerRooms
-        .map((room) => [room.title, room.description, room.owner_contact, room.status].filter(Boolean).join(" "))
-        .join(" ")
-        .toLowerCase();
-
-      return (
-        String(user.username || "").toLowerCase().includes(q) ||
-        String(user.email || "").toLowerCase().includes(q) ||
-        String(user.profile?.hostel_name || "").toLowerCase().includes(q) ||
-        String(user.profile?.phone_number || "").toLowerCase().includes(q) ||
-        String(user.profile?.address || "").toLowerCase().includes(q) ||
-        roomText.includes(q)
-      );
-    });
-  }, [approvedHostelUsers, isApprovedView, query, rooms]);
 
   const updateStatus = async (roomId, status) => {
     setSubmitting(true);
@@ -312,87 +274,14 @@ export default function RoomApprovals() {
         <div className="flex justify-center py-12">
           <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600" />
         </div>
-      ) : (isApprovedView ? filteredApprovedHostelUsers.length === 0 : filteredRooms.length === 0) ? (
+      ) : filteredRooms.length === 0 ? (
         <GlassCard className="p-10 text-center">
           <CheckCircle className="mx-auto mb-3 text-emerald-600" size={44} />
-          <p className="font-semibold text-slate-700">
-            {isApprovedView ? "No approved hostel owners" : `No ${filter.toLowerCase()} rooms`}
-          </p>
+          <p className="font-semibold text-slate-700">No {filter.toLowerCase()} rooms</p>
         </GlassCard>
       ) : (
         <div className="grid gap-4">
-          {isApprovedView
-            ? filteredApprovedHostelUsers.map((user) => {
-                const primaryRoom = getPrimaryOwnerRoom(user, rooms);
-                const ownerRooms = getOwnerRooms(user, rooms);
-
-                return (
-                  <GlassCard key={user.id} className="p-6">
-                    <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-                      <div className="overflow-hidden rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff] xl:w-[280px]">
-                        <div className="border-b border-[#e4ebf5] bg-white px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
-                          Hostel Owner Image
-                        </div>
-                        <img
-                          src={user.profile?.display_image || ROOM_IMAGE_FALLBACK}
-                          alt={user.profile?.hostel_name || user.username}
-                          className="h-52 w-full bg-white object-contain"
-                        />
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-3">
-                          <h3 className="text-xl font-extrabold text-slate-900">
-                            {user.profile?.hostel_name || user.username || "Hostel Owner"}
-                          </h3>
-                          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-800">
-                            APPROVED USER
-                          </span>
-                          {primaryRoom ? <StatusBadge status={primaryRoom.status} /> : null}
-                        </div>
-
-                        <p className="mt-2 text-sm font-semibold text-slate-600">
-                          Owner username: {user.username || "-"}
-                        </p>
-
-                        <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-                          <Info label="Email" value={user.email || "-"} />
-                          <Info label="Phone" value={user.profile?.phone_number || "-"} />
-                          <Info label="Business Reg No" value={user.profile?.business_reg_no || "-"} />
-                          <Info label="Address" value={user.profile?.address || "-"} />
-                        </div>
-
-                        <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
-                          <Info label="Listings" value={String(ownerRooms.length)} />
-                          <Info label="Current Listing" value={primaryRoom?.title || "No listing yet"} />
-                          <Info label="Listing Status" value={primaryRoom?.status || "No listing"} />
-                        </div>
-
-                        {primaryRoom?.review_note && (
-                          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3">
-                            <p className="text-sm text-amber-900">
-                              <strong>Review Note:</strong> {primaryRoom.review_note}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={() =>
-                          ownerRooms.length > 0 &&
-                          setSelectedApprovedOwner({ user, rooms: ownerRooms, primaryRoom })
-                        }
-                        disabled={ownerRooms.length === 0}
-                        className="rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] p-3 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-                        title={ownerRooms.length > 0 ? "View all listing details" : "No listing available"}
-                      >
-                        <Eye size={20} className="text-slate-800" />
-                      </button>
-                    </div>
-                  </GlassCard>
-                );
-              })
-            : filteredRooms.map((room) => (
+          {filteredRooms.map((room) => (
                 <GlassCard key={room.id} className="p-6">
                   <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                     <div className="overflow-hidden rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff] xl:w-[280px]">
@@ -530,92 +419,6 @@ export default function RoomApprovals() {
 
           <button
             onClick={() => setSelectedHostelOwner(null)}
-            className="mt-4 w-full rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] py-3 font-semibold text-slate-700 hover:bg-white"
-          >
-            Close
-          </button>
-        </Modal>
-      )}
-
-      {selectedApprovedOwner && (
-        <Modal onClose={() => setSelectedApprovedOwner(null)}>
-          <h2 className="mb-1 text-2xl font-extrabold text-slate-900">Approved Hostel Owner Listings</h2>
-          <p className="mb-4 text-slate-500">
-            {selectedApprovedOwner.user.profile?.hostel_name || selectedApprovedOwner.user.username}
-          </p>
-
-          <div className="mb-4 rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff] p-4">
-            <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
-              <div className="overflow-hidden rounded-[20px] border border-[#d9e5f3] bg-white">
-                <img
-                  src={selectedApprovedOwner.user.profile?.display_image || ROOM_IMAGE_FALLBACK}
-                  alt={selectedApprovedOwner.user.profile?.hostel_name || selectedApprovedOwner.user.username}
-                  className="h-48 w-full bg-white object-contain"
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-                <Info label="Hostel Name" value={selectedApprovedOwner.user.profile?.hostel_name} />
-                <Info label="Username" value={selectedApprovedOwner.user.username} />
-                <Info label="Email" value={selectedApprovedOwner.user.email} />
-                <Info label="Phone Number" value={selectedApprovedOwner.user.profile?.phone_number || "-"} />
-                <Info label="Business Reg No" value={selectedApprovedOwner.user.profile?.business_reg_no || "-"} />
-                <Info label="Address" value={selectedApprovedOwner.user.profile?.address || "-"} />
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-4 space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-lg font-extrabold text-slate-900">All Listing Room Details</h3>
-              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-extrabold text-emerald-800">
-                {selectedApprovedOwner.rooms.length} Listings
-              </span>
-            </div>
-
-            {selectedApprovedOwner.rooms.map((room) => (
-              <div key={room.id} className="rounded-[24px] border border-[#e4ebf5] bg-[#f8fbff] p-4">
-                <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
-                  <div className="overflow-hidden rounded-[20px] border border-[#d9e5f3] bg-white">
-                    <img
-                      src={getRoomListingImage(room)}
-                      alt={room.title}
-                      className="h-48 w-full bg-white object-contain"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <h4 className="text-lg font-extrabold text-slate-900">{room.title}</h4>
-                      <StatusBadge status={room.status} />
-                    </div>
-
-                    <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-                      <Info label="Price" value={`LKR ${room.price}`} />
-                      <Info label="Gender" value={room.gender_allowed} />
-                      <Info label="Contact" value={room.owner_contact} />
-                      <Info label="Facilities" value={room.facilities?.join(", ") || "None"} />
-                    </div>
-
-                    <div className="mt-3 rounded-2xl border border-[#e4ebf5] bg-white p-3">
-                      <div className="text-xs font-bold uppercase text-slate-500">Description</div>
-                      <div className="mt-1 text-sm font-semibold text-slate-900">{room.description || "-"}</div>
-                    </div>
-
-                    {room.review_note && (
-                      <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
-                        <p className="text-sm text-amber-900">
-                          <strong>Review Note:</strong> {room.review_note}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={() => setSelectedApprovedOwner(null)}
             className="mt-4 w-full rounded-2xl border border-[#e4ebf5] bg-[#f8fbff] py-3 font-semibold text-slate-700 hover:bg-white"
           >
             Close

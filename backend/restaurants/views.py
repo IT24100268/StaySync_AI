@@ -32,6 +32,7 @@ def sync_legacy_restaurants_and_menu():
                 longitude=legacy.longitude,
                 is_approved=approved_flag,
                 status=target_status,
+                image=getattr(getattr(legacy.owner, 'restaurant_profile', None), 'display_image', None),
             )
         else:
             changed = False
@@ -101,12 +102,7 @@ class RestaurantListView(generics.ListAPIView):
 
     def get_queryset(self):
         sync_legacy_restaurants_and_menu()
-        approved = Restaurant.objects.filter(Q(is_approved=True) | Q(status='APPROVED'))
-        if approved.exists():
-            return approved.order_by('-created_at')
-
-        # Fallback for dev/inconsistent records: show real restaurants except rejected/suspended
-        return Restaurant.objects.exclude(status__in=['REJECTED', 'SUSPENDED']).order_by('-created_at')
+        return Restaurant.objects.filter(status='APPROVED').order_by('-created_at')
 
 
 class RestaurantDetailView(generics.RetrieveAPIView):
@@ -116,11 +112,7 @@ class RestaurantDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         sync_legacy_restaurants_and_menu()
-        approved = Restaurant.objects.filter(Q(is_approved=True) | Q(status='APPROVED'))
-        if approved.exists():
-            return approved
-
-        return Restaurant.objects.exclude(status__in=['REJECTED', 'SUSPENDED'])
+        return Restaurant.objects.filter(status='APPROVED')
 
 
 class RestaurantMenuView(generics.ListAPIView):

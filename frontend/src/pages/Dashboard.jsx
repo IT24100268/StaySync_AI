@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bell, MapPin, Search, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -105,6 +105,12 @@ const Dashboard = () => {
   const [currentLocation, setCurrentLocation] = useState(null);
   const [locationStatus, setLocationStatus] = useState("");
   const [locationLoading, setLocationLoading] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [seenIds, setSeenIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("notif_seen") || "[]")); }
+    catch { return new Set(); }
+  });
+  const notifRef = useRef(null);
 
   const applyLocalRoomFilters = (roomList, nextFilters) => {
     const locationNeedle = String(nextFilters.location || "").trim().toLowerCase();
@@ -325,6 +331,58 @@ const Dashboard = () => {
       ["pending", "accepted", "preparing", "ready", "out_for_delivery"].includes(String(order?.status || "").toLowerCase())
     ).length;
   }, [orders]);
+
+  const notifications = useMemo(() => {
+    const list = [];
+    orders.forEach((order) => {
+      const status = String(order?.status || "").toLowerCase();
+      const key = `order-${order.id}-${status}`;
+      let message = "";
+      if (status === "accepted") message = `Order #${order.id} has been accepted.`;
+      else if (status === "preparing") message = `Order #${order.id} is being prepared.`;
+      else if (status === "ready") message = `Order #${order.id} is ready for pickup.`;
+      else if (status === "out_for_delivery") message = `Order #${order.id} is out for delivery!`;
+      else if (status === "delivered") message = `Order #${order.id} has been delivered.`;
+      else if (status === "rejected") message = `Order #${order.id} was rejected.`;
+      else if (status === "pending") message = `Order #${order.id} is pending confirmation.`;
+      if (message) list.push({ key, message, link: "/orders", time: order.updated_at || order.created_at });
+    });
+    bookings.forEach((booking) => {
+      const status = String(booking?.status || "").toLowerCase();
+      const key = `booking-${booking.id}-${status}`;
+      let message = "";
+      if (status === "approved") message = `Your booking for "${booking.room?.title || "a room"}" was approved!`;
+      else if (status === "rejected") message = `Your booking for "${booking.room?.title || "a room"}" was rejected.`;
+      else if (status === "pending") message = `Booking for "${booking.room?.title || "a room"}" is pending.`;
+      if (message) list.push({ key, message, link: "/bookings", time: booking.updated_at || booking.created_at });
+    });
+    return list.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
+  }, [orders, bookings]);
+
+  const unreadCount = useMemo(
+    () => notifications.filter((n) => !seenIds.has(n.key)).length,
+    [notifications, seenIds]
+  );
+
+  const handleNotifOpen = () => {
+    setNotifOpen((prev) => {
+      if (!prev) {
+        const allIds = notifications.map((n) => n.key);
+        const updated = new Set(allIds);
+        setSeenIds(updated);
+        localStorage.setItem("notif_seen", JSON.stringify(allIds));
+      }
+      return !prev;
+    });
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
   const locationLabel = useMemo(() => {
     if (currentLocation) {
       return `${currentLocation.lat.toFixed(3)}, ${currentLocation.lng.toFixed(3)}`;
@@ -442,10 +500,33 @@ const Dashboard = () => {
           </form>
 
           <div className="dashboard-toolbar__actions">
-            <button type="button" className="dashboard-toolbar__notify">
-              <Bell size={17} />
-              {activeOrderCount > 0 ? <span>{activeOrderCount}</span> : null}
-            </button>
+            <div className="dashboard-notif-wrap" ref={notifRef}>
+              <button type="button" className="dashboard-toolbar__notify" onClick={handleNotifOpen}>
+                <Bell size={17} />
+                {unreadCount > 0 ? <span>{unreadCount}</span> : null}
+              </button>
+              {notifOpen && (
+                <div className="dashboard-notif-dropdown">
+                  <div className="dashboard-notif-dropdown__head">
+                    <strong>Notifications</strong>
+                    <span>{notifications.length} total</span>
+                  </div>
+                  {notifications.length === 0 ? (
+                    <p className="dashboard-notif-dropdown__empty">No notifications yet.</p>
+                  ) : (
+                    <ul className="dashboard-notif-dropdown__list">
+                      {notifications.map((n) => (
+                        <li key={n.key} className={`dashboard-notif-item${seenIds.has(n.key) ? " is-read" : ""}`}>
+                          <Link to={n.link} onClick={() => setNotifOpen(false)}>
+                            {n.message}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
             <Link to="/profile" className="dashboard-toolbar__profile">
               {user?.profile?.display_image ? (
                 <img src={user.profile.display_image} alt={studentName} />

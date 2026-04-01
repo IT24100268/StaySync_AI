@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 def get_owner_contacts(user):
-    """Get all likely owner-contact values used in room records."""
     contacts = []
 
     try:
@@ -25,17 +24,7 @@ def get_owner_contacts(user):
     if email:
         contacts.append(email)
 
-    # owner_contact is max_length=20, so include truncated variants too.
-    normalized = []
-    for contact in contacts:
-        normalized.append(contact)
-        normalized.append(contact[:20])
-
-    deduped = []
-    for contact in normalized:
-        if contact and contact not in deduped:
-            deduped.append(contact)
-    return deduped
+    return [c for c in contacts if c]
 
 
 def get_primary_owner_contact(user):
@@ -73,42 +62,30 @@ class OwnerRoomViewSet(viewsets.ModelViewSet):
     
     def create(self, request, *args, **kwargs):
         try:
-            # Map frontend field names to backend model fields
-            data = request.data.copy()
-            logger.info(f"Received data: {data}")
-            
-            # Map fields
+            data = dict(request.data)
+            # Unwrap single-item lists from multipart (not needed for JSON but safe)
+            data = {k: v[0] if isinstance(v, list) and len(v) == 1 and k != 'facilities' else v for k, v in data.items()}
+
             if 'rent' in data:
                 data['price'] = data.pop('rent')
             if 'genderAllowed' in data:
                 data['gender_allowed'] = data.pop('genderAllowed')
-            
-            # Set defaults for required fields
-            if 'latitude' not in data or not data['latitude']:
-                data['latitude'] = '0.0'
-            if 'longitude' not in data or not data['longitude']:
-                data['longitude'] = '0.0'
-            if 'distance_from_university' not in data:
-                data['distance_from_university'] = '0.0'
-            if 'rules' not in data:
-                data['rules'] = ''
-            if 'deposit' not in data:
-                data['deposit'] = '0'
-            if 'address' not in data:
-                data['address'] = ''
-            
-            logger.info(f"Processed data: {data}")
-            
+
+            data['latitude'] = data.get('latitude') or '0.0'
+            data['longitude'] = data.get('longitude') or '0.0'
+            data['distance_from_university'] = data.get('distance_from_university') or '0.0'
+            data['rules'] = data.get('rules') or ''
+            data['deposit'] = data.get('deposit') or '0'
+            data['address'] = data.get('address') or ''
+
+            logger.info(f"Create room data: {data}")
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
-            serializer.save(
-                owner_contact=get_primary_owner_contact(request.user),
-                status='PENDING'
-            )
+            serializer.save(owner_contact=get_primary_owner_contact(request.user), status='PENDING')
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except Exception as e:
-            logger.error(f"Error creating room: {str(e)}")
+            logger.error(f"Error creating room: {str(e)}", exc_info=True)
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     def update(self, request, *args, **kwargs):

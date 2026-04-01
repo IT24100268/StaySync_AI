@@ -27,13 +27,16 @@ class RestaurantSerializer(serializers.ModelSerializer):
 
     def get_image(self, obj):
         request = self.context.get('request')
-        profile = getattr(getattr(obj, 'owner', None), 'restaurant_profile', None)
-        display_image = getattr(profile, 'display_image', None)
-        if not display_image:
+        # Use model image field first, fall back to owner profile
+        image = obj.image
+        if not image:
+            profile = getattr(getattr(obj, 'owner', None), 'restaurant_profile', None)
+            image = getattr(profile, 'display_image', None)
+        if not image:
             return None
         if request:
-            return request.build_absolute_uri(display_image.url)
-        return display_image.url
+            return request.build_absolute_uri(image.url)
+        return image.url
 
 
 class MenuSerializer(serializers.ModelSerializer):

@@ -136,8 +136,8 @@
 .reviews-type-toggle button.is-active {
   color: #fff;
   border-color: transparent;
-  background: linear-gradient(120deg, #1f4f96, #4b8ef6);
-  box-shadow: 0 8px 16px rgba(31, 79, 150, 0.24);
+  background: #1f4f96;
+  box-shadow: 0 4px 14px rgba(31, 79, 150, 0.35);
 }
 
 .reviews-label {
@@ -404,9 +404,10 @@
 }
 
 .reviews-btn--primary {
-  color: #fff;
-  background: linear-gradient(120deg, #1f4f96, #4b8ef6);
-  box-shadow: 0 10px 20px rgba(31, 79, 150, 0.24);
+  color: #1f4f96;
+  background: #fff;
+  border-color: rgba(15, 23, 42, 0.14);
+  box-shadow: 0 4px 14px rgba(31, 79, 150, 0.15);
   margin-top: 12px;
 }
 

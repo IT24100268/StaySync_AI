@@ -79,7 +79,7 @@ export default function AdminHome2() {
       const [sumRes, analyticsRes, roomsRes, pendingOwnersRes, approvedOwnersRes, pendingRestaurantOwnersRes, approvedRestaurantOwnersRes, partRes, repRes] = await Promise.all([
         api.get("/admin/analytics/summary/"),
         api.get("/admin/analytics/detail/"),
-        api.get("/admin/rooms/"),
+        api.get("/admin/rooms/?status=APPROVED"),
         api.get("/admin/users/?is_approved=false&user_type=hostel_owner"),
         api.get("/admin/users/?is_approved=true&user_type=hostel_owner"),
         api.get("/admin/users/?is_approved=false&user_type=restaurant_owner"),
@@ -134,10 +134,7 @@ export default function AdminHome2() {
     return currentLoad > bestLoad ? item : best;
   }, trend[0] || null);
 
-  const prioritizedHostelOwners = [
-    ...pendingHostelOwners.map((user) => ({ ...user, moderationType: "pending" })),
-    ...approvedHostelOwners.map((user) => ({ ...user, moderationType: "approved" })),
-  ].slice(0, 2);
+  const prioritizedHostelOwners = rooms.slice(0, 2);
 
   const prioritizedRestaurantUsers = [
     ...pendingRestaurantOwners.map((owner) => ({
@@ -194,20 +191,17 @@ export default function AdminHome2() {
               <PanelCard title="Room Approvals" icon={Building} iconTone="bg-violet-100 text-violet-700">
                 <div className="space-y-3 min-h-[160px]">
                   {prioritizedHostelOwners.length === 0 ? (
-                    <EmptyState message="No hostel owners in the queue." icon={Building} />
+                    <EmptyState message="No approved room listings." icon={Building} />
                   ) : (
-                    prioritizedHostelOwners.map((owner) => {
-                      const primaryRoom = getPrimaryOwnerRoom(owner, rooms);
-                      return (
-                        <HostelOwnerDashboardItem
-                          key={owner.id}
-                          image={owner.profile?.display_image || primaryRoom?.owner_display_image || ROOM_OWNER_FALLBACK}
-                          title={owner.profile?.hostel_name || owner.username || `Owner ${owner.id}`}
-                          phone={owner.profile?.phone_number || "No phone"}
-                          status={owner.moderationType === "pending" ? "PENDING" : "APPROVED"}
-                        />
-                      );
-                    })
+                    prioritizedHostelOwners.map((room) => (
+                      <HostelOwnerDashboardItem
+                        key={room.id}
+                        image={room.images?.[0]?.image || room.owner_display_image || ROOM_OWNER_FALLBACK}
+                        title={room.title || `Room ${room.id}`}
+                        phone={room.owner_contact || "No contact"}
+                        status={room.status}
+                      />
+                    ))
                   )}
                 </div>
               </PanelCard>
