@@ -354,7 +354,7 @@ export default function StudentReviews() {
                   <small>{comment.length} characters</small>
                 </label>
 
-                <button type="submit" className="reviews-btn reviews-btn--primary" disabled={submitting}>
+                <button type="submit" className="reviews-btn reviews-btn--outline" disabled={submitting}>
                   {submitting ? "Submitting..." : "Submit Review"}
                 </button>
               </form>

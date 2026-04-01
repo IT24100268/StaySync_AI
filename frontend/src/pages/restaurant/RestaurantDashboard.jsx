@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowUpRight,
   CircleDollarSign,
-  ChevronDown,
-  Clock3,
   Flame,
   ListOrdered,
   MapPin,
@@ -12,7 +10,6 @@ import {
   PackageCheck,
   Sparkles,
   Star,
-  Store,
 } from 'lucide-react';
 import {
   Area,
@@ -35,49 +32,59 @@ import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import './RestaurantDashboard.css';
 
-const revenueSeries = [
-  { time: 'Morning', value: 9000 },
-  { time: 'Afternoon', value: 14000 },
-  { time: 'Evening', value: 26500 },
-  { time: 'Night', value: 32000 },
-];
-
-const mockFeaturedItems = [
-  {
-    id: 1,
-    name: 'Margherita Pizza',
-    price: 1200,
-    rating: 4.7,
-    orders: 14,
-    image:
-      'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 2,
-    name: 'Chicken Burger',
-    price: 350,
-    rating: 4.6,
-    orders: 9,
-    image:
-      'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 3,
-    name: 'Caesar Salad',
-    price: 900,
-    rating: 4.5,
-    orders: 7,
-    image:
-      'https://images.unsplash.com/photo-1546793665-c74683f339c1?auto=format&fit=crop&w=1200&q=80',
-  },
-];
-
 const defaultDashboardImage =
   'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1400&q=80';
 const JAFFNA_UNIVERSITY_CENTER = { lat: 9.6848, lng: 80.0220 };
 
+const toArray = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.results)) return payload.results;
+  return [];
+};
+
+const toNumber = (value, fallback = 0) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+};
+
+const normalizeStatus = (value = '') =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replaceAll(' ', '_');
+
+const toAbsoluteMediaUrl = (value = '') => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const host = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/api\/?$/, '');
+  if (raw.startsWith('/')) return `${host}${raw}`;
+  return `${host}/${raw}`;
+};
+
+const toDate = (value) => {
+  const date = new Date(value || '');
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const isSameDay = (left, right) =>
+  left &&
+  right &&
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth() &&
+  left.getDate() === right.getDate();
+
+const isSameMonth = (left, right) =>
+  left &&
+  right &&
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth();
+
+const isDelivered = (order) => normalizeStatus(order?.status) === 'delivered';
+
 function OrderCustomer({ order }) {
   const label = order.student_name || `Customer ${order.student || ''}`.trim() || 'Customer';
+  const avatarUrl = toAbsoluteMediaUrl(order.student_display_image);
 
   const initials = label
     .split(' ')
@@ -88,35 +95,38 @@ function OrderCustomer({ order }) {
 
   return (
     <div className="order-customer">
-      <div className="order-customer__avatar">{initials}</div>
+      {avatarUrl ? (
+        <img className="order-customer__avatar order-customer__avatar--image" src={avatarUrl} alt={label} />
+      ) : (
+        <div className="order-customer__avatar">{initials}</div>
+      )}
       <span>{label}</span>
     </div>
   );
 }
 
-function FeaturedMenuCard({ item, onEdit }) {
+function FeaturedMenuCard({ item }) {
   return (
     <article className="featured-menu-card">
       <div className="featured-menu-card__image-wrap">
-        <img src={item.image} alt={item.name} className="featured-menu-card__image" />
+        {item.image ? (
+          <img src={item.image} alt={item.name} className="featured-menu-card__image" />
+        ) : (
+          <div className="featured-menu-card__image-fallback">
+            {String(item.name || 'Item').trim().slice(0, 1).toUpperCase() || 'I'}
+          </div>
+        )}
       </div>
 
       <div className="featured-menu-card__content">
         <h4>{item.name}</h4>
-        <p className="featured-menu-card__price">
-          LKR {Number(item.price).toLocaleString()}
-          <span>
-            <Star size={13} fill="currentColor" />
-            {item.rating}
-          </span>
-        </p>
+        <p className="featured-menu-card__price">LKR {toNumber(item.price).toLocaleString()}</p>
         <p className="featured-menu-card__orders">{item.orders} Orders Today</p>
 
         <div className="featured-menu-card__footer">
-          <div className="featured-menu-card__mini-rating">
-            <Star size={14} fill="currentColor" />
-            <span>{item.rating}</span>
-          </div>
+          <span className={`featured-menu-card__availability ${item.is_available ? 'is-live' : 'is-paused'}`}>
+            {item.is_available ? 'Available' : 'Paused'}
+          </span>
         </div>
       </div>
     </article>
@@ -175,68 +185,272 @@ export default function RestaurantDashboard() {
 
   const { addToast } = useToast();
 
+  const loadDashboard = async () => {
+    const [ordersResult, overviewResult, reviewsResult] = await Promise.allSettled([
+      restaurantApi.getOrders(),
+      restaurantApi.getDashboardOverview(),
+      api.get('/reviews/restaurants/'),
+    ]);
+
+    if (ordersResult.status !== 'fulfilled') {
+      throw new Error('Orders fetch failed');
+    }
+
+    const liveOrders = toArray(ordersResult.value?.data).sort((first, second) => {
+      const firstTime = toDate(first?.created_at)?.getTime() || 0;
+      const secondTime = toDate(second?.created_at)?.getTime() || 0;
+      return secondTime - firstTime;
+    });
+
+    const overviewData = overviewResult.status === 'fulfilled' ? overviewResult.value?.data || {} : {};
+    const reviews = reviewsResult.status === 'fulfilled' ? toArray(reviewsResult.value?.data) : [];
+    const totalReviews = reviews.length;
+    const averageRating = totalReviews
+      ? reviews.reduce((sum, review) => sum + toNumber(review?.rating), 0) / totalReviews
+      : toNumber(overviewData?.ratings, 0);
+
+    setData({
+      restaurant_name: user?.profile?.restaurant_name || user?.username || 'Restaurant',
+      location: user?.profile?.address || 'Location not updated yet',
+      ratings: Number.isFinite(averageRating) ? Number(averageRating.toFixed(1)) : 0,
+      total_reviews: totalReviews || toNumber(overviewData?.total_reviews, 0),
+      recent_orders: liveOrders.slice(0, 10),
+      all_orders: liveOrders,
+    });
+    setError('');
+  };
+
   useEffect(() => {
+    let mounted = true;
+
     const fetchOverview = async () => {
       try {
-        const response = await restaurantApi.getDashboardOverview();
-        setData({
-          total_reviews: 248,
-          restaurant_name: user?.profile?.restaurant_name || user?.username || 'Restaurant',
-          location: user?.profile?.address || 'Location not updated yet',
-          ...response.data,
-          recent_orders: response.data?.recent_orders || [],
-        });
+        await loadDashboard();
       } catch (err) {
-        setError('Failed to load dashboard overview.');
+        if (mounted) setError('Failed to load dashboard overview.');
       }
     };
 
     fetchOverview();
+    return () => {
+      mounted = false;
+    };
   }, [user]);
 
-  const statusData = useMemo(() => {
-    const orders = data?.recent_orders || [];
-    const total = orders.length || 1;
+  const allOrders = useMemo(() => data?.all_orders || [], [data]);
 
+  const recentOrders = useMemo(() => allOrders.slice(0, 10), [allOrders]);
+
+  const deliveredOrders = useMemo(
+    () => allOrders.filter((order) => isDelivered(order)),
+    [allOrders]
+  );
+
+  const todaysRevenue = useMemo(() => {
+    const now = new Date();
+    return deliveredOrders.reduce((sum, order) => {
+      const time = toDate(order?.updated_at || order?.created_at);
+      if (!isSameDay(time, now)) return sum;
+      return sum + toNumber(order?.total_price ?? order?.total_amount);
+    }, 0);
+  }, [deliveredOrders]);
+
+  const thisMonthRevenue = useMemo(() => {
+    const now = new Date();
+    return deliveredOrders.reduce((sum, order) => {
+      const time = toDate(order?.updated_at || order?.created_at);
+      if (!isSameMonth(time, now)) return sum;
+      return sum + toNumber(order?.total_price ?? order?.total_amount);
+    }, 0);
+  }, [deliveredOrders]);
+
+  const statusData = useMemo(() => {
     const counts = {
-      pending: orders.filter((o) => o.status === 'pending').length,
-      preparing: orders.filter((o) => ['accepted', 'preparing'].includes(o.status)).length,
-      out_for_delivery: orders.filter((o) => o.status === 'out_for_delivery').length,
-      completed: orders.filter((o) => ['delivered', 'completed'].includes(o.status)).length,
+      pending: allOrders.filter((order) => normalizeStatus(order?.status) === 'pending').length,
+      preparing: allOrders.filter((order) =>
+        ['accepted', 'preparing', 'ready'].includes(normalizeStatus(order?.status))
+      ).length,
+      out_for_delivery: allOrders.filter((order) => normalizeStatus(order?.status) === 'out_for_delivery').length,
+      completed: allOrders.filter((order) => isDelivered(order)).length,
     };
+
+    const trackedTotal = counts.pending + counts.preparing + counts.out_for_delivery + counts.completed;
+    const total = trackedTotal || 1;
 
     return [
       {
         name: 'Pending',
         value: counts.pending,
-        percent: Math.round((counts.pending / total) * 100),
+        percent: trackedTotal ? Math.round((counts.pending / total) * 100) : 0,
         color: '#f4b43a',
       },
       {
         name: 'Preparing',
         value: counts.preparing,
-        percent: Math.round((counts.preparing / total) * 100),
+        percent: trackedTotal ? Math.round((counts.preparing / total) * 100) : 0,
         color: '#f28c28',
       },
       {
         name: 'Out for delivery',
         value: counts.out_for_delivery,
-        percent: Math.round((counts.out_for_delivery / total) * 100),
+        percent: trackedTotal ? Math.round((counts.out_for_delivery / total) * 100) : 0,
         color: '#4f7cf7',
       },
       {
         name: 'Completed',
         value: counts.completed,
-        percent: Math.round((counts.completed / total) * 100),
+        percent: trackedTotal ? Math.round((counts.completed / total) * 100) : 0,
         color: '#44b649',
       },
-    ].filter((item) => item.value > 0 || orders.length === 0);
-  }, [data]);
+    ];
+  }, [allOrders]);
 
-  const pendingPercent = useMemo(() => {
-    const pending = statusData.find((item) => item.name === 'Pending');
-    return pending?.percent || 0;
+  const statusFocus = useMemo(() => {
+    if (!statusData.length) return { name: 'Pending', percent: 0 };
+    return statusData.reduce((top, current) =>
+      current.value > top.value ? current : top
+    );
   }, [statusData]);
+
+  const todayItemStats = useMemo(() => {
+    const today = new Date();
+    const statsMap = new Map();
+
+    allOrders.forEach((order) => {
+      const createdAt = toDate(order?.created_at);
+      if (!isSameDay(createdAt, today)) return;
+      if (normalizeStatus(order?.status) === 'rejected') return;
+
+      const orderItems = Array.isArray(order?.items) ? order.items : [];
+      orderItems.forEach((item) => {
+        const menuItem = item?.menu_item || {};
+        const id = String(menuItem.id ?? item?.menu_item_id ?? menuItem.name ?? item?.id ?? 'unknown');
+        const name = String(menuItem.name || item?.name || 'Menu item').trim() || 'Menu item';
+        const quantity = Math.max(toNumber(item?.quantity, 1), 1);
+        const unitPrice = toNumber(item?.price ?? menuItem?.price, 0);
+        const amount = quantity * unitPrice;
+        const image = toAbsoluteMediaUrl(menuItem?.image_url || menuItem?.image || '');
+
+        if (!statsMap.has(id)) {
+          statsMap.set(id, {
+            id,
+            name,
+            orders: 0,
+            amount: 0,
+            unitPrice,
+            image,
+          });
+        }
+
+        const current = statsMap.get(id);
+        current.orders += quantity;
+        current.amount += amount;
+        if (!current.unitPrice && unitPrice) current.unitPrice = unitPrice;
+        if (!current.image && image) current.image = image;
+      });
+    });
+
+    return [...statsMap.values()].sort((first, second) => second.orders - first.orders || second.amount - first.amount);
+  }, [allOrders]);
+
+  const todayItemById = useMemo(
+    () => new Map(todayItemStats.map((item) => [String(item.id), item])),
+    [todayItemStats]
+  );
+
+  const featuredItems = useMemo(() => {
+    const menuItems = Array.isArray(items) ? items : [];
+    if (!menuItems.length) return [];
+
+    return menuItems
+      .map((item) => {
+        const stat = todayItemById.get(String(item.id));
+        return {
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          orders: stat?.orders || 0,
+          image: toAbsoluteMediaUrl(item.image || item.image_url || stat?.image || ''),
+          is_available: item.is_available,
+        };
+      })
+      .sort((first, second) => second.orders - first.orders || toNumber(second.price) - toNumber(first.price))
+      .slice(0, 4);
+  }, [items, todayItemById]);
+
+  const dashboardInsights = useMemo(() => {
+    const menuCount = Array.isArray(items) ? items.length : 0;
+    const availableCount = Array.isArray(items) ? items.filter((item) => item.is_available).length : 0;
+    const unavailableCount = Math.max(menuCount - availableCount, 0);
+    const pendingOrders = allOrders.filter((order) => normalizeStatus(order?.status) === 'pending').length;
+
+    return {
+      menuCount,
+      availableCount,
+      unavailableCount,
+      pendingOrders,
+    };
+  }, [allOrders, items]);
+
+  const snapshotCards = useMemo(() => {
+    const bestSeller = todayItemStats[0] || null;
+    const revenueGoal = 50000;
+    const revenueProgress = Math.min(100, Math.round((thisMonthRevenue / revenueGoal) * 100));
+
+    return [
+      {
+        id: 'best-seller',
+        title: 'Best Seller',
+        value: bestSeller?.name || 'No sales today',
+        detail: bestSeller
+          ? `${bestSeller.orders} orders today • LKR ${toNumber(bestSeller.amount).toLocaleString()}`
+          : 'No item has been sold today yet.',
+        icon: Flame,
+        tone: 'warm',
+      },
+      {
+        id: 'menu-health',
+        title: 'Menu Health',
+        value: `${dashboardInsights.availableCount}/${dashboardInsights.menuCount || 0}`,
+        detail:
+          dashboardInsights.menuCount > 0
+            ? `${dashboardInsights.unavailableCount} items paused right now`
+            : 'No live items yet. Start building your menu.',
+        icon: PackageCheck,
+        tone: 'fresh',
+      },
+      {
+        id: 'revenue-target',
+        title: 'Revenue Target',
+        value: `${revenueProgress}%`,
+        detail: `LKR ${thisMonthRevenue.toLocaleString()} of LKR ${revenueGoal.toLocaleString()} goal`,
+        icon: Sparkles,
+        tone: 'glow',
+      },
+    ];
+  }, [dashboardInsights, thisMonthRevenue, todayItemStats]);
+
+  const revenueSeries = useMemo(() => {
+    const today = new Date();
+    const buckets = [
+      { time: 'Morning', value: 0, start: 0, end: 12 },
+      { time: 'Afternoon', value: 0, start: 12, end: 16 },
+      { time: 'Evening', value: 0, start: 16, end: 20 },
+      { time: 'Night', value: 0, start: 20, end: 24 },
+    ];
+
+    deliveredOrders.forEach((order) => {
+      const orderTime = toDate(order?.updated_at || order?.created_at);
+      if (!isSameDay(orderTime, today)) return;
+
+      const hour = orderTime.getHours();
+      const revenue = toNumber(order?.total_price ?? order?.total_amount);
+      const bucket = buckets.find((item) => hour >= item.start && hour < item.end);
+      if (bucket) bucket.value += revenue;
+    });
+
+    return buckets.map(({ time, value }) => ({ time, value }));
+  }, [deliveredOrders]);
 
   const restaurantName =
     user?.profile?.restaurant_name ||
@@ -260,79 +474,6 @@ export default function RestaurantDashboard() {
   const mapEmbedUrl = `https://maps.google.com/maps?q=${mapCenter.lat},${mapCenter.lng}&z=${
     hasPinnedLocation ? 16 : 13
   }&output=embed`;
-
-  const featuredItems = useMemo(() => {
-    if (items?.length) {
-      return items.slice(0, 4).map((item, index) => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        rating: item.rating || 4.5 + index * 0.1,
-        orders: item.orders_today || item.order_count || 8 + index * 2,
-        image: item.image || item.image_url || mockFeaturedItems[index % mockFeaturedItems.length]?.image,
-        is_available: item.is_available,
-      }));
-    }
-
-    return mockFeaturedItems;
-  }, [items]);
-
-  const dashboardInsights = useMemo(() => {
-    const menuCount = items?.length || 0;
-    const availableCount = items?.filter((item) => item.is_available).length || 0;
-    const unavailableCount = Math.max(menuCount - availableCount, 0);
-    const pendingOrders =
-      data?.recent_orders?.filter((order) => order.status === 'pending').length || 0;
-
-    return {
-      menuCount,
-      availableCount,
-      unavailableCount,
-      pendingOrders,
-      featuredNames: featuredItems.slice(0, 3).map((item) => item.name),
-    };
-  }, [data, featuredItems, items]);
-
-  const snapshotCards = useMemo(() => {
-    const bestSeller = featuredItems[0];
-    const revenueGoal = 50000;
-    const revenueProgress = Math.min(
-      100,
-      Math.round((Number(data?.total_revenue || 0) / revenueGoal) * 100)
-    );
-
-    return [
-      {
-        id: 'best-seller',
-        title: 'Best Seller',
-        value: bestSeller?.name || 'Add menu items',
-        detail: bestSeller
-          ? `${bestSeller.orders} orders today • LKR ${Number(bestSeller.price || 0).toLocaleString()}`
-          : 'Showcase your top dish by adding menu items',
-        icon: Flame,
-        tone: 'warm',
-      },
-      {
-        id: 'menu-health',
-        title: 'Menu Health',
-        value: `${dashboardInsights.availableCount}/${dashboardInsights.menuCount || 0}`,
-        detail:
-          dashboardInsights.menuCount > 0
-            ? `${dashboardInsights.unavailableCount} items paused right now`
-            : 'No live items yet. Start building your menu.',
-        icon: PackageCheck,
-        tone: 'fresh',
-      },
-      {
-        id: 'revenue-target',
-        title: 'Revenue Target',
-        value: `${revenueProgress}%`,
-        detail: `LKR ${Number(data?.total_revenue || 0).toLocaleString()} of LKR ${revenueGoal.toLocaleString()} goal`,
-        icon: Sparkles,
-        tone: 'glow',
-      },
-    ];
-  }, [data, dashboardInsights, featuredItems]);
 
   const openAddModal = () => {
     setEditingItem(null);
@@ -405,12 +546,11 @@ export default function RestaurantDashboard() {
   };
 
   const refreshOrders = async () => {
-    const response = await restaurantApi.getDashboardOverview();
-    setData((prev) => ({
-      ...prev,
-      ...response.data,
-      recent_orders: response.data?.recent_orders || [],
-    }));
+    try {
+      await loadDashboard();
+    } catch {
+      addToast({ title: 'Error', message: 'Failed to refresh orders.', variant: 'error' });
+    }
   };
 
   const handleAcceptOrder = (order) => {
@@ -588,7 +728,7 @@ export default function RestaurantDashboard() {
         <HighlightCard
           icon={CircleDollarSign}
           title="Today's Revenue"
-          value={`LKR ${Number(data.total_revenue || 0).toLocaleString()}`}
+          value={`LKR ${todaysRevenue.toLocaleString()}`}
           description="Track confirmed earnings from completed orders across today's service."
           actionLabel="View Earnings"
           actionTo="/restaurant/earnings"
@@ -616,9 +756,11 @@ export default function RestaurantDashboard() {
             </div>
 
             <div className="featured-menu-grid">
-              {featuredItems.map((item) => (
-                <FeaturedMenuCard key={item.id} item={item} onEdit={openEditModal} />
-              ))}
+              {featuredItems.length ? (
+                featuredItems.map((item) => <FeaturedMenuCard key={item.id} item={item} />)
+              ) : (
+                <div className="featured-menu-empty">No menu items yet. Add items to start tracking real sales.</div>
+              )}
             </div>
           </section>
 
@@ -643,8 +785,8 @@ export default function RestaurantDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.recent_orders.length ? (
-                      data.recent_orders.map((order) => (
+                    {recentOrders.length ? (
+                      recentOrders.map((order) => (
                         <tr key={order.id}>
                           <td className="order-id">#{order.id}</td>
                           <td>
@@ -738,7 +880,7 @@ export default function RestaurantDashboard() {
               <div>
                 <h3 className="section-title">Today's Revenue</h3>
                 <p className="revenue-card__value">
-                  LKR {Number(data.total_revenue || 0).toLocaleString()}
+                  LKR {todaysRevenue.toLocaleString()}
                 </p>
               </div>
 
@@ -800,8 +942,8 @@ export default function RestaurantDashboard() {
               </ResponsiveContainer>
 
               <div className="status-chart-card__center">
-                <strong>{pendingPercent}%</strong>
-                <span>Pending</span>
+                <strong>{statusFocus.percent}%</strong>
+                <span>{statusFocus.name}</span>
               </div>
             </div>
 

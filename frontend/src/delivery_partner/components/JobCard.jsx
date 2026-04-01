@@ -10,33 +10,35 @@ function JobCard({ job, onAccept, loading }) {
     <GlassCard>
       <Stack spacing={1.3}>
         <Stack direction="row" alignItems="center" justifyContent="space-between">
-          <Typography variant="h6">{job?.title || `Job #${job?.id}`}</Typography>
+          <Typography variant="h6" sx={{ color: 'var(--delivery-text)', fontWeight: 800 }}>
+            {job?.title || `Job #${job?.id}`}
+          </Typography>
           <StatusChip status={job?.status || 'pending'} />
         </Stack>
 
         <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
           <Stack direction="row" alignItems="center" spacing={0.8}>
-            <LocationOnRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-            <Typography variant="body2" color="text.secondary">
+            <LocationOnRoundedIcon sx={{ fontSize: 18, color: 'var(--delivery-muted)' }} />
+            <Typography variant="body2" sx={{ color: 'var(--delivery-muted)' }}>
               {job?.pickup_address || 'Pickup location unavailable'}
             </Typography>
           </Stack>
           <Stack direction="row" alignItems="center" spacing={0.8}>
-            <AccessTimeRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-            <Typography variant="body2" color="text.secondary">
+            <AccessTimeRoundedIcon sx={{ fontSize: 18, color: 'var(--delivery-muted)' }} />
+            <Typography variant="body2" sx={{ color: 'var(--delivery-muted)' }}>
               {job?.eta || 'ETA not provided'}
             </Typography>
           </Stack>
           <Stack direction="row" alignItems="center" spacing={0.8}>
-            <PaidRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-            <Typography variant="body2" color="text.secondary">
+            <PaidRoundedIcon sx={{ fontSize: 18, color: 'var(--delivery-muted)' }} />
+            <Typography variant="body2" sx={{ color: 'var(--delivery-muted)' }}>
               {job?.payout ? `$${job.payout}` : 'Payout TBD'}
             </Typography>
           </Stack>
         </Stack>
 
         <Stack direction="row" justifyContent="flex-end">
-          <Button variant="contained" onClick={() => onAccept(job?.id)} disabled={loading}>
+          <Button className="top-pill top-pill-green" variant="contained" onClick={() => onAccept(job?.id)} disabled={loading}>
             Accept Job
           </Button>
         </Stack>

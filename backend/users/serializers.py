@@ -15,7 +15,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudentProfile
-        fields = ['university', 'gender_preference', 'budget', 'phone_number', 'display_image']
+        fields = ['university', 'gender_preference', 'budget', 'phone_number', 'latitude', 'longitude', 'display_image']
 
     def get_display_image(self, obj):
         return build_media_url(self.context.get('request'), obj.display_image)
