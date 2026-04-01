@@ -10,7 +10,7 @@ import {
   UtensilsCrossed,
   ChevronRight,
 } from "lucide-react";
-import api from "../services/api";
+import api from "../../services/api";
 import "./Restaurants.css";
 
 const toArray = (payload) => {

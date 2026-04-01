@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import api from "../services/api";
-import { STUDENT_LAYOUT, STUDENT_THEME as THEME } from "../styles/studentTheme";
+import api from "../../services/api";
+import { STUDENT_LAYOUT, STUDENT_THEME as THEME } from "../../styles/studentTheme";
 
 const Tracking = () => {
   const { orderId } = useParams();

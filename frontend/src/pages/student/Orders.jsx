@@ -12,7 +12,7 @@ import {
   Truck,
   XCircle,
 } from "lucide-react";
-import api from "../services/api";
+import api from "../../services/api";
 import "./Orders.css";
 
 const ACTIVE_STATUSES = ["pending", "accepted", "preparing", "ready", "out_for_delivery"];

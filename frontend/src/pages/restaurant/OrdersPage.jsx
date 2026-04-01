@@ -12,8 +12,8 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
-import StatusBadge from '../components/StatusBadge';
-import { restaurantApi } from '../services/restaurantApi';
+import StatusBadge from '../../components/StatusBadge';
+import { restaurantApi } from '../../services/restaurantApi';
 
 const ORDER_STATUSES = [
   'PENDING',

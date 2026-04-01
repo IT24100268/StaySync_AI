@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bell, MapPin, Search, X } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
+import { useAuth } from "../../context/AuthContext";
+import api from "../../services/api";
 import "./Dashboard.css";
 
 const INITIAL_FILTERS = {

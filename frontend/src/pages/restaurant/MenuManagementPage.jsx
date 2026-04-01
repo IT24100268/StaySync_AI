@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, Grid2X2, Pencil, Plus, Search, Star, Trash2 } from 'lucide-react';
-import FoodItemModal from '../components/FoodItemModal';
-import { restaurantApi } from '../services/restaurantApi';
+import FoodItemModal from '../../components/FoodItemModal';
+import { restaurantApi } from '../../services/restaurantApi';
 
 const CATEGORY_META_PREFIX = '[category:';
 

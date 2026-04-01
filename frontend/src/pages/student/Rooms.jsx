@@ -6,7 +6,7 @@ import {
   Heart,
   Search,
 } from "lucide-react";
-import api from "../services/api";
+import api from "../../services/api";
 import "./Rooms.css";
 
 const INITIAL_FILTERS = {

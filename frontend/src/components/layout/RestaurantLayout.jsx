@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import '../../pages/RestaurantDashboard.css';
+import '../../pages/restaurant/RestaurantDashboard.css';
 import {
   Bell,
   CircleDollarSign,
