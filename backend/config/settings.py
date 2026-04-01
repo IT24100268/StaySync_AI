@@ -148,6 +148,9 @@ CHANNEL_LAYERS = {
     },
 }
 
+# Google API
+GOOGLE_MAPS_API_KEY = os.getenv('GOOGLE_MAPS_API_KEY', '')
+
 # Email Configuration
 # For testing without email, change EMAIL_BACKEND to 'django.core.mail.backends.console.EmailBackend'
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')

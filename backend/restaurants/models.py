@@ -20,6 +20,7 @@ class Restaurant(models.Model):
     longitude = models.FloatField(null=True, blank=True)
     is_approved = models.BooleanField(default=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    image = models.ImageField(upload_to='owner_profiles/', null=True, blank=True)
     review_note = models.TextField(null=True, blank=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
     reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_restaurants')

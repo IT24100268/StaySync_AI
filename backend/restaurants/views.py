@@ -113,20 +113,55 @@ def sync_legacy_restaurants_and_menu():
     Keep public student restaurant rows in sync with latest owner profile and legacy data.
     This avoids stale duplicate rows overriding map coordinates.
     """
-    legacy_rows = list(LegacyRestaurant.objects.select_related('owner').order_by('owner_id', 'id'))
-    legacy_rows_by_owner = defaultdict(list)
-    for row in legacy_rows:
-        legacy_rows_by_owner[row.owner_id].append(row)
+    legacy_rows = LegacyRestaurant.objects.select_related('owner').all()
 
-    for owner_id, owner_legacy_rows in legacy_rows_by_owner.items():
-        owner = owner_legacy_rows[0].owner
-        payload = _resolve_payload(owner, owner_legacy_rows)
-        approved_flag = bool(getattr(owner, 'is_approved', False) or any(row.is_approved for row in owner_legacy_rows))
+    for legacy in legacy_rows:
+        approved_flag = bool(legacy.is_approved or getattr(legacy.owner, 'is_approved', False))
+        target_status = 'APPROVED' if approved_flag else 'PENDING'
 
-        mapped = _sync_public_rows(owner, payload, approved_flag)
-        _sync_legacy_rows(owner_legacy_rows, payload, approved_flag)
+        mapped = Restaurant.objects.filter(owner=legacy.owner).first()
+        if not mapped:
+            mapped = Restaurant.objects.create(
+                owner=legacy.owner,
+                name=legacy.name,
+                email=legacy.email,
+                phone=legacy.phone,
+                address=legacy.address,
+                latitude=legacy.latitude,
+                longitude=legacy.longitude,
+                is_approved=approved_flag,
+                status=target_status,
+                image=getattr(getattr(legacy.owner, 'restaurant_profile', None), 'display_image', None),
+            )
+        else:
+            changed = False
+            for field, value in (
+                ('name', legacy.name),
+                ('email', legacy.email),
+                ('phone', legacy.phone),
+                ('address', legacy.address),
+                ('latitude', legacy.latitude),
+                ('longitude', legacy.longitude),
+            ):
+                if getattr(mapped, field) != value:
+                    setattr(mapped, field, value)
+                    changed = True
 
-        legacy_foods = LegacyFoodItem.objects.filter(restaurant__in=owner_legacy_rows).order_by('-created_at')
+            locked_statuses = {'REJECTED', 'SUSPENDED', 'NEEDS_CHANGES'}
+            status_mutable = mapped.status not in locked_statuses
+
+            if status_mutable and mapped.is_approved != approved_flag:
+                mapped.is_approved = approved_flag
+                changed = True
+
+            if status_mutable and mapped.status != target_status:
+                mapped.status = target_status
+                changed = True
+
+            if changed:
+                mapped.save()
+
+        legacy_foods = LegacyFoodItem.objects.filter(restaurant=legacy).order_by('-created_at')
         for legacy_food in legacy_foods:
             menu_item, _ = Menu.objects.get_or_create(
                 restaurant=mapped,
@@ -190,13 +225,7 @@ class RestaurantListView(generics.ListAPIView):
 
     def get_queryset(self):
         sync_legacy_restaurants_and_menu()
-        approved = Restaurant.objects.filter(Q(is_approved=True) | Q(status='APPROVED'))
-        if approved.exists():
-            return self._deduplicate_by_owner(approved.order_by('-created_at'))
-
-        # Fallback for dev/inconsistent records: show real restaurants except rejected/suspended
-        fallback = Restaurant.objects.exclude(status__in=['REJECTED', 'SUSPENDED']).order_by('-created_at')
-        return self._deduplicate_by_owner(fallback)
+        return Restaurant.objects.filter(status='APPROVED').order_by('-created_at')
 
 
 class RestaurantDetailView(generics.RetrieveAPIView):
@@ -206,11 +235,7 @@ class RestaurantDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         sync_legacy_restaurants_and_menu()
-        approved = Restaurant.objects.filter(Q(is_approved=True) | Q(status='APPROVED'))
-        if approved.exists():
-            return approved
-
-        return Restaurant.objects.exclude(status__in=['REJECTED', 'SUSPENDED'])
+        return Restaurant.objects.filter(status='APPROVED')
 
 
 class RestaurantMenuView(generics.ListAPIView):

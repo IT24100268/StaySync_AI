@@ -617,9 +617,15 @@
 }
 
 .listing-card__body {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 7px;
   padding: 11px;
+}
+
+.listing-card__body .dashboard-btn {
+  margin-top: auto;
+  align-self: flex-start;
 }
 
 .listing-card__body h3 {
@@ -660,7 +666,6 @@
 }
 
 .listing-card .dashboard-btn {
-  width: fit-content;
   min-height: 36px;
   padding: 0 14px;
   border-radius: 10px;
@@ -855,4 +860,77 @@
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+.dashboard-notif-wrap {
+  position: relative;
+}
+
+.dashboard-notif-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 320px;
+  border-radius: 16px;
+  border: 1px solid var(--student-border);
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.dashboard-notif-dropdown__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.dashboard-notif-dropdown__head strong {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.dashboard-notif-dropdown__head span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dashboard-notif-dropdown__empty {
+  margin: 0;
+  padding: 18px 14px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.dashboard-notif-dropdown__list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.dashboard-notif-item a {
+  display: block;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  text-decoration: none;
+  transition: background 0.12s ease;
+}
+
+.dashboard-notif-item a:hover {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.dashboard-notif-item.is-read a {
+  color: #94a3b8;
+  font-weight: 600;
 }

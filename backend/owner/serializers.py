@@ -15,7 +15,7 @@ class OwnerRoomSerializer(serializers.ModelSerializer):
     available = serializers.SerializerMethodField()
     views = serializers.SerializerMethodField()
     location = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Room
         fields = [
@@ -24,6 +24,14 @@ class OwnerRoomSerializer(serializers.ModelSerializer):
             'owner_contact', 'rules', 'status', 'available', 'views', 'created_at', 'images'
         ]
         read_only_fields = ['id', 'status', 'created_at', 'owner_contact', 'rent', 'available', 'views', 'location']
+        extra_kwargs = {
+            'distance_from_university': {'required': False, 'default': 0},
+            'rules': {'required': False, 'default': ''},
+            'deposit': {'required': False, 'default': 0},
+            'address': {'required': False, 'default': ''},
+            'latitude': {'required': False, 'default': 0},
+            'longitude': {'required': False, 'default': 0},
+        }
     
     def get_images(self, obj):
         request = self.context.get('request')
