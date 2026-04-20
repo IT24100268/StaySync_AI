@@ -50,10 +50,10 @@ const Login = () => {
         const reason = err.response?.data?.reason;
 
         if (code === 'account_blocked') {
+          const msg = detail || 'Your account has been blocked. Please contact support or the admin team.';
+          const reasonText = reason && reason !== 'No reason was provided.' ? reason : null;
           setError(
-            reason && reason !== 'No reason was provided.'
-              ? `${detail} Reason: ${reason}`
-              : detail || 'Your account has been blocked. Please contact support or the admin team.'
+            reasonText ? `${msg}|||${reasonText}` : msg
           );
         } else if (code === 'account_pending') {
           setError('Account pending admin approval. Please wait.');
@@ -102,7 +102,19 @@ const Login = () => {
 
             <h2 style={styles.title}>Login</h2>
 
-            {error && <div style={styles.error}>{error}</div>}
+            {error && (() => {
+              const [msg, reason] = error.split('|||');
+              return (
+                <div style={styles.error}>
+                  <p>{msg}</p>
+                  {reason && (
+                    <p style={{ marginTop: '8px', background: 'rgba(220,38,38,0.15)', borderRadius: '8px', padding: '8px 10px' }}>
+                      <strong>Reason: </strong>{reason}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
             <label style={styles.label}>Username</label>
             <div style={styles.inputWrap}>

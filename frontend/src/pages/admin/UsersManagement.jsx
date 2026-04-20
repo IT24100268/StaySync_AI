@@ -69,7 +69,8 @@ function FilterChip({ active, label, onClick }) {
 }
 
 function StatusPill({ user }) {
-  if (!user.is_approved) {
+  const isNonStudent = ['hostel_owner', 'restaurant_owner', 'delivery'].includes(user.user_type);
+  if (!user.is_approved && !user.is_blocked && !isNonStudent) {
     return <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">Pending Approval</span>;
   }
   if (user.is_blocked) {
@@ -180,6 +181,17 @@ export default function UsersManagement() {
     }
   };
 
+  const summary = useMemo(() => {
+    const isNonStudent = (u) => ['hostel_owner', 'restaurant_owner', 'delivery'].includes(u.user_type);
+    return {
+      total: users.length,
+      active: users.filter((u) => !u.is_blocked && (u.is_approved || isNonStudent(u))).length,
+      pending: users.filter((u) => !u.is_approved && !u.is_blocked && u.user_type === 'student').length,
+      blocked: users.filter((u) => u.is_blocked).length,
+      warned: users.filter((u) => (u.warnings_count || 0) > 0).length,
+    };
+  }, [users]);
+
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -190,23 +202,21 @@ export default function UsersManagement() {
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(query));
 
-      const userStatus = !user.is_approved ? "pending" : user.is_blocked ? "blocked" : "active";
-      const matchesStatus = statusFilter === "all" || userStatus === statusFilter;
-      const matchesRole = roleFilter === "all" || user.user_type === roleFilter;
+      // For non-student roles, treat unapproved-but-not-blocked as active
+      // (they are managed in their own approval panels)
+      const isNonStudent = ['hostel_owner', 'restaurant_owner', 'delivery'].includes(user.user_type);
+      const effectiveStatus = user.is_blocked
+        ? 'blocked'
+        : !user.is_approved && !isNonStudent
+        ? 'pending'
+        : 'active';
+
+      const matchesStatus = statusFilter === 'all' || effectiveStatus === statusFilter;
+      const matchesRole = roleFilter === 'all' || user.user_type === roleFilter;
 
       return matchesSearch && matchesStatus && matchesRole;
     });
   }, [users, search, statusFilter, roleFilter]);
-
-  const summary = useMemo(() => {
-    return {
-      total: users.length,
-      active: users.filter((user) => user.is_approved && !user.is_blocked).length,
-      pending: users.filter((user) => !user.is_approved).length,
-      blocked: users.filter((user) => user.is_blocked).length,
-      warned: users.filter((user) => (user.warnings_count || 0) > 0).length,
-    };
-  }, [users]);
 
   const openAction = (user, type) => {
     setSelectedUser(user);
@@ -249,6 +259,16 @@ export default function UsersManagement() {
     } catch (error) {
       console.error("Failed to approve user:", error);
       alert("Approve failed");
+    }
+  };
+
+  const rejectUser = async (userId) => {
+    try {
+      await api.patch(`/admin/users/${userId}/block/`, { block_reason: "Registration rejected by admin." });
+      fetchUsers();
+    } catch (error) {
+      console.error("Failed to reject user:", error);
+      alert("Reject failed");
     }
   };
 
@@ -355,7 +375,7 @@ export default function UsersManagement() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="truncate text-lg font-black tracking-tight text-slate-900">{user.username}</p>
-                          {!user.is_approved ? (
+                          {!user.is_approved && user.user_type === 'student' ? (
                             <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">
                               Needs review
                             </span>
@@ -391,13 +411,21 @@ export default function UsersManagement() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                      {!user.is_approved ? (
-                        <button
-                          onClick={() => approveUser(user.id)}
-                          className="rounded-2xl bg-emerald-600 px-3.5 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-700"
-                        >
-                          Approve
-                        </button>
+                      {!user.is_approved && user.user_type === 'student' ? (
+                        <>
+                          <button
+                            onClick={() => approveUser(user.id)}
+                            className="rounded-2xl bg-emerald-600 px-3.5 py-2.5 text-xs font-bold text-white transition hover:bg-emerald-700"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => rejectUser(user.id)}
+                            className="rounded-2xl bg-rose-600 px-3.5 py-2.5 text-xs font-bold text-white transition hover:bg-rose-700"
+                          >
+                            Reject
+                          </button>
+                        </>
                       ) : null}
 
                       {user.is_blocked ? (

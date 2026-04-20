@@ -18,8 +18,21 @@ class RoomListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        # Only show APPROVED rooms to students
-        return Room.objects.filter(status='APPROVED')
+        from users.models import HostelOwnerProfile
+        blocked_contacts = list(
+            HostelOwnerProfile.objects.filter(user__is_blocked=True)
+            .values_list('phone_number', flat=True)
+        )
+        blocked_emails = list(
+            HostelOwnerProfile.objects.filter(user__is_blocked=True)
+            .values_list('user__email', flat=True)
+        )
+        # Filter out None and empty strings to avoid accidentally excluding rooms
+        excluded_contacts = [c for c in blocked_contacts + blocked_emails if c and c.strip()]
+        qs = Room.objects.filter(status='APPROVED')
+        if excluded_contacts:
+            qs = qs.exclude(owner_contact__in=excluded_contacts)
+        return qs
 
 class RoomDetailView(generics.RetrieveAPIView):
     serializer_class = RoomSerializer

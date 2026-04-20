@@ -7,6 +7,7 @@ import { useAuth } from '../auth/AuthProvider'
 function Login() {
   const [form, setForm] = useState({ username: '', password: '' })
   const [error, setError] = useState('')
+  const [blockReason, setBlockReason] = useState('')
   const { login, authLoading } = useAuth()
   const navigate = useNavigate()
   const fieldSx = {
@@ -48,6 +49,7 @@ function Login() {
   const onSubmit = async (event) => {
     event.preventDefault()
     setError('')
+    setBlockReason('')
 
     // Client-side validation
     if (form.username.trim().length < 3) {
@@ -62,6 +64,7 @@ function Login() {
     const result = await login(form)
     if (!result.success) {
       setError(result.message)
+      if (result.reason) setBlockReason(result.reason)
       return
     }
     navigate('/delivery/dashboard', { replace: true })
@@ -103,7 +106,16 @@ function Login() {
               onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
               sx={fieldSx}
             />
-            {error ? <Alert severity="error">{error}</Alert> : null}
+            {error ? (
+              <Alert severity="error">
+                <div>{error}</div>
+                {blockReason && (
+                  <div style={{ marginTop: 6, padding: '6px 10px', background: 'rgba(211,47,47,0.1)', borderRadius: 8, fontWeight: 700 }}>
+                    Reason: {blockReason}
+                  </div>
+                )}
+              </Alert>
+            ) : null}
             <Button type="submit" className="top-pill top-pill-green" variant="contained" size="large" disabled={authLoading}>
               {authLoading ? <CircularProgress size={22} sx={{ color: '#1a0a00' }} /> : 'Login'}
             </Button>

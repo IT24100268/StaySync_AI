@@ -87,22 +87,10 @@ export default function SettingsPage() {
             })}
           </div>
 
-          <div className="promo-status-card">
-            <div className="promo-status-card__top">
-              <div>
-                <h4>Restaurant Status</h4>
-                <p>Open</p>
-              </div>
-              <label className="switch">
-                <input type="checkbox" defaultChecked />
-                <span className="slider" />
-              </label>
-            </div>
-            <div className="promo-status-card__body">
-              <h5>Upgrade Plan</h5>
-              <p>Unlock advanced insights and analytics.</p>
-              <button type="button">Go Pro</button>
-            </div>
+          <div className="section-card" style={{ padding: '1rem' }}>
+            <p style={{ margin: 0, color: '#8a6f61', fontSize: '0.9rem', fontWeight: 700 }}>
+              More settings options coming soon.
+            </p>
           </div>
         </div>
 
@@ -137,10 +125,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="section-card settings-placeholder-card">
-            <h3 className="section-title">Settings</h3>
-            <p className="settings-placeholder-text">Additional settings and configurations will appear here.</p>
-          </div>
+
         </div>
       </div>
     </div>

@@ -61,10 +61,16 @@ export function AuthProvider({ children }) {
       setIsAuthenticated(true)
       return { success: true }
     } catch (error) {
-      return {
-        success: false,
-        message: error?.response?.data?.detail || 'Invalid credentials',
+      const code = error?.response?.data?.code;
+      const detail = error?.response?.data?.detail || 'Invalid credentials';
+      const reason = error?.response?.data?.reason;
+      if (code === 'account_blocked') {
+        return { success: false, message: detail, reason, code };
       }
+      if (code === 'account_pending') {
+        return { success: false, message: 'Your account is pending admin approval. Please wait.', code };
+      }
+      return { success: false, message: detail };
     } finally {
       setAuthLoading(false)
     }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bell,
   ChartNoAxesColumn,
@@ -12,8 +12,9 @@ import {
   UtensilsCrossed,
   X,
 } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import restaurantApi from '../services/restaurantApi';
 
 const navigation = [
   { label: 'Dashboard', to: '/restaurant/dashboard', icon: LayoutDashboard },
@@ -101,6 +102,84 @@ function SidebarContent() {
 
 function TopNavbar() {
   const { restaurant, logout } = useAuth();
+  const navigate = useNavigate();
+  const [orders, setOrders] = useState([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [seenOrderIds, setSeenOrderIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('restaurant_notif_seen_ids') || '[]')); }
+    catch { return new Set(); }
+  });
+  const initialLoadDone = useRef(false);
+  const notifRef = useRef(null);
+
+  useEffect(() => {
+    const load = () => {
+      restaurantApi.getOrders().then((res) => {
+        const data = res?.data;
+        const fetched = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [];
+        setOrders(fetched);
+
+        // On first load, silently mark all existing orders as seen
+        // so only orders placed AFTER this point trigger the badge.
+        if (!initialLoadDone.current) {
+          initialLoadDone.current = true;
+          const stored = localStorage.getItem('restaurant_notif_seen_ids');
+          if (!stored) {
+            const ids = fetched.map((o) => o.id);
+            setSeenOrderIds(new Set(ids));
+            localStorage.setItem('restaurant_notif_seen_ids', JSON.stringify(ids));
+          }
+        }
+      }).catch(() => {});
+    };
+    load();
+    const interval = setInterval(load, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const notifications = useMemo(() => {
+    return orders
+      .filter((order) => String(order?.status || '').toLowerCase() === 'pending')
+      .map((order) => {
+        const name = order.student_name || `Customer ${order.student || ''}`.trim() || 'A customer';
+        const time = order.created_at || '';
+        return {
+          id: order.id,
+          message: `🆕 New order #${order.id} from ${name} — waiting for acceptance.`,
+          time,
+          timestamp: new Date(time).getTime() || 0,
+        };
+      })
+      .sort((a, b) => b.timestamp - a.timestamp);
+  }, [orders]);
+
+  const unreadCount = useMemo(
+    () => notifications.filter((n) => !seenOrderIds.has(n.id)).length,
+    [notifications, seenOrderIds]
+  );
+
+  const handleNotifOpen = () => {
+    setNotifOpen((prev) => {
+      if (!prev) {
+        const allIds = notifications.map((n) => n.id);
+        setSeenOrderIds((current) => {
+          const updated = new Set([...current, ...allIds]);
+          localStorage.setItem('restaurant_notif_seen_ids', JSON.stringify([...updated]));
+          return updated;
+        });
+      }
+      return !prev;
+    });
+  };
+
   const profile = useMemo(
     () => ({
       name: restaurant?.name || 'Restaurant Admin',
@@ -131,10 +210,48 @@ function TopNavbar() {
               className="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none ring-emerald-200 transition focus:ring-2"
             />
           </div>
-          <button type="button" className="relative rounded-xl bg-slate-100 p-2.5 text-slate-600 hover:bg-slate-200">
-            <Bell size={20} />
-            <span className="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1.5 text-[10px] font-semibold text-white">4</span>
-          </button>
+
+          <div className="relative" ref={notifRef}>
+            <button
+              type="button"
+              className="relative rounded-xl bg-slate-100 p-2.5 text-slate-600 hover:bg-slate-200"
+              onClick={handleNotifOpen}
+            >
+              <Bell size={20} />
+              {unreadCount > 0 && (
+                <span className="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1.5 text-[10px] font-semibold text-white">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {notifOpen && (
+              <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden">
+                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                  <span className="text-sm font-bold text-slate-800">Notifications</span>
+                  <span className="text-xs text-slate-400">{notifications.length} total</span>
+                </div>
+                {notifications.length === 0 ? (
+                  <p className="px-4 py-5 text-center text-sm font-semibold text-slate-400">No notifications yet.</p>
+                ) : (
+                  <ul className="max-h-80 overflow-y-auto divide-y divide-slate-50">
+                    {notifications.map((n) => (
+                      <li
+                        key={n.id}
+                        className={`cursor-pointer px-4 py-3 text-sm transition hover:bg-slate-50 ${
+                          !seenOrderIds.has(n.id) ? 'font-semibold text-slate-700 bg-emerald-50' : 'text-slate-400'
+                        }`}
+                        onClick={() => { setNotifOpen(false); navigate('/restaurant/orders'); }}
+                      >
+                        {n.message}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+
           <button type="button" className="rounded-xl bg-slate-100 p-2.5 text-slate-600 hover:bg-slate-200">
             <MessageSquare size={18} />
           </button>

@@ -1,69 +1,66 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useEffect, useState } from 'react';
+import api from '../../services/api';
 
-const RestaurantReviews = () => {
+export default function RestaurantReviews() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchReviews();
+    api
+      .get('/reviews/restaurants/')
+      .then(({ data }) => setReviews(Array.isArray(data) ? data : (data?.results ?? [])))
+      .catch(() => setError('Failed to load reviews.'))
+      .finally(() => setLoading(false));
   }, []);
 
-  const getAuthHeader = () => {
-    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
-  const fetchReviews = async () => {
-    try {
-      const res = await axios.get('http://localhost:8000/api/reviews/restaurants/', {
-        headers: getAuthHeader()
-      });
-      setReviews(res.data.results || res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) return <div style={styles.container}>Loading...</div>;
+  if (loading) {
+    return (
+      <div className="section-card" style={{ padding: '2rem', color: '#8a6f61' }}>
+        Loading reviews...
+      </div>
+    );
+  }
 
   return (
-    <div style={styles.container}>
-      <h2 style={styles.title}>Restaurant Reviews</h2>
-      
+    <div className="restaurant-orders-page">
+      <div className="restaurant-orders-topbar">
+        <div className="restaurant-orders-topbar__title">
+          <h3>Reviews</h3>
+        </div>
+      </div>
+
+      {error ? (
+        <div className="restaurant-menu-message restaurant-menu-message--error">{error}</div>
+      ) : null}
+
       {reviews.length === 0 ? (
-        <p style={styles.empty}>No reviews yet</p>
+        <div className="section-card">
+          <p style={{ color: '#8a6f61', padding: '1rem' }}>No reviews yet.</p>
+        </div>
       ) : (
-        <div style={styles.list}>
-          {reviews.map(review => (
-            <div key={review.id} style={styles.card}>
-              <div style={styles.header}>
-                <span style={styles.user}>{review.user_name}</span>
-                <span style={styles.rating}>{review.rating} ★</span>
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          {reviews.map((review) => (
+            <article key={review.id} className="section-card" style={{ display: 'grid', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <strong style={{ color: '#2d170d', fontSize: '0.95rem' }}>
+                  {review.user_name || review.student_name || 'Student'}
+                </strong>
+                <span style={{ color: '#f4b43a', fontWeight: 700 }}>
+                  {'★'.repeat(Math.min(5, Math.max(1, Number(review.rating || 0))))}
+                  {' '}{review.rating}/5
+                </span>
               </div>
-              <p style={styles.comment}>{review.comment}</p>
-              <span style={styles.date}>{new Date(review.created_at).toLocaleDateString()}</span>
-            </div>
+              {review.comment ? (
+                <p style={{ margin: 0, color: '#5c4338', lineHeight: 1.55 }}>{review.comment}</p>
+              ) : null}
+              <span style={{ fontSize: '0.8rem', color: '#9a7f71' }}>
+                {review.created_at ? new Date(review.created_at).toLocaleDateString('en-LK', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+              </span>
+            </article>
           ))}
         </div>
       )}
     </div>
   );
-};
-
-const styles = {
-  container: { padding: 20, maxWidth: 1000, margin: '0 auto' },
-  title: { fontSize: 24, fontWeight: 700, marginBottom: 20, color: '#1f4f96' },
-  empty: { color: '#666', fontSize: 16 },
-  list: { display: 'grid', gap: 16 },
-  card: { background: '#fff', padding: 16, borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' },
-  header: { display: 'flex', justifyContent: 'space-between', marginBottom: 12 },
-  user: { fontWeight: 600, color: '#333' },
-  rating: { color: '#f59e0b', fontWeight: 700 },
-  comment: { color: '#555', marginBottom: 8, lineHeight: 1.5 },
-  date: { fontSize: 12, color: '#999' }
-};
-
-export default RestaurantReviews;
+}

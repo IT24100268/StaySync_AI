@@ -59,7 +59,6 @@ function getPrimaryOwnerRoom(user, rooms) {
 
 export default function AdminHome2() {
   const [stats, setStats] = useState(null);
-  const [rooms, setRooms] = useState([]);
   const [pendingHostelOwners, setPendingHostelOwners] = useState([]);
   const [approvedHostelOwners, setApprovedHostelOwners] = useState([]);
   const [pendingRestaurantOwners, setPendingRestaurantOwners] = useState([]);
@@ -76,12 +75,11 @@ export default function AdminHome2() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [sumRes, analyticsRes, roomsRes, pendingOwnersRes, approvedOwnersRes, pendingRestaurantOwnersRes, approvedRestaurantOwnersRes, partRes, repRes] = await Promise.all([
+      const [sumRes, analyticsRes, pendingOwnersRes, approvedOwnersRes, pendingRestaurantOwnersRes, approvedRestaurantOwnersRes, partRes, repRes] = await Promise.all([
         api.get("/admin/analytics/summary/"),
         api.get("/admin/analytics/detail/"),
-        api.get("/admin/rooms/?status=APPROVED"),
-        api.get("/admin/users/?is_approved=false&user_type=hostel_owner"),
-        api.get("/admin/users/?is_approved=true&user_type=hostel_owner"),
+        api.get("/admin/users/?user_type=hostel_owner&is_approved=false"),
+        api.get("/admin/users/?user_type=hostel_owner&is_approved=true"),
         api.get("/admin/users/?is_approved=false&user_type=restaurant_owner"),
         api.get("/admin/users/?is_approved=true&user_type=restaurant_owner"),
         api.get("/admin/partners/"),
@@ -89,7 +87,6 @@ export default function AdminHome2() {
       ]);
       setStats(sumRes.data);
       setTrend(analyticsRes.data?.trend || []);
-      setRooms(roomsRes.data?.results || roomsRes.data || []);
       setPendingHostelOwners(pendingOwnersRes.data?.results || pendingOwnersRes.data || []);
       setApprovedHostelOwners(approvedOwnersRes.data?.results || approvedOwnersRes.data || []);
       setPendingRestaurantOwners(pendingRestaurantOwnersRes.data?.results || pendingRestaurantOwnersRes.data || []);
@@ -133,8 +130,6 @@ export default function AdminHome2() {
     const bestLoad = (best?.users || 0) + (best?.orders || 0) + (best?.reports || 0);
     return currentLoad > bestLoad ? item : best;
   }, trend[0] || null);
-
-  const prioritizedHostelOwners = rooms.slice(0, 2);
 
   const prioritizedRestaurantUsers = [
     ...pendingRestaurantOwners.map((owner) => ({
@@ -188,18 +183,18 @@ export default function AdminHome2() {
             </div>
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <PanelCard title="Room Approvals" icon={Building} iconTone="bg-violet-100 text-violet-700">
+              <PanelCard title="Owner Approvals" icon={Building} iconTone="bg-violet-100 text-violet-700">
                 <div className="space-y-3 min-h-[160px]">
-                  {prioritizedHostelOwners.length === 0 ? (
-                    <EmptyState message="No approved room listings." icon={Building} />
+                  {[...pendingHostelOwners, ...approvedHostelOwners].length === 0 ? (
+                    <EmptyState message="No hostel owners registered yet." icon={Building} />
                   ) : (
-                    prioritizedHostelOwners.map((room) => (
+                    [...pendingHostelOwners, ...approvedHostelOwners].slice(0, 2).map((owner) => (
                       <HostelOwnerDashboardItem
-                        key={room.id}
-                        image={room.images?.[0]?.image || room.owner_display_image || ROOM_OWNER_FALLBACK}
-                        title={room.title || `Room ${room.id}`}
-                        phone={room.owner_contact || "No contact"}
-                        status={room.status}
+                        key={owner.id}
+                        image={owner.profile?.display_image || ROOM_OWNER_FALLBACK}
+                        title={owner.profile?.hostel_name || owner.username}
+                        phone={owner.profile?.phone_number || owner.email || "No contact"}
+                        status={owner.is_blocked ? "BLOCKED" : owner.is_approved ? "APPROVED" : "PENDING"}
                       />
                     ))
                   )}
@@ -501,9 +496,11 @@ function ApprovalItem({ image, title, subtitle, status, onApprove, onReject }) {
 
 function HostelOwnerDashboardItem({ image, title, phone, status }) {
   const statusCls =
-    status === "PENDING"
-      ? "border-amber-200 bg-amber-50 text-amber-700"
-      : "border-emerald-200 bg-emerald-50 text-emerald-700";
+    status === "BLOCKED"
+      ? "border-rose-200 bg-rose-50 text-rose-700"
+      : status === "APPROVED"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : "border-amber-200 bg-amber-50 text-amber-700";
 
   return (
     <div className="group rounded-[24px] border border-violet-100/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(245,243,255,0.72))] p-4 shadow-[0_18px_40px_-28px_rgba(139,92,246,0.45)] transition-all duration-300 hover:-translate-y-1 hover:border-violet-200">

@@ -267,6 +267,15 @@ const Register = () => {
       return;
     }
 
+    // Validate vehicle number for delivery partners
+    if (userType === 'delivery') {
+      const vehicleNo = profileData.license_no || '';
+      if (!/^[A-Za-z]+\d{4}$/.test(vehicleNo.replace(/[-\s]/g, ''))) {
+        setError('Vehicle number must have letters followed by exactly 4 digits (e.g. ABC-1234)');
+        return;
+      }
+    }
+
     if (userType === 'restaurant_owner' || userType === 'hostel_owner') {
       if (!profileData.latitude || !profileData.longitude) {
         setError(`Please choose your ${userType === 'restaurant_owner' ? 'restaurant' : 'hostel'} location on the map.`);
@@ -315,7 +324,7 @@ const Register = () => {
         } else if (errorData.detail) {
           errorMsg = errorData.detail;
         } else if (errorData.email) {
-          errorMsg = `Email: ${errorData.email[0]}`;
+          errorMsg = `Email: ${Array.isArray(errorData.email) ? errorData.email[0] : errorData.email}`;
         } else if (errorData.username) {
           errorMsg = `Username: ${errorData.username[0]}`;
         } else if (errorData.password) {
@@ -600,11 +609,17 @@ const Register = () => {
             />
             <input
               name="license_no"
-              placeholder="License Number"
-              onChange={(e) => setProfileValue('license_no', e.target.value)}
+              placeholder="Vehicle Number (e.g. ABC-1234)"
+              onChange={(e) => {
+                const val = e.target.value.toUpperCase();
+                setProfileValue('license_no', val);
+              }}
               required
               style={styles.input}
             />
+            {profileData.license_no && !/^[A-Za-z]+\d{4}$/.test((profileData.license_no || '').replace(/[-\s]/g, '')) && (
+              <div style={styles.fieldError}>Must be letters followed by exactly 4 digits (e.g. ABC-1234)</div>
+            )}
             <input
               name="phone_number"
               placeholder="Phone Number"
@@ -1003,6 +1018,14 @@ const styles = {
     fontSize: '14px',
     fontWeight: '700',
     cursor: 'pointer',
+  },
+  fieldError: {
+    color: '#fca5a5',
+    fontSize: '12px',
+    fontWeight: '600',
+    marginTop: '-8px',
+    marginBottom: '10px',
+    paddingLeft: '4px',
   },
 };
 

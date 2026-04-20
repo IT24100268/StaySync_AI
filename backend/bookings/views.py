@@ -3,6 +3,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db import models
 
 from .models import Booking, BookingMessage
 from .serializers import BookingMessageSerializer, BookingSerializer
@@ -51,6 +52,20 @@ class BookingCreateView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
     
     def perform_create(self, serializer):
+        room = serializer.validated_data.get('room')
+        # Block booking if the room's owner is under verification
+        if room:
+            from users.models import HostelOwnerProfile
+            owner_contact = room.owner_contact
+            blocked = HostelOwnerProfile.objects.filter(
+                is_under_verification=True
+            ).filter(
+                models.Q(phone_number=owner_contact) | models.Q(user__email=owner_contact)
+            ).exists()
+            if blocked:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied('This room is temporarily unavailable while the owner completes verification.')
+
         booking = serializer.save(student=self.request.user)
         create_admin_log(
             actor=self.request.user,

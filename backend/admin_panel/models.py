@@ -2,6 +2,35 @@ from django.db import models
 from users.models import User
 
 
+class AdminNotification(models.Model):
+    TYPE_CHOICES = [
+        ('new_owner', 'New Owner Registration'),
+        ('new_student', 'New Student Registration'),
+        ('new_restaurant_owner', 'New Restaurant Owner'),
+        ('new_delivery_partner', 'New Delivery Partner'),
+        ('pending_room', 'Pending Room Approval'),
+        ('pending_restaurant', 'Pending Restaurant Approval'),
+        ('pending_partner', 'Pending Partner Approval'),
+        ('new_report', 'New Report Submitted'),
+        ('new_booking', 'New Booking'),
+        ('new_order', 'New Order'),
+        ('general', 'General'),
+    ]
+
+    title = models.CharField(max_length=255)
+    body = models.TextField()
+    notification_type = models.CharField(max_length=30, choices=TYPE_CHOICES, default='general')
+    is_read = models.BooleanField(default=False)
+    target_id = models.IntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.notification_type} - {self.title}"
+
+
 class Report(models.Model):
     STATUS_CHOICES = [
         ('PENDING', 'Pending'),

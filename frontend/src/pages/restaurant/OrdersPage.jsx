@@ -16,13 +16,6 @@ import {
 import StatusBadge from '../../components/StatusBadge';
 import { restaurantApi } from '../../services/restaurantApi';
 
-const mockFoodImages = [
-  'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1546793665-c74683f339c1?auto=format&fit=crop&w=800&q=80',
-  'https://images.unsplash.com/photo-1520072959219-c595dc870360?auto=format&fit=crop&w=800&q=80',
-];
-
 function normalizeOrders(responseData) {
   if (Array.isArray(responseData)) return responseData;
   if (Array.isArray(responseData?.results)) return responseData.results;
@@ -245,6 +238,8 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [markingCollectedId, setMarkingCollectedId] = useState(null);
   const [markingTakeawayReadyId, setMarkingTakeawayReadyId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const loadOrders = async () => {
     try {
@@ -376,6 +371,15 @@ export default function OrdersPage() {
       return statusMatches && searchMatches;
     });
   }, [orders, searchText, statusFilter]);
+
+  // reset page when filter/search changes
+  useEffect(() => { setCurrentPage(1); }, [statusFilter, searchText]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
+  const pagedOrders = useMemo(
+    () => filteredOrders.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filteredOrders, currentPage]
+  );
 
   const statusTabs = useMemo(() => {
     const counts = {
@@ -661,8 +665,8 @@ export default function OrdersPage() {
                       Loading orders...
                     </td>
                   </tr>
-                ) : filteredOrders.length ? (
-                  filteredOrders.map((order) => (
+                ) : pagedOrders.length ? (
+                  pagedOrders.map((order) => (
                     <OrderRow
                       key={order.id}
                       order={order}
@@ -686,15 +690,38 @@ export default function OrdersPage() {
 
           <div className="restaurant-menu-footer">
             <p>
-              Showing <strong>{filteredOrders.length}</strong> out of{' '}
-              <strong>{orders.length}</strong> items
+              Showing <strong>{Math.min((currentPage - 1) * PAGE_SIZE + 1, filteredOrders.length || 1)}–{Math.min(currentPage * PAGE_SIZE, filteredOrders.length)}</strong> of{' '}
+              <strong>{filteredOrders.length}</strong> orders
             </p>
 
             <div className="restaurant-pagination">
-              <button type="button" className="active">1</button>
-              <button type="button">2</button>
-              <button type="button" className="restaurant-pagination__next">
-                View
+              <button
+                type="button"
+                className="restaurant-pagination__next"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                Prev
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  className={currentPage === page ? 'active' : ''}
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                className="restaurant-pagination__next"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
               </button>
             </div>
           </div>
@@ -932,11 +959,17 @@ export default function OrdersPage() {
                   item.menu_item?.image ||
                   item.image_url ||
                   item.image ||
-                  mockFoodImages[index % mockFoodImages.length];
+                  '';
 
                 return (
                   <article key={item.id || `${selectedOrder.id}-${index}`} className="restaurant-order-modal__item">
-                    <img src={itemImage} alt={itemName} />
+                    {itemImage ? (
+                      <img src={itemImage} alt={itemName} />
+                    ) : (
+                      <div style={{ width: 84, height: 64, borderRadius: 12, background: '#fff1e6', display: 'grid', placeItems: 'center', color: '#ef7f1a', fontWeight: 800, fontSize: '1.1rem', flexShrink: 0 }}>
+                        {itemName.slice(0, 1).toUpperCase()}
+                      </div>
+                    )}
                     <div>
                       <h5>{itemName}</h5>
                       <p>Qty: {quantity}</p>

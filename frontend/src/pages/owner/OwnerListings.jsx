@@ -82,6 +82,11 @@ function ListingCard({ listing, onToggleAvailability }) {
                 <h3 className="truncate text-[28px] font-black tracking-tight text-[#1e1d1a]">
                   {listing.title}
                 </h3>
+                {listing.hostel_id && (
+                  <span className="inline-flex rounded-full border border-[#dcc89a] bg-[#fff8e8] px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#b98b1f]">
+                    {listing.hostel_id}
+                  </span>
+                )}
                 <span
                   className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${statusTone(
                     listing.status,
@@ -138,8 +143,10 @@ function ListingCard({ listing, onToggleAvailability }) {
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-[#efe7db] pt-4">
             <button
-              onClick={() => onToggleAvailability(listing.id, isAvailable)}
-              className={`group inline-flex items-center gap-3 rounded-[18px] border px-4 py-3 text-sm font-black transition hover:-translate-y-0.5 ${availabilityTone.wrap}`}
+              onClick={() => listing.status === 'APPROVED' || listing.status === 'SUSPENDED' ? onToggleAvailability(listing.id, isAvailable) : null}
+              disabled={listing.status !== 'APPROVED' && listing.status !== 'SUSPENDED'}
+              title={listing.status === 'PENDING' ? 'Awaiting admin approval' : undefined}
+              className={`group inline-flex items-center gap-3 rounded-[18px] border px-4 py-3 text-sm font-black transition hover:-translate-y-0.5 ${listing.status !== 'APPROVED' && listing.status !== 'SUSPENDED' ? 'cursor-not-allowed opacity-50 border-[#ece3d3] bg-[#fcfbf8] text-[#9b9588]' : availabilityTone.wrap}`}
             >
               <span className={`grid h-10 w-10 place-items-center rounded-[14px] transition ${availabilityTone.icon}`}>
                 {isAvailable ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}

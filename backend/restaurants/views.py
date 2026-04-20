@@ -46,13 +46,12 @@ def _sync_public_rows(owner, payload, approved_flag):
                 changed_fields.append(field)
 
         status_mutable = row.status not in locked_statuses
-        if status_mutable and row.is_approved != approved_flag:
-            row.is_approved = approved_flag
-            changed_fields.append('is_approved')
 
-        if status_mutable and row.status != target_status:
-            row.status = target_status
-            changed_fields.append('status')
+        # Only upgrade to APPROVED, never downgrade an admin-approved record
+        if status_mutable and approved_flag and not row.is_approved:
+            row.is_approved = True
+            row.status = 'APPROVED'
+            changed_fields.extend(['is_approved', 'status'])
 
         if changed_fields:
             row.save(update_fields=changed_fields)
@@ -150,12 +149,10 @@ def sync_legacy_restaurants_and_menu():
             locked_statuses = {'REJECTED', 'SUSPENDED', 'NEEDS_CHANGES'}
             status_mutable = mapped.status not in locked_statuses
 
-            if status_mutable and mapped.is_approved != approved_flag:
-                mapped.is_approved = approved_flag
-                changed = True
-
-            if status_mutable and mapped.status != target_status:
-                mapped.status = target_status
+            # Only upgrade status (PENDING→APPROVED), never downgrade admin-approved records
+            if status_mutable and approved_flag and not mapped.is_approved:
+                mapped.is_approved = True
+                mapped.status = 'APPROVED'
                 changed = True
 
             if changed:
@@ -195,10 +192,11 @@ def sync_legacy_restaurants_and_menu():
 
     # Backfill owners who have profile/public rows but no legacy row yet.
     User = get_user_model()
+    legacy_owner_ids = set(legacy_rows.values_list('owner_id', flat=True))
     owners_without_legacy = User.objects.filter(
         user_type='restaurant_owner',
         owned_restaurants__isnull=False,
-    ).exclude(id__in=legacy_rows_by_owner.keys()).distinct()
+    ).exclude(id__in=legacy_owner_ids).distinct()
 
     for owner in owners_without_legacy:
         payload = _resolve_payload(owner, [])

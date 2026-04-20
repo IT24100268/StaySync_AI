@@ -80,6 +80,8 @@ const isSameMonth = (left, right) =>
   left.getFullYear() === right.getFullYear() &&
   left.getMonth() === right.getMonth();
 
+const CONFIRMED_STATUSES = new Set(['accepted', 'preparing', 'ready', 'out_for_delivery', 'delivered']);
+const isConfirmed = (order) => CONFIRMED_STATUSES.has(normalizeStatus(order?.status));
 const isDelivered = (order) => normalizeStatus(order?.status) === 'delivered';
 
 function OrderCustomer({ order }) {
@@ -172,6 +174,9 @@ export default function RestaurantDashboard() {
   const [acceptModalOpen, setAcceptModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [prepTime, setPrepTime] = useState('');
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectingOrder, setRejectingOrder] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   const {
     items,
@@ -232,14 +237,21 @@ export default function RestaurantDashboard() {
     };
 
     fetchOverview();
+    const interval = setInterval(fetchOverview, 30000);
     return () => {
       mounted = false;
+      clearInterval(interval);
     };
   }, [user]);
 
   const allOrders = useMemo(() => data?.all_orders || [], [data]);
 
   const recentOrders = useMemo(() => allOrders.slice(0, 10), [allOrders]);
+
+  const confirmedOrders = useMemo(
+    () => allOrders.filter((order) => isConfirmed(order)),
+    [allOrders]
+  );
 
   const deliveredOrders = useMemo(
     () => allOrders.filter((order) => isDelivered(order)),
@@ -248,21 +260,21 @@ export default function RestaurantDashboard() {
 
   const todaysRevenue = useMemo(() => {
     const now = new Date();
-    return deliveredOrders.reduce((sum, order) => {
-      const time = toDate(order?.updated_at || order?.created_at);
+    return confirmedOrders.reduce((sum, order) => {
+      const time = toDate(order?.created_at);
       if (!isSameDay(time, now)) return sum;
       return sum + toNumber(order?.total_price ?? order?.total_amount);
     }, 0);
-  }, [deliveredOrders]);
+  }, [confirmedOrders]);
 
   const thisMonthRevenue = useMemo(() => {
     const now = new Date();
-    return deliveredOrders.reduce((sum, order) => {
-      const time = toDate(order?.updated_at || order?.created_at);
+    return confirmedOrders.reduce((sum, order) => {
+      const time = toDate(order?.created_at);
       if (!isSameMonth(time, now)) return sum;
       return sum + toNumber(order?.total_price ?? order?.total_amount);
     }, 0);
-  }, [deliveredOrders]);
+  }, [confirmedOrders]);
 
   const statusData = useMemo(() => {
     const counts = {
@@ -440,7 +452,7 @@ export default function RestaurantDashboard() {
     ];
 
     deliveredOrders.forEach((order) => {
-      const orderTime = toDate(order?.updated_at || order?.created_at);
+      const orderTime = toDate(order?.created_at);
       if (!isSameDay(orderTime, today)) return;
 
       const hour = orderTime.getHours();
@@ -576,17 +588,23 @@ export default function RestaurantDashboard() {
     }
   };
 
-  const handleRejectOrder = async (order) => {
-    const reason = prompt('Reason for rejection (optional):');
-    if (reason === null) return;
+  const handleRejectOrder = (order) => {
+    setRejectingOrder(order);
+    setRejectReason('');
+    setRejectModalOpen(true);
+  };
 
+  const confirmRejectOrder = async () => {
+    if (!rejectReason.trim()) {
+      addToast({ title: 'Reason required', message: 'Please enter a reason for rejection.', variant: 'error' });
+      return;
+    }
     try {
-      await api.post(`/orders/restaurant/${order.id}/reject/`, { reason });
-      addToast({
-        title: 'Order Rejected',
-        message: `Order #${order.id} has been rejected.`,
-        variant: 'info',
-      });
+      await api.post(`/orders/restaurant/${rejectingOrder.id}/reject/`, { reason: rejectReason.trim() });
+      addToast({ title: 'Order Rejected', message: `Order #${rejectingOrder.id} rejected.`, variant: 'info' });
+      setRejectModalOpen(false);
+      setRejectingOrder(null);
+      setRejectReason('');
       await refreshOrders();
     } catch {
       addToast({ title: 'Error', message: 'Failed to reject order.', variant: 'error' });
@@ -976,6 +994,33 @@ export default function RestaurantDashboard() {
         onSave={handleSave}
       />
 
+      {rejectModalOpen && (
+        <div className="modal-overlay" onClick={() => setRejectModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Reject Order #{rejectingOrder?.id}</h3>
+            <p className="modal-description">Please provide a reason for rejecting this order. The student will see this message.</p>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="e.g. Item out of stock, Restaurant closing early..."
+              className="modal-input"
+              rows={3}
+              style={{ resize: 'vertical', minHeight: 80 }}
+            />
+            <div className="modal-actions">
+              <button onClick={confirmRejectOrder} className="btn-danger modal-btn-fill">
+                Confirm Reject
+              </button>
+              <button
+                onClick={() => { setRejectModalOpen(false); setRejectingOrder(null); setRejectReason(''); }}
+                className="btn-secondary modal-btn-fill"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {acceptModalOpen && (
         <div className="modal-overlay" onClick={() => setAcceptModalOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>

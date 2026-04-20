@@ -489,7 +489,11 @@ export default function Orders() {
                       <div>
                         <h3>{order.restaurant?.name || `Order #${order.id}`}</h3>
                         <p>{formatDateTime(order.created_at)}</p>
-                        {order.rejection_reason ? <small>Reason: {order.rejection_reason}</small> : null}
+                        {order.rejection_reason ? (
+                          <p style={{ marginTop: 6, color: '#b91c1c', fontWeight: 700, fontSize: 13 }}>
+                            ❌ Reason: {order.rejection_reason}
+                          </p>
+                        ) : null}
                       </div>
                       <span className="orders-status-badge status-canceled">Canceled</span>
                     </article>

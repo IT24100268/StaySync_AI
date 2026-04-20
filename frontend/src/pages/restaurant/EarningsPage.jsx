@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Calendar, DollarSign, RefreshCcw, TrendingUp } from 'lucide-react';
 import { Area, Bar, ComposedChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { restaurantApi } from '../services/restaurantApi';
+import { restaurantApi } from '../../services/restaurantApi';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -115,8 +115,10 @@ function isInFilterRange(date, filter) {
   return true;
 }
 
-function isDeliveredOrder(order) {
-  return statusKey(order?.status) === 'delivered';
+const CONFIRMED_STATUSES = new Set(['accepted', 'preparing', 'ready', 'out_for_delivery', 'delivered']);
+
+function isConfirmedOrder(order) {
+  return CONFIRMED_STATUSES.has(statusKey(order?.status));
 }
 
 function getOrderTypeRevenueKey(order) {
@@ -327,28 +329,30 @@ export default function EarningsPage() {
 
   useEffect(() => {
     void fetchOrders(true);
+    const interval = setInterval(() => fetchOrders(false), 15000);
+    return () => clearInterval(interval);
   }, []);
 
-  const deliveredOrders = useMemo(
-    () => orders.filter((order) => isDeliveredOrder(order)),
+  const confirmedOrders = useMemo(
+    () => orders.filter((order) => isConfirmedOrder(order)),
     [orders]
   );
 
-  const todayKpi = useMemo(() => getKpiMetric(deliveredOrders, 'today'), [deliveredOrders]);
-  const weekKpi = useMemo(() => getKpiMetric(deliveredOrders, 'week'), [deliveredOrders]);
-  const monthKpi = useMemo(() => getKpiMetric(deliveredOrders, 'month'), [deliveredOrders]);
+  const todayKpi = useMemo(() => getKpiMetric(confirmedOrders, 'today'), [confirmedOrders]);
+  const weekKpi = useMemo(() => getKpiMetric(confirmedOrders, 'week'), [confirmedOrders]);
+  const monthKpi = useMemo(() => getKpiMetric(confirmedOrders, 'month'), [confirmedOrders]);
 
   const totalKpi = useMemo(
     () => ({
-      amount: deliveredOrders.reduce((sum, order) => sum + getOrderTotal(order), 0),
-      count: deliveredOrders.length,
+      amount: confirmedOrders.reduce((sum, order) => sum + getOrderTotal(order), 0),
+      count: confirmedOrders.length,
     }),
-    [deliveredOrders]
+    [confirmedOrders]
   );
 
   const chartData = useMemo(
-    () => buildRevenueChartData(deliveredOrders, chartFilter),
-    [deliveredOrders, chartFilter]
+    () => buildRevenueChartData(confirmedOrders, chartFilter),
+    [confirmedOrders, chartFilter]
   );
 
   const chartTotal = useMemo(
@@ -356,18 +360,18 @@ export default function EarningsPage() {
     [chartData]
   );
 
-  const filteredDeliveredForTopItems = useMemo(
+  const filteredConfirmedForTopItems = useMemo(
     () =>
-      deliveredOrders.filter((order) => {
+      confirmedOrders.filter((order) => {
         const date = getOrderDate(order);
         return date && isInFilterRange(date, chartFilter);
       }),
-    [deliveredOrders, chartFilter]
+    [confirmedOrders, chartFilter]
   );
 
   const topItems = useMemo(
-    () => buildTopItems(filteredDeliveredForTopItems),
-    [filteredDeliveredForTopItems]
+    () => buildTopItems(filteredConfirmedForTopItems),
+    [filteredConfirmedForTopItems]
   );
 
   const filteredOrders = useMemo(
@@ -422,28 +426,28 @@ export default function EarningsPage() {
           <DollarSign size={20} className="earnings-kpi-icon" />
           <div className="earnings-kpi-value">{formatCurrency(todayKpi.amount)}</div>
           <div className="earnings-kpi-label">Today's Earnings</div>
-          <div className="earnings-kpi-growth">{todayKpi.count} delivered orders</div>
+          <div className="earnings-kpi-growth">{todayKpi.count} confirmed orders</div>
         </div>
 
         <div className="earnings-kpi-card">
           <TrendingUp size={20} className="earnings-kpi-icon" />
           <div className="earnings-kpi-value">{formatCurrency(weekKpi.amount)}</div>
           <div className="earnings-kpi-label">Weekly Earnings</div>
-          <div className="earnings-kpi-growth">{weekKpi.count} delivered orders</div>
+          <div className="earnings-kpi-growth">{weekKpi.count} confirmed orders</div>
         </div>
 
         <div className="earnings-kpi-card">
           <Calendar size={20} className="earnings-kpi-icon" />
           <div className="earnings-kpi-value">{formatCurrency(monthKpi.amount)}</div>
           <div className="earnings-kpi-label">Monthly Earnings</div>
-          <div className="earnings-kpi-growth">{monthKpi.count} delivered orders</div>
+          <div className="earnings-kpi-growth">{monthKpi.count} confirmed orders</div>
         </div>
 
         <div className="earnings-kpi-card">
           <DollarSign size={20} className="earnings-kpi-icon" />
           <div className="earnings-kpi-value">{formatCurrency(totalKpi.amount)}</div>
           <div className="earnings-kpi-label">Total Earnings</div>
-          <div className="earnings-kpi-growth">{totalKpi.count} delivered orders</div>
+          <div className="earnings-kpi-growth">{totalKpi.count} confirmed orders</div>
         </div>
       </div>
 

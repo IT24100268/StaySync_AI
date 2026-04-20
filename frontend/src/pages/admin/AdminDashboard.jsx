@@ -17,7 +17,20 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
+
+const searchRoutes = [
+  { label: "User Management",        keywords: ["user", "users", "student", "block", "warn", "approve"], to: "/admin/users" },
+  { label: "Owner Approvals",         keywords: ["room", "hostel", "owner"], to: "/admin/rooms" },
+  { label: "Restaurant Approvals",    keywords: ["restaurant", "food"], to: "/admin/restaurants" },
+  { label: "Partner Approvals",       keywords: ["partner", "delivery", "driver"], to: "/admin/partners" },
+  { label: "Reports Queue",           keywords: ["report", "complaint"], to: "/admin/reports" },
+  { label: "Orders Monitor",          keywords: ["order", "monitor"], to: "/admin/orders" },
+  { label: "Analytics",               keywords: ["analytics", "stats", "chart"], to: "/admin/analytics" },
+  { label: "Activity Logs",           keywords: ["log", "activity"], to: "/admin/logs" },
+  { label: "Profile",                 keywords: ["profile"], to: "/admin/profile" },
+  { label: "Dashboard",               keywords: ["dashboard", "home", "overview"], to: "/admin/dashboard" },
+];
 
 const navigationGroups = [
   {
@@ -27,7 +40,7 @@ const navigationGroups = [
   {
     title: "Moderation",
     items: [
-      { name: "Room Approvals", to: "/admin/rooms", icon: Building },
+      { name: "Owner Approvals", to: "/admin/rooms", icon: Building },
       { name: "Restaurant Approvals", to: "/admin/restaurants", icon: Building },
       { name: "Partner Approvals", to: "/admin/partners", icon: Truck },
       { name: "Reports Queue", to: "/admin/reports", icon: AlertCircle },
@@ -60,6 +73,38 @@ export default function AdminDashboard() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const searchRef = useRef(null);
+
+  const matchRoutes = (val) => {
+    const q = val.trim().toLowerCase();
+    if (!q) return [];
+    return searchRoutes.filter((r) =>
+      r.label.toLowerCase().includes(q) ||
+      r.keywords.some((k) => k.includes(q))
+    );
+  };
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearchQuery(val);
+    setSearchSuggestions(matchRoutes(val).slice(0, 5));
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    const matches = matchRoutes(searchQuery);
+    if (matches.length > 0) navigate(matches[0].to);
+    setSearchQuery("");
+    setSearchSuggestions([]);
+  };
+
+  const handleSuggestionClick = (to) => {
+    navigate(to);
+    setSearchQuery("");
+    setSearchSuggestions([]);
+  };
 
   const initials = useMemo(() => {
     return getInitials(user?.username || "Admin");
@@ -172,17 +217,36 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="hidden w-full max-w-md md:block">
-                <div className="relative">
+              <div className="hidden w-full max-w-md md:block" ref={searchRef}>
+                <form onSubmit={handleSearchSubmit} className="relative">
                   <Search
                     size={18}
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                   />
                   <input
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    onBlur={() => setTimeout(() => setSearchSuggestions([]), 150)}
                     placeholder="Search users, reports, restaurants..."
                     className="w-full rounded-2xl border border-[#e4ebf5] bg-white px-4 py-2.5 pl-10 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
                   />
-                </div>
+                  {searchSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-2xl border border-[#e4ebf5] bg-white shadow-lg">
+                      {searchSuggestions.map((s) => (
+                        <button
+                          key={s.to}
+                          type="button"
+                          onMouseDown={() => handleSuggestionClick(s.to)}
+                          className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          <Search size={14} className="text-slate-400" />
+                          {s.label}
+                          <span className="ml-auto text-xs text-slate-400">{s.to.replace("/admin/", "")}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </form>
               </div>
 
               <div className="flex items-center gap-2">

@@ -269,9 +269,9 @@ const Dashboard = () => {
         if (a.minDistance !== b.minDistance) return a.minDistance - b.minDistance;
         return a.minPrice - b.minPrice;
       })
-      .slice(0, 2);
+      .slice(0, 4);
   }, [rooms]);
-  const popularRestaurants = useMemo(() => restaurants.slice(0, 4), [restaurants]);
+  const popularRestaurants = useMemo(() => restaurants.slice(0, 6), [restaurants]);
   const savedRooms = useMemo(() => favorites.slice(0, 4), [favorites]);
   const recentOrders = useMemo(() => orders.slice(0, 3), [orders]);
   const recentBookings = useMemo(() => bookings.slice(0, 3), [bookings]);
@@ -767,7 +767,7 @@ const Dashboard = () => {
               <div className="dashboard-empty">No restaurants available right now.</div>
             ) : (
               <div className="listing-grid">
-                {popularRestaurants.slice(0, 2).map((restaurant) => (
+                {popularRestaurants.map((restaurant) => (
                   <article key={restaurant.id} className="listing-card">
                     <div className="listing-card__image-wrap">
                       {restaurant.image ? (
@@ -875,7 +875,10 @@ const Dashboard = () => {
                           <h3>{booking.room?.title || "Room booking"}</h3>
                           <p>Requested on {formatDate(booking.created_at)}</p>
                         </div>
-                        <span className={`status-badge ${badgeClass}`}>{toTitleCase(status)}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span className={`status-badge ${badgeClass}`}>{toTitleCase(status)}</span>
+                          <Link to={`/bookings`} className="dashboard-btn dashboard-btn--primary">View</Link>
+                        </div>
                       </article>
                     );
                   })}

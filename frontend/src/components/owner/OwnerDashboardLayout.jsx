@@ -37,12 +37,15 @@ export default function OwnerDashboardLayout() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [readIds, setReadIds] = useState(new Set());
+  const [clearedIds, setClearedIds] = useState(new Set());
   const profileRef = useRef(null);
   const notificationRef = useRef(null);
 
   const name = user?.username || user?.email || "Owner";
   const ini = useMemo(() => initials(name), [name]);
-  const unreadCount = notifications.filter((item) => item.highlight).length;
+  const visibleNotifications = notifications.filter((n) => !clearedIds.has(n.id));
+  const unreadCount = visibleNotifications.filter((n) => n.highlight && !readIds.has(n.id)).length;
 
   useEffect(() => {
     const handler = (e) => {
@@ -155,6 +158,8 @@ export default function OwnerDashboardLayout() {
       }
 
       setNotifications([...latestPending, ...nextNotifications]);
+      setReadIds(new Set());
+      setClearedIds(new Set());
     } catch (error) {
       console.error("Failed to load owner notifications", error);
       setNotifications([
@@ -279,12 +284,30 @@ export default function OwnerDashboardLayout() {
                           : "Everything looks calm right now"}
                       </p>
                     </div>
-                    <button
-                      onClick={fetchNotifications}
-                      className="rounded-full border border-[#e7d29d] bg-[#fff8e8] px-3 py-1.5 text-xs font-bold text-[#9a6a00] transition hover:bg-[#fff3cf]"
-                    >
-                      Refresh
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={() => setReadIds(new Set(visibleNotifications.map((n) => n.id)))}
+                          className="rounded-full border border-[#e7d29d] bg-[#fff8e8] px-3 py-1.5 text-xs font-bold text-[#9a6a00] transition hover:bg-[#fff3cf]"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                      {visibleNotifications.length > 0 && (
+                        <button
+                          onClick={() => setClearedIds(new Set(notifications.map((n) => n.id)))}
+                          className="rounded-full border border-[#ece3d3] bg-[#fcfbf8] px-3 py-1.5 text-xs font-bold text-[#7f786b] transition hover:bg-[#f3ede3]"
+                        >
+                          Clear all
+                        </button>
+                      )}
+                      <button
+                        onClick={fetchNotifications}
+                        className="rounded-full border border-[#e7d29d] bg-[#fff8e8] px-3 py-1.5 text-xs font-bold text-[#9a6a00] transition hover:bg-[#fff3cf]"
+                      >
+                        Refresh
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -295,30 +318,49 @@ export default function OwnerDashboardLayout() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {notifications.map((item) => (
-                        <Link
-                          key={item.id}
-                          to={item.to}
-                          onClick={() => setNotificationsOpen(false)}
-                          className={`block rounded-[22px] border px-4 py-4 transition ${
-                            item.highlight
-                              ? "border-[#e7d29d] bg-[#fff8e8] hover:bg-[#fff3cf]"
-                              : "border-[#ece3d3] bg-[#fcfbf8] hover:bg-[#faf7f1]"
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div
-                              className={`mt-1 h-2.5 w-2.5 rounded-full ${
-                                item.highlight ? "bg-[#c88b00]" : "bg-[#d7cfbf]"
-                              }`}
-                            />
-                            <div className="min-w-0">
-                              <p className="text-sm font-bold text-[#1e1d1a]">{item.title}</p>
-                              <p className="mt-1 text-xs leading-5 text-[#6f6a5f]">{item.body}</p>
+                      {visibleNotifications.length === 0 ? (
+                        <p className="py-10 text-center text-sm text-[#9b9588]">No notifications</p>
+                      ) : (
+                        visibleNotifications.map((item) => {
+                          const isRead = readIds.has(item.id);
+                          const isHighlighted = item.highlight && !isRead;
+                          return (
+                            <div key={item.id} className="flex items-start gap-1">
+                              <Link
+                                to={item.to}
+                                onClick={() => {
+                                  setReadIds((prev) => new Set([...prev, item.id]));
+                                  setNotificationsOpen(false);
+                                }}
+                                className={`flex-1 block rounded-[22px] border px-4 py-4 transition ${
+                                  isHighlighted
+                                    ? "border-[#e7d29d] bg-[#fff8e8] hover:bg-[#fff3cf]"
+                                    : "border-[#ece3d3] bg-[#fcfbf8] hover:bg-[#faf7f1]"
+                                }`}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div
+                                    className={`mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full ${
+                                      isHighlighted ? "bg-[#c88b00]" : "bg-[#d7cfbf]"
+                                    }`}
+                                  />
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-bold text-[#1e1d1a]">{item.title}</p>
+                                    <p className="mt-1 text-xs leading-5 text-[#6f6a5f]">{item.body}</p>
+                                  </div>
+                                </div>
+                              </Link>
+                              <button
+                                onClick={() => setClearedIds((prev) => new Set([...prev, item.id]))}
+                                className="mt-1 flex-shrink-0 rounded-full p-1.5 text-[#b0a898] transition hover:bg-[#f3ede3] hover:text-[#7f786b]"
+                                title="Dismiss"
+                              >
+                                ✕
+                              </button>
                             </div>
-                          </div>
-                        </Link>
-                      ))}
+                          );
+                        })
+                      )}
                     </div>
                   )}
                 </div>

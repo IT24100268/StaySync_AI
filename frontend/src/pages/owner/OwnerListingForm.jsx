@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { Upload, X, MapPin, Home, ShieldCheck, ImagePlus, Crosshair, LoaderCircle } from "lucide-react";
 import ownerApi from "../../api/ownerApi";
 import { cardCls, cardStyle, inputCls, btnGold, btnGhost, PageHeader } from "./ownerTheme.jsx";
@@ -122,6 +122,8 @@ export default function OwnerListingForm() {
   const [loading, setLoading] = useState(false);
   const [photos, setPhotos] = useState([]);
   const [error, setError] = useState("");
+  const [is403, setIs403] = useState(false);
+  const [hostelIdStatus, setHostelIdStatus] = useState({ checking: false, error: "", ok: false });
   const [mapsReady, setMapsReady] = useState(false);
   const [mapError, setMapError] = useState("");
   const [detectingLocation, setDetectingLocation] = useState(false);
@@ -136,6 +138,11 @@ export default function OwnerListingForm() {
     latitude: "",
     longitude: "",
     address: "",
+    hostel_id: "",
+    room_type: "single",
+    max_capacity: "",
+    estimated_rating: "",
+    area: "",
   });
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -145,9 +152,16 @@ export default function OwnerListingForm() {
   const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
   const facilityOptions = useMemo(
-    () => ["WiFi", "AC", "Parking", "Kitchen", "Laundry", "Security", "Water 24/7"],
+    () => ["WiFi", "AC", "Parking", "Kitchen", "Laundry", "Security", "Water 24/7", "Fan", "Furnished", "Study Table", "Cupboard", "Balcony"],
     []
   );
+
+  const AREAS = [
+    "Annasathiram", "Arasadi", "Ariyalai", "Chunnakam", "Jaffna Town",
+    "Kaithady", "Kaladdy", "Kantharmadam", "Kokuvil", "Kokuvil East",
+    "Kondavil", "Manipay", "Nachimar Koviladi", "Nallur", "Navatkuli",
+    "Tellippalai", "Thirunelvely", "Uduvil", "Vannarpannai",
+  ];
 
   useEffect(() => {
     if (id) fetchListing();
@@ -234,6 +248,23 @@ export default function OwnerListingForm() {
     };
   }, []);
 
+  useEffect(() => {
+    if (id) return; // edit mode — hostel_id is locked
+    const value = formData.hostel_id.trim().toUpperCase();
+    if (!value) { setHostelIdStatus({ checking: false, error: "", ok: false }); return; }
+    if (!/^H\d{4}$/.test(value)) { setHostelIdStatus({ checking: false, error: "Format must be H followed by 4 digits (e.g. H0010).", ok: false }); return; }
+    setHostelIdStatus({ checking: true, error: "", ok: false });
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await ownerApi.get(`/owner/check-hostel-id/?hostel_id=${value}`);
+        setHostelIdStatus({ checking: false, error: data.error || "", ok: data.available });
+      } catch {
+        setHostelIdStatus({ checking: false, error: "", ok: false });
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [formData.hostel_id, id]);
+
   const fetchListing = async () => {
     try {
       const { data } = await ownerApi.get(`/owner/listings/${id}/`);
@@ -247,6 +278,11 @@ export default function OwnerListingForm() {
         latitude: data.latitude || "",
         longitude: data.longitude || "",
         address: data.address || "",
+        hostel_id: data.hostel_id || "",
+        room_type: data.room_type || "single",
+        max_capacity: data.max_capacity ?? "",
+        estimated_rating: data.estimated_rating ?? "",
+        area: data.area || "",
       });
       setPhotos(data.images || []);
     } catch (e) {
@@ -390,12 +426,19 @@ export default function OwnerListingForm() {
     setError("");
 
     if (!formData.title || formData.title.length < 5) return setError("Title must be at least 5 characters");
+    if (!id && !formData.hostel_id) return setError("Hostel ID is required");
+    if (!id && !/^H\d{4}$/.test(formData.hostel_id)) return setError("Hostel ID must be in format H0001 (H followed by 4 digits)");
+    if (!id && !hostelIdStatus.ok) return setError("Please enter a valid and available Hostel ID");
     if (!formData.description || formData.description.length < 20) return setError("Description must be at least 20 characters");
     if (!formData.rent || Number(formData.rent) < 1000) return setError("Rent must be at least LKR 1,000");
     if (Number(formData.deposit) < 0) return setError("Deposit cannot be negative");
     if (!formData.address || formData.address.length < 10) return setError("Please provide a complete location");
     if (!formData.latitude || !formData.longitude) return setError("Please choose the listing location on the map");
     if (formData.facilities.length === 0) return setError("Please select at least one facility");
+    if (!formData.room_type) return setError("Please select a room type");
+    if (!formData.max_capacity || Number(formData.max_capacity) < 1 || Number(formData.max_capacity) > 10) return setError("Max capacity must be between 1 and 10");
+    if (!formData.estimated_rating || Number(formData.estimated_rating) < 1.0 || Number(formData.estimated_rating) > 5.0) return setError("Estimated rating must be between 1.0 and 5.0");
+    if (!formData.area) return setError("Please select an area");
 
     setLoading(true);
 
@@ -419,7 +462,15 @@ export default function OwnerListingForm() {
 
       navigate("/owner/listings");
     } catch (e) {
-      setError(e.response?.data?.message || "Failed to save listing");
+      const status = e.response?.status;
+      const msg = e.response?.data?.error || e.response?.data?.detail || e.response?.data?.message;
+      if (status === 403) {
+        setIs403(true);
+        setError(msg || "Please verify your details before adding or editing listings.");
+      } else {
+        setIs403(false);
+        setError(msg || "Failed to save listing");
+      }
     } finally {
       setLoading(false);
     }
@@ -443,12 +494,53 @@ export default function OwnerListingForm() {
       {error && (
         <div className="rounded-[14px] border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-semibold text-red-700">
           {error}
+          {is403 && (
+            <Link
+              to="/owner/verification"
+              className="ml-2 underline font-bold text-red-800 hover:text-red-900"
+            >
+              Go to Verification →
+            </Link>
+          )}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <Section title="Basic Information" icon={Home}>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              {label("Hostel ID", !id)}
+              {id ? (
+                <div className="flex h-[46px] items-center rounded-[14px] border border-[#dcc89a] bg-[#fff8e8] px-4">
+                  <span className="text-[15px] font-black text-[#b98b1f]">{formData.hostel_id || "—"}</span>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={formData.hostel_id}
+                    onChange={(e) => setFormData({ ...formData, hostel_id: e.target.value.toUpperCase() })}
+                    className={inputCls}
+                    placeholder="e.g. H0010"
+                    maxLength={5}
+                    required
+                  />
+                  {hostelIdStatus.checking && (
+                    <p className="mt-1 text-[11px] text-[#8b8578]">Checking availability…</p>
+                  )}
+                  {!hostelIdStatus.checking && hostelIdStatus.error && (
+                    <p className="mt-1 text-[11px] font-semibold text-red-600">{hostelIdStatus.error}</p>
+                  )}
+                  {!hostelIdStatus.checking && hostelIdStatus.ok && (
+                    <p className="mt-1 text-[11px] font-semibold text-emerald-600">✓ Hostel ID is available</p>
+                  )}
+                  {!hostelIdStatus.checking && !hostelIdStatus.error && !hostelIdStatus.ok && (
+                    <p className="mt-1 text-[11px] text-[#8b8578]">Format: H followed by 4 digits (e.g. H0010)</p>
+                  )}
+                </>
+              )}
+            </div>
+
             <div className="md:col-span-2">
               {label("Title", true)}
               <input
@@ -505,6 +597,63 @@ export default function OwnerListingForm() {
                 <option value="any">Any</option>
                 <option value="male">Male Only</option>
                 <option value="female">Female Only</option>
+              </select>
+            </div>
+
+            <div>
+              {label("Room Type", true)}
+              <select
+                value={formData.room_type}
+                onChange={(e) => setFormData({ ...formData, room_type: e.target.value })}
+                className={inputCls}
+                required
+              >
+                <option value="single">Single</option>
+                <option value="shared">Shared</option>
+              </select>
+            </div>
+
+            <div>
+              {label("Max Capacity", true)}
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={formData.max_capacity}
+                onChange={(e) => setFormData({ ...formData, max_capacity: e.target.value })}
+                className={inputCls}
+                placeholder="1 – 10"
+                required
+              />
+            </div>
+
+            <div>
+              {label("Estimated Rating", true)}
+              <input
+                type="number"
+                min={1.0}
+                max={5.0}
+                step={0.1}
+                value={formData.estimated_rating}
+                onChange={(e) => setFormData({ ...formData, estimated_rating: e.target.value })}
+                className={inputCls}
+                placeholder="1.0 – 5.0"
+                required
+              />
+            </div>
+
+            <div>
+              {label("Area", true)}
+              <select
+                value={formData.area}
+                onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                className={inputCls}
+                required
+              >
+                <option value="">Select area…</option>
+                {AREAS.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
               </select>
             </div>
           </div>

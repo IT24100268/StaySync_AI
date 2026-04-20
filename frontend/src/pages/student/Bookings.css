@@ -523,16 +523,18 @@
   cursor: pointer;
   font-size: 13px;
   font-weight: 800;
+  background: none;
+  color: inherit;
 }
 
 .bookings-btn--primary {
-  color: #fff;
+  color: #fff !important;
   background: linear-gradient(120deg, #1f4f96, #4b8ef6);
   box-shadow: 0 10px 20px rgba(31, 79, 150, 0.24);
 }
 
 .bookings-btn--outline {
-  color: #1f4f96;
+  color: #1f4f96 !important;
   background: rgba(255, 255, 255, 0.92);
   border-color: rgba(15, 23, 42, 0.14);
 }

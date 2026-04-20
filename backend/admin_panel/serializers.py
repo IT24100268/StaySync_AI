@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.db.models import Q
-from .models import Report, AdminLog
+from .models import Report, AdminLog, AdminNotification
 from rooms.models import Room
 from restaurants.models import Restaurant
 from delivery.models import DeliveryPartner
@@ -34,6 +34,13 @@ def get_hostel_owner_for_room(room):
         .select_related('hostel_profile')
         .first()
     )
+
+
+class AdminNotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AdminNotification
+        fields = ['id', 'title', 'body', 'notification_type', 'is_read', 'target_id', 'created_at']
+        read_only_fields = ['created_at']
 
 
 class ReportSerializer(serializers.ModelSerializer):

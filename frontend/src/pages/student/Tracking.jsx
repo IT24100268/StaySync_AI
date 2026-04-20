@@ -33,7 +33,12 @@ const Tracking = () => {
         api.get(`/tracking/${orderId}/`),
       ]);
       setOrder(orderRes.data);
-      setTracking(trackingRes.data);
+      const trackingData = trackingRes.data;
+      if (trackingData?.available === false) {
+        setTracking(null);
+      } else {
+        setTracking(trackingData);
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -45,13 +50,12 @@ const Tracking = () => {
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      if (data?.error) return;
       setTracking((prev) => ({ ...prev, ...data }));
       updateMarker(data);
     };
 
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
+    ws.onerror = () => {};
 
     wsRef.current = ws;
   };
@@ -94,11 +98,26 @@ const Tracking = () => {
       .toUpperCase();
   };
 
-  if (!tracking || !order) {
+  if (!order) {
     return (
       <div style={STUDENT_LAYOUT.page}>
         <div style={STUDENT_LAYOUT.container}>
-          <div style={STUDENT_LAYOUT.card}>Loading...</div>
+          <div style={STUDENT_LAYOUT.card}>Loading order...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!tracking) {
+    return (
+      <div style={STUDENT_LAYOUT.page}>
+        <div style={STUDENT_LAYOUT.container}>
+          <div style={STUDENT_LAYOUT.card}>
+            <strong>Tracking not available yet.</strong>
+            <p style={{ marginTop: 8, color: '#5b6b8a', fontWeight: 700 }}>
+              A delivery partner has not been assigned to your order yet. Please check back once your order is out for delivery.
+            </p>
+          </div>
         </div>
       </div>
     );

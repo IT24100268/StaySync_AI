@@ -13,7 +13,7 @@ class User(AbstractUser):
         ('delivery', 'Delivery Partner'),
     ]
     
-    email = models.EmailField(unique=True)
+    email = models.EmailField(unique=False)
     user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES, default='student')
     is_approved = models.BooleanField(default=True)
     is_blocked = models.BooleanField(default=False)
@@ -44,7 +44,33 @@ class HostelOwnerProfile(models.Model):
     phone_number = models.CharField(max_length=20)
     business_reg_no = models.CharField(max_length=100, blank=True)
     display_image = models.ImageField(upload_to='owner_profiles/', null=True, blank=True)
+    is_under_verification = models.BooleanField(default=False)
+    verification_note = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class OwnerVerificationRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('submitted', 'Submitted'),
+        ('verified', 'Verified'),
+        ('rejected', 'Rejected'),
+    ]
+    owner = models.OneToOneField(User, on_delete=models.CASCADE, related_name='verification_request')
+    nic_passport_number = models.CharField(max_length=100, blank=True)
+    address_proof = models.TextField(blank=True)
+    business_reg_no = models.CharField(max_length=100, blank=True)
+    nic_doc = models.FileField(upload_to='verification_docs/', null=True, blank=True)
+    address_doc = models.FileField(upload_to='verification_docs/', null=True, blank=True)
+    business_doc = models.FileField(upload_to='verification_docs/', null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_note = models.TextField(blank=True, default='')
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.owner.username} - {self.status}"
 
 class RestaurantOwnerProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='restaurant_profile')

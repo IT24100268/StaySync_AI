@@ -80,6 +80,15 @@ class OwnerRoomViewSet(viewsets.ModelViewSet):
         return Room.objects.filter(owner_contact__in=owner_contacts).order_by('-created_at')
     
     def create(self, request, *args, **kwargs):
+        # Block room creation if owner is under verification
+        try:
+            if request.user.hostel_profile.is_under_verification:
+                return Response(
+                    {'error': 'Your account is under verification. You cannot add new rooms until the admin completes verification.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        except Exception:
+            pass
         try:
             data = dict(request.data)
             # Unwrap single-item lists from multipart (not needed for JSON but safe)
@@ -96,11 +105,13 @@ class OwnerRoomViewSet(viewsets.ModelViewSet):
             data['rules'] = data.get('rules') or ''
             data['deposit'] = data.get('deposit') or '0'
             data['address'] = data.get('address') or ''
+            if 'hostel_id' in data:
+                data['hostel_id'] = str(data['hostel_id']).strip().upper()
 
             logger.info(f"Create room data: {data}")
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
-            serializer.save(owner_contact=get_primary_owner_contact(request.user), status='PENDING')
+            serializer.save(owner_contact=get_primary_owner_contact(request.user), status='APPROVED')
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except Exception as e:
@@ -158,10 +169,7 @@ class OwnerRoomViewSet(viewsets.ModelViewSet):
                 room.status = 'APPROVED'
             elif room.status != 'APPROVED':
                 return Response(
-                    {
-                        'error': f'Cannot mark as available while room status is {room.status}. '
-                                 'Wait for admin approval or update based on review notes.'
-                    },
+                    {'error': f'Room status is {room.status}. Only suspended rooms can be marked available.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         else:
@@ -169,7 +177,7 @@ class OwnerRoomViewSet(viewsets.ModelViewSet):
                 room.status = 'SUSPENDED'
             elif room.status != 'SUSPENDED':
                 return Response(
-                    {'error': f'Room is currently {room.status}; availability toggle is only for approved listings.'},
+                    {'error': f'Only approved rooms can be suspended.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -181,6 +189,19 @@ class OwnerRoomViewSet(viewsets.ModelViewSet):
         room = self.get_object()
         sync_room_images(room, request)
         return Response({'message': 'Photos uploaded'}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def check_hostel_id(request):
+    import re
+    hostel_id = request.query_params.get('hostel_id', '').strip().upper()
+    if not hostel_id:
+        return Response({'available': False, 'error': 'Hostel ID is required.'})
+    if not re.match(r'^H\d{4}$', hostel_id):
+        return Response({'available': False, 'error': 'Format must be H followed by 4 digits (e.g. H0010).'})
+    exists = Room.objects.filter(hostel_id=hostel_id).exists()
+    return Response({'available': not exists, 'error': 'This Hostel ID is already taken.' if exists else ''})
 
 
 @api_view(['POST'])
@@ -275,3 +296,70 @@ def update_booking_status(request, booking_id):
         return Response({'message': f'Booking {new_status}', 'status': booking.status})
     except Booking.DoesNotExist:
         return Response({'error': 'Booking not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def owner_verification_status(request):
+    try:
+        profile = request.user.hostel_profile
+    except Exception:
+        return Response({'error': 'Not a hostel owner'}, status=status.HTTP_403_FORBIDDEN)
+
+    vr = None
+    try:
+        vr = request.user.verification_request
+    except Exception:
+        pass
+
+    return Response({
+        'is_under_verification': profile.is_under_verification,
+        'verification_note': profile.verification_note,
+        'verification': {
+            'status': vr.status,
+            'nic_passport_number': vr.nic_passport_number,
+            'address_proof': vr.address_proof,
+            'business_reg_no': vr.business_reg_no,
+            'admin_note': vr.admin_note,
+            'submitted_at': vr.submitted_at,
+        } if vr else None,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def owner_submit_verification(request):
+    from users.models import OwnerVerificationRequest
+    from django.utils import timezone
+
+    try:
+        profile = request.user.hostel_profile
+    except Exception:
+        return Response({'error': 'Not a hostel owner'}, status=status.HTTP_403_FORBIDDEN)
+
+    if not profile.is_under_verification:
+        return Response({'error': 'No verification request pending.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    nic = request.data.get('nic_passport_number', '').strip()
+    address = request.data.get('address_proof', '').strip()
+    business = request.data.get('business_reg_no', '').strip()
+
+    if not nic or not address:
+        return Response({'error': 'NIC/Passport number and address proof are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    vr, _ = OwnerVerificationRequest.objects.get_or_create(owner=request.user)
+    vr.nic_passport_number = nic
+    vr.address_proof = address
+    vr.business_reg_no = business
+    vr.status = 'submitted'
+    vr.submitted_at = timezone.now()
+
+    if 'nic_doc' in request.FILES:
+        vr.nic_doc = request.FILES['nic_doc']
+    if 'address_doc' in request.FILES:
+        vr.address_doc = request.FILES['address_doc']
+    if 'business_doc' in request.FILES:
+        vr.business_doc = request.FILES['business_doc']
+
+    vr.save()
+    return Response({'message': 'Verification form submitted successfully.'})

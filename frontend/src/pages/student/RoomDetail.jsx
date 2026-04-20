@@ -135,6 +135,11 @@ export default function RoomDetail() {
         <header className="rd-hero rd-card">
           <div className="rd-hero__left">
             <h1>{room.title || "Room Details"}</h1>
+            {room.hostel_id && (
+              <span style={{ display: "inline-block", marginBottom: 6, padding: "2px 12px", borderRadius: 20, background: "#fff8e8", border: "1px solid #dcc89a", color: "#b98b1f", fontSize: 12, fontWeight: 800, letterSpacing: "0.12em" }}>
+                {room.hostel_id}
+              </span>
+            )}
             <p>
               <MapPin size={14} /> {room.distance_from_university || "0"} km from university | Gender: {toTitleCase(room.gender_allowed)}
             </p>
@@ -174,6 +179,12 @@ export default function RoomDetail() {
                 <BedDouble size={16} /> Room Details
               </h2>
               <div className="rd-info-grid">
+                {room.hostel_id && (
+                  <div className="rd-info-row">
+                    <span>Hostel ID</span>
+                    <strong>{room.hostel_id}</strong>
+                  </div>
+                )}
                 <div className="rd-info-row">
                   <span>Room Type</span>
                   <strong>{room.title || "N/A"}</strong>

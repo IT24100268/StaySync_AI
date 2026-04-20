@@ -14,7 +14,7 @@ const Checkout = () => {
   const finalTotal = Number(totalPrice) + deliveryCharge;
 
   const handleOrder = async () => {
-    if (!address || address.trim().length < 10) {
+    if (orderType === "delivery" && (!address || address.trim().length < 10)) {
       alert("Please enter a complete delivery address (at least 10 characters)");
       return;
     }
@@ -31,7 +31,7 @@ const Checkout = () => {
     try {
       const orderData = {
         restaurant_id: restaurant.id,
-        delivery_address: address,
+        delivery_address: orderType === "delivery" ? address : "N/A",
         payment_method: "cod",
         order_type: orderType,
         food_price: totalPrice,
@@ -141,14 +141,18 @@ const Checkout = () => {
               </button>
             </div>
             
-            <div style={{ fontWeight: 900, color: THEME.text, marginTop: 10 }}>Delivery Details</div>
-            <textarea
-              placeholder="Enter your delivery address"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              style={STUDENT_LAYOUT.textarea}
-              required
-            />
+            {orderType === "delivery" && (
+              <>
+                <div style={{ fontWeight: 900, color: THEME.text, marginTop: 10 }}>Delivery Details</div>
+                <textarea
+                  placeholder="Enter your delivery address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  style={STUDENT_LAYOUT.textarea}
+                  required
+                />
+              </>
+            )}
             <div style={styles.pay}>
               <span style={STUDENT_LAYOUT.pill}>Cash on Delivery</span>
             </div>

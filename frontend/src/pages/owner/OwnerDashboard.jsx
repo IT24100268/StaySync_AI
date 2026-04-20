@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Plus,
   TrendingUp,
+  AlertTriangle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import ownerApi from "../../api/ownerApi";
@@ -108,6 +109,7 @@ export default function OwnerDashboard() {
   const [summary, setSummary] = useState({ listings: 0, views: 0, enquiries: 0, revenue: 0 });
   const [listings, setListings] = useState([]);
   const [enquiries, setEnquiries] = useState([]);
+  const [verificationStatus, setVerificationStatus] = useState(null);
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -122,6 +124,11 @@ export default function OwnerDashboard() {
         setSummary(summaryRes.data || {});
         setListings(listingsRes.data?.results || listingsRes.data || []);
         setEnquiries(enquiriesRes.data || []);
+
+        try {
+          const vRes = await ownerApi.get("/owner/verification/");
+          setVerificationStatus(vRes.data);
+        } catch { /* not a hostel owner or no profile yet */ }
       } catch (error) {
         console.error("Failed to load owner dashboard", error);
       } finally {
@@ -208,6 +215,32 @@ export default function OwnerDashboard() {
           Welcome back, <span className="text-[#b58c2f]">{ownerName}!</span>
         </h1>
       </section>
+
+      {/* Verification notification banner */}
+      {verificationStatus?.is_under_verification && verificationStatus?.verification?.status !== "verified" && (
+        <Link
+          to="/owner/verification"
+          className="block rounded-[24px] border border-amber-300 bg-amber-50 p-5 transition hover:bg-amber-100"
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={22} className="mt-0.5 shrink-0 text-amber-600" />
+            <div className="flex-1">
+              <p className="font-extrabold text-amber-900">Action Required: Identity Verification</p>
+              <p className="mt-1 text-sm text-amber-800">
+                {verificationStatus?.verification?.status === "submitted"
+                  ? "Your verification form has been submitted and is under admin review. You will regain full access once approved."
+                  : "The admin has requested identity verification. You cannot add new rooms or receive bookings until verified. Click here to complete the form."}
+              </p>
+              {verificationStatus?.verification_note && (
+                <p className="mt-2 text-xs font-semibold text-amber-700">Admin note: {verificationStatus.verification_note}</p>
+              )}
+            </div>
+            <span className="shrink-0 rounded-full border border-amber-300 bg-white px-3 py-1 text-xs font-bold text-amber-700">
+              {verificationStatus?.verification?.status === "submitted" ? "Under Review" : "Complete Now →"}
+            </span>
+          </div>
+        </Link>
+      )}
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
@@ -536,10 +569,16 @@ export default function OwnerDashboard() {
             <div className="grid gap-3">
               {[
                 {
-                  label: "Approved",
-                  value: derived.approvedBookings.length,
+                  label: "Approved Rooms",
+                  value: derived.activeListings.length,
                   icon: CheckCircle2,
                   tone: "border-emerald-200 bg-emerald-50 text-emerald-700",
+                },
+                {
+                  label: "Approved Bookings",
+                  value: derived.approvedBookings.length,
+                  icon: CheckCircle2,
+                  tone: "border-emerald-200 bg-emerald-50 text-emerald-600",
                 },
                 {
                   label: "Pending",

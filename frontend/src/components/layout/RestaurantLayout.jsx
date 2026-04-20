@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import '../../pages/restaurant/RestaurantDashboard.css';
 import {
   Bell,
@@ -8,11 +8,14 @@ import {
   MenuSquare,
   ReceiptText,
   Search,
+  Star,
   Store,
   User,
 } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import restaurantApi from '../../services/restaurantApi';
+import api from '../../services/api';
 
 const navigation = [
   { label: 'Dashboard', to: '/restaurant/dashboard', icon: LayoutDashboard },
@@ -21,11 +24,87 @@ const navigation = [
   { label: 'Earnings', to: '/restaurant/earnings', icon: CircleDollarSign },
 ];
 
+const toArray = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.results)) return payload.results;
+  return [];
+};
+
 function TopNavigation() {
   const auth = useAuth() || {};
   const { user, logout } = auth;
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [seenIds, setSeenIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('restaurant_notif_seen') || '[]')); }
+    catch { return new Set(); }
+  });
+  const dropdownRef = useRef(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [ordersRes, reviewsRes] = await Promise.allSettled([
+          restaurantApi.getOrders(),
+          api.get('/reviews/restaurants/'),
+        ]);
+        if (ordersRes.status === 'fulfilled') setOrders(toArray(ordersRes.value?.data));
+        if (reviewsRes.status === 'fulfilled') setReviews(toArray(reviewsRes.value?.data));
+      } catch {}
+    };
+    load();
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setNotificationOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const notifications = useMemo(() => {
+    const list = [];
+    orders.forEach((order) => {
+      const status = String(order?.status || '').toLowerCase();
+      const key = `order-${order.id}-${status}`;
+      let text = '';
+      let icon = 'order';
+      if (status === 'pending') { text = `New order #${order.id} is waiting for your confirmation.`; icon = 'order'; }
+      else if (status === 'accepted') { text = `Order #${order.id} accepted — start preparing.`; icon = 'order'; }
+      else if (status === 'delivered') { text = `Order #${order.id} delivered successfully.`; icon = 'payment'; }
+      if (text) list.push({ key, text, icon, time: order.updated_at || order.created_at });
+    });
+    reviews.forEach((review) => {
+      const key = `review-${review.id}`;
+      const text = `New ${review.rating}★ review: "${String(review.comment || '').slice(0, 60)}${review.comment?.length > 60 ? '…' : ''}"`;
+      list.push({ key, text, icon: 'review', time: review.created_at });
+    });
+    return list.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0)).slice(0, 10);
+  }, [orders, reviews]);
+
+  const unreadCount = useMemo(
+    () => notifications.filter((n) => !seenIds.has(n.key)).length,
+    [notifications, seenIds]
+  );
+
+  const handleOpenNotifications = () => {
+    setNotificationOpen((prev) => {
+      if (!prev) {
+        const allIds = notifications.map((n) => n.key);
+        const updated = new Set(allIds);
+        setSeenIds(updated);
+        localStorage.setItem('restaurant_notif_seen', JSON.stringify(allIds));
+      }
+      return !prev;
+    });
+  };
 
   const profile = useMemo(() => {
     const restaurantName =
@@ -83,14 +162,42 @@ function TopNavigation() {
             <input type="text" placeholder="Search orders, menu, customers..." />
           </label>
 
-          <button
-            type="button"
-            className="lp-navbar__icon-btn notification"
-            onClick={() => setNotificationOpen(true)}
-          >
-            <Bell size={18} />
-            <span className="dot">3</span>
-          </button>
+          <div style={{ position: 'relative' }} ref={dropdownRef}>
+            <button
+              type="button"
+              className="lp-navbar__icon-btn notification"
+              onClick={handleOpenNotifications}
+            >
+              <Bell size={18} />
+              {unreadCount > 0 && <span className="dot">{unreadCount}</span>}
+            </button>
+
+            {notificationOpen && (
+              <div className="restaurant-notif-dropdown">
+                <div className="restaurant-notif-dropdown__head">
+                  <strong>Notifications</strong>
+                  <span>{notifications.length} total</span>
+                </div>
+                {notifications.length === 0 ? (
+                  <p className="restaurant-notif-dropdown__empty">No notifications yet.</p>
+                ) : (
+                  <ul className="restaurant-notif-dropdown__list">
+                    {notifications.map((n) => (
+                      <li
+                        key={n.key}
+                        className={`restaurant-notif-item${seenIds.has(n.key) ? ' is-read' : ''}`}
+                      >
+                        <div className={`notification-icon ${n.icon === 'review' ? 'review' : n.icon === 'payment' ? 'payment' : 'new-order'}`}>
+                          {n.icon === 'review' ? <Star size={14} /> : n.icon === 'payment' ? <CircleDollarSign size={14} /> : <ReceiptText size={14} />}
+                        </div>
+                        <span>{n.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
 
           <button
             type="button"
@@ -123,53 +230,7 @@ function TopNavigation() {
         </div>
       </header>
 
-      {notificationOpen && (
-        <div className="modal-overlay" onClick={() => setNotificationOpen(false)}>
-          <div
-            className="modal-content notification-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button className="modal-close" onClick={() => setNotificationOpen(false)}>
-              &times;
-            </button>
-            <div className="modal-body">
-              <h2 className="modal-title">Recent Activities</h2>
-              <div className="notification-list">
-                <div className="notification-item">
-                  <div className="notification-icon new-order">
-                    <ReceiptText size={16} />
-                  </div>
-                  <div className="notification-content">
-                    <div className="notification-title">New Order #1234</div>
-                    <div className="notification-text">Order placed for â‚¹450 â€¢ 2 items</div>
-                    <div className="notification-time">2 minutes ago</div>
-                  </div>
-                </div>
-                <div className="notification-item">
-                  <div className="notification-icon payment">
-                    <CircleDollarSign size={16} />
-                  </div>
-                  <div className="notification-content">
-                    <div className="notification-title">Payment Received</div>
-                    <div className="notification-text">â‚¹1,250 credited to your account</div>
-                    <div className="notification-time">1 hour ago</div>
-                  </div>
-                </div>
-                <div className="notification-item">
-                  <div className="notification-icon review">
-                    <Bell size={16} />
-                  </div>
-                  <div className="notification-content">
-                    <div className="notification-title">New Review</div>
-                    <div className="notification-text">5 stars - "Excellent food quality!"</div>
-                    <div className="notification-time">3 hours ago</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

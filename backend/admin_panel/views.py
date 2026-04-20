@@ -7,15 +7,16 @@ from django.db.models import Q, Count, Prefetch
 from django.db.models.functions import TruncDate
 from datetime import datetime, timedelta
 
-from .models import Report, AdminLog
+from .models import Report, AdminLog, AdminNotification
 from .serializers import (
     ReportSerializer, AdminLogSerializer, RoomAdminSerializer,
     RestaurantAdminSerializer, DeliveryPartnerAdminSerializer, UserAdminSerializer,
-    AdminOrderMonitorSerializer
+    AdminOrderMonitorSerializer, AdminNotificationSerializer
 )
 from .permissions import IsAdminUser
 from rooms.models import Room
 from restaurants.models import Restaurant
+from restaurants.serializers import MenuSerializer
 from delivery.models import DeliveryPartner
 from users.models import User
 from orders.models import Order
@@ -35,7 +36,10 @@ def admin_analytics_summary(request):
     
     pending_rooms = Room.objects.filter(status='PENDING').count()
     approved_rooms = Room.objects.filter(status='APPROVED').count()
-    
+
+    pending_hostel_owners = User.objects.filter(user_type='hostel_owner', is_approved=False, is_blocked=False).count()
+    blocked_hostel_owners = User.objects.filter(user_type='hostel_owner', is_blocked=True).count()
+
     pending_restaurants = Restaurant.objects.filter(status='PENDING').count()
     pending_partners = DeliveryPartner.objects.filter(status='PENDING').count()
     
@@ -56,11 +60,67 @@ def admin_analytics_summary(request):
         'blocked_users': blocked_users,
         'pending_rooms': pending_rooms,
         'approved_rooms': approved_rooms,
+        'pending_hostel_owners': pending_hostel_owners,
+        'blocked_hostel_owners': blocked_hostel_owners,
         'pending_restaurants': pending_restaurants,
         'pending_partners': pending_partners,
         'pending_reports': pending_reports,
         'total_orders_today': total_orders_today,
         'disputes_pending': disputes_pending
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_dashboard_overview(request):
+    """Single endpoint for all admin dashboard data"""
+    today = timezone.now().date()
+    start_date = today - timedelta(days=6)
+
+    # --- user registrations per day (last 7 days) ---
+    users_by_day = {
+        item['day']: item['count']
+        for item in (
+            User.objects.filter(date_joined__date__gte=start_date)
+            .annotate(day=TruncDate('date_joined'))
+            .values('day')
+            .annotate(count=Count('id'))
+        )
+    }
+    trend = []
+    for offset in range(7):
+        day = start_date + timedelta(days=offset)
+        trend.append({
+            'day': day.strftime('%a'),
+            'date': day.isoformat(),
+            'users': users_by_day.get(day, 0),
+        })
+
+    # --- recent admin logs ---
+    recent_logs = (
+        AdminLog.objects.select_related('admin')
+        .order_by('-created_at')[:8]
+    )
+    logs_data = [
+        {
+            'id': log.id,
+            'action': log.action,
+            'target_type': log.target_type,
+            'admin_username': log.admin.username,
+            'created_at': log.created_at.isoformat(),
+        }
+        for log in recent_logs
+    ]
+
+    return Response({
+        'new_users_today': User.objects.filter(date_joined__date=today).count(),
+        'new_users_7d': User.objects.filter(date_joined__date__gte=start_date).count(),
+        'user_trend': trend,
+        'recent_logs': logs_data,
+        'orders_total': Order.objects.count(),
+        'approved_hostel_owners': User.objects.filter(user_type='hostel_owner', is_approved=True, is_blocked=False).count(),
+        'approved_restaurants': Restaurant.objects.filter(status='APPROVED').count(),
+        'approved_partners': DeliveryPartner.objects.filter(status='APPROVED').count(),
     })
 
 
@@ -328,6 +388,9 @@ class UserAdminViewSet(viewsets.ModelViewSet):
 
         if is_approved in ['true', 'false']:
             queryset = queryset.filter(is_approved=(is_approved == 'true'))
+            # When fetching pending (unapproved) users, exclude blocked/rejected ones
+            if is_approved == 'false':
+                queryset = queryset.filter(is_blocked=False)
         if user_type:
             queryset = queryset.filter(user_type=user_type)
         return queryset
@@ -337,6 +400,23 @@ class UserAdminViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         user.is_approved = True
         user.save(update_fields=['is_approved'])
+
+        # If approving a hostel owner, approve all their pending rooms
+        if user.user_type == 'hostel_owner':
+            owner_contacts = []
+            try:
+                phone = (user.hostel_profile.phone_number or '').strip()
+                if phone:
+                    owner_contacts.append(phone)
+            except Exception:
+                pass
+            if user.email:
+                owner_contacts.append(user.email.strip())
+            if owner_contacts:
+                Room.objects.filter(
+                    owner_contact__in=owner_contacts,
+                    status='PENDING'
+                ).update(status='APPROVED', reviewed_by=request.user, reviewed_at=timezone.now())
 
         create_admin_log(
             admin=request.user,
@@ -348,6 +428,116 @@ class UserAdminViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(user)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['patch'])
+    def reject(self, request, pk=None):
+        user = self.get_object()
+        reject_reason = request.data.get('reject_reason', 'Account registration rejected by admin')
+
+        user.is_approved = False
+        user.is_blocked = True
+        user.block_reason = reject_reason
+        user.save(update_fields=['is_approved', 'is_blocked', 'block_reason'])
+
+        # Reject all pending restaurant records for this owner
+        if user.user_type == 'restaurant_owner':
+            Restaurant.objects.filter(owner=user, status='PENDING').update(
+                status='REJECTED',
+                review_note=reject_reason,
+                is_approved=False,
+                reviewed_by_id=request.user.id,
+                reviewed_at=timezone.now()
+            )
+
+        create_admin_log(
+            admin=request.user,
+            action='User account rejected',
+            target_type='USER',
+            target_id=user.id,
+            details={'reject_reason': reject_reason}
+        )
+
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['patch'])
+    def request_verification(self, request, pk=None):
+        """Admin triggers verification for a hostel owner."""
+        user = self.get_object()
+        if user.user_type != 'hostel_owner':
+            return Response({'error': 'User is not a hostel owner'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            profile = user.hostel_profile
+        except Exception:
+            return Response({'error': 'Hostel profile not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+        note = request.data.get('note', 'Admin has requested identity verification. Please complete the verification form.')
+        profile.is_under_verification = True
+        profile.verification_note = note
+        profile.save(update_fields=['is_under_verification', 'verification_note'])
+
+        # Reset any existing verification request to pending
+        from users.models import OwnerVerificationRequest
+        OwnerVerificationRequest.objects.filter(owner=user).update(status='pending', admin_note='')
+
+        create_admin_log(
+            admin=request.user,
+            action='Verification requested for hostel owner',
+            target_type='USER',
+            target_id=user.id,
+            details={'note': note}
+        )
+        return Response({'message': 'Verification request sent to owner.'})
+
+    @action(detail=True, methods=['get'])
+    def verification_form(self, request, pk=None):
+        """Admin views the submitted verification form."""
+        user = self.get_object()
+        try:
+            vr = user.verification_request
+        except Exception:
+            return Response({'detail': 'No verification form submitted yet.'}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({
+            'id': vr.id,
+            'status': vr.status,
+            'nic_passport_number': vr.nic_passport_number,
+            'address_proof': vr.address_proof,
+            'business_reg_no': vr.business_reg_no,
+            'admin_note': vr.admin_note,
+            'submitted_at': vr.submitted_at,
+            'nic_doc': request.build_absolute_uri(vr.nic_doc.url) if vr.nic_doc else None,
+            'address_doc': request.build_absolute_uri(vr.address_doc.url) if vr.address_doc else None,
+            'business_doc': request.build_absolute_uri(vr.business_doc.url) if vr.business_doc else None,
+        })
+
+    @action(detail=True, methods=['patch'])
+    def complete_verification(self, request, pk=None):
+        """Admin marks verification as complete — owner regains full access."""
+        user = self.get_object()
+        try:
+            profile = user.hostel_profile
+        except Exception:
+            return Response({'error': 'Hostel profile not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+        profile.is_under_verification = False
+        profile.verification_note = ''
+        profile.save(update_fields=['is_under_verification', 'verification_note'])
+
+        from users.models import OwnerVerificationRequest
+        OwnerVerificationRequest.objects.filter(owner=user).update(
+            status='verified',
+            reviewed_at=timezone.now()
+        )
+
+        create_admin_log(
+            admin=request.user,
+            action='Hostel owner verification completed',
+            target_type='USER',
+            target_id=user.id,
+            details={}
+        )
+        return Response({'message': 'Owner verified. Full access restored.'})
     
     @action(detail=True, methods=['patch'])
     def block(self, request, pk=None):
@@ -504,3 +694,36 @@ class AdminLogViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = AdminLog.objects.all().order_by('-created_at')
     serializer_class = AdminLogSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
+
+
+class AdminNotificationViewSet(viewsets.ModelViewSet):
+    queryset = AdminNotification.objects.all()
+    serializer_class = AdminNotificationSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    http_method_names = ['get', 'patch', 'delete']
+
+    @action(detail=False, methods=['patch'])
+    def mark_all_read(self, request):
+        AdminNotification.objects.filter(is_read=False).update(is_read=True)
+        return Response({'status': 'all marked as read'})
+
+    @action(detail=False, methods=['delete'])
+    def delete_all(self, request):
+        AdminNotification.objects.all().delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['patch'])
+    def mark_read(self, request, pk=None):
+        notif = self.get_object()
+        notif.is_read = True
+        notif.save(update_fields=['is_read'])
+        return Response(AdminNotificationSerializer(notif).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_restaurant_menu(request, restaurant_id):
+    from restaurants.models import Menu
+    items = Menu.objects.filter(restaurant_id=restaurant_id).order_by('name')
+    serializer = MenuSerializer(items, many=True, context={'request': request})
+    return Response(serializer.data)

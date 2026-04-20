@@ -19,9 +19,9 @@ class OwnerRoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Room
         fields = [
-            'id', 'title', 'description', 'price', 'rent', 'deposit', 'address', 'latitude', 'longitude',
-            'location', 'facilities', 'gender_allowed', 'distance_from_university',
-            'owner_contact', 'rules', 'status', 'available', 'views', 'created_at', 'images'
+            'id', 'hostel_id', 'title', 'description', 'price', 'rent', 'deposit', 'address', 'latitude', 'longitude',
+            'location', 'facilities', 'gender_allowed', 'room_type', 'max_capacity', 'estimated_rating', 'area',
+            'distance_from_university', 'owner_contact', 'rules', 'status', 'available', 'views', 'created_at', 'images'
         ]
         read_only_fields = ['id', 'status', 'created_at', 'owner_contact', 'rent', 'available', 'views', 'location']
         extra_kwargs = {
@@ -31,6 +31,10 @@ class OwnerRoomSerializer(serializers.ModelSerializer):
             'address': {'required': False, 'default': ''},
             'latitude': {'required': False, 'default': 0},
             'longitude': {'required': False, 'default': 0},
+            'room_type': {'required': False, 'default': 'single'},
+            'max_capacity': {'required': False, 'default': 1},
+            'estimated_rating': {'required': False, 'default': 3.0},
+            'area': {'required': False, 'default': ''},
         }
     
     def get_images(self, obj):
@@ -43,6 +47,15 @@ class OwnerRoomSerializer(serializers.ModelSerializer):
     def get_views(self, obj):
         return int(getattr(obj, 'views', 0) or 0)
     
+    def validate_hostel_id(self, value):
+        import re
+        value = value.strip().upper()
+        if value and not re.match(r'^H\d{4}$', value):
+            raise serializers.ValidationError('Hostel ID must be in format H0001 (H followed by 4 digits).')
+        if value and Room.objects.filter(hostel_id=value).exclude(pk=self.instance.pk if self.instance else None).exists():
+            raise serializers.ValidationError('This Hostel ID is already in use.')
+        return value
+
     def get_location(self, obj):
         if obj.latitude and obj.longitude:
             return f"{obj.latitude}, {obj.longitude}"

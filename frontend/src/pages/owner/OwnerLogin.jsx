@@ -9,6 +9,7 @@ const inputCls =
 export default function OwnerLogin() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
+  const [blockedReason, setBlockedReason] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useOwnerAuth();
   const navigate = useNavigate();
@@ -16,12 +17,23 @@ export default function OwnerLogin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setBlockedReason("");
     setLoading(true);
     try {
       await login(formData);
       navigate("/owner/dashboard");
     } catch (err) {
-      setError(err.response?.data?.message || "Invalid credentials");
+      const code = err.response?.data?.code;
+      const detail = err.response?.data?.detail;
+      const reason = err.response?.data?.reason;
+      if (code === "account_blocked") {
+        setError(detail || "Your account has been blocked.");
+        setBlockedReason(reason && reason !== "No reason was provided." ? reason : "");
+      } else if (code === "account_pending") {
+        setError("Your account is pending admin approval. Please wait.");
+      } else {
+        setError(detail || err.response?.data?.message || "Invalid credentials");
+      }
     } finally {
       setLoading(false);
     }
@@ -66,7 +78,12 @@ export default function OwnerLogin() {
 
           {error && (
             <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-              {error}
+              <p>{error}</p>
+              {blockedReason && (
+                <p className="mt-2 rounded-lg bg-red-100 px-3 py-2 text-red-800">
+                  <span className="font-bold">Reason: </span>{blockedReason}
+                </p>
+              )}
             </div>
           )}
 

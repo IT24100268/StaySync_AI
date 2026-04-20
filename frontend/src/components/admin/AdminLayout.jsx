@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   Home,
   Users,
@@ -26,7 +26,7 @@ const navigationGroups = [
   {
     title: "Moderation",
     items: [
-      { name: "Room Approvals", to: "/admin/rooms", icon: Building },
+      { name: "Owner Approvals", to: "/admin/rooms", icon: Building },
       { name: "Restaurant Approvals", to: "/admin/restaurants", icon: Building },
       { name: "Partner Approvals", to: "/admin/partners", icon: Truck },
       { name: "Reports Queue", to: "/admin/reports", icon: AlertCircle },
@@ -49,6 +49,20 @@ const navigationGroups = [
   },
 ];
 
+const NOTIF_ROUTE_MAP = {
+  new_owner: "/admin/users",
+  new_student: "/admin/users",
+  new_restaurant_owner: "/admin/users",
+  new_delivery_partner: "/admin/partners",
+  pending_room: "/admin/rooms",
+  pending_restaurant: "/admin/restaurants",
+  pending_partner: "/admin/partners",
+  new_report: "/admin/reports",
+  new_booking: "/admin/dashboard",
+  new_order: "/admin/orders",
+  general: "/admin/dashboard",
+};
+
 export default function AdminLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -63,7 +77,7 @@ export default function AdminLayout() {
     return name.slice(0, 2).toUpperCase();
   }, [user]);
 
-  const unreadCount = notifications.filter((item) => item.highlight).length;
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -71,7 +85,6 @@ export default function AdminLayout() {
         setNotificationsOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -83,86 +96,43 @@ export default function AdminLayout() {
   const fetchNotifications = async () => {
     setNotificationsLoading(true);
     try {
-      const [summaryRes, analyticsRes, reportsRes] = await Promise.all([
-        api.get("/admin/analytics/summary/"),
-        api.get("/admin/analytics/detail/"),
-        api.get("/admin/reports/"),
-      ]);
-
-      const summary = summaryRes.data || {};
-      const analytics = analyticsRes.data || {};
-      const reports = reportsRes.data?.results || reportsRes.data || [];
-      const latestAction = analytics.recent_admin_actions?.[0];
-      const pendingReports = reports.filter((report) => report.status === "PENDING").slice(0, 2);
-
-      const nextNotifications = [
-        {
-          id: "pending-reports",
-          title: `${summary.pending_reports || 0} report${summary.pending_reports === 1 ? "" : "s"} waiting`,
-          body:
-            (summary.pending_reports || 0) > 0
-              ? "Open the reports queue to review the latest student or order issues."
-              : "Reports queue is currently clear.",
-          to: "/admin/reports",
-          highlight: (summary.pending_reports || 0) > 0,
-        },
-        {
-          id: "approval-backlog",
-          title: `${analytics.metrics?.approval_backlog || 0} approvals need review`,
-          body:
-            (analytics.metrics?.approval_backlog || 0) > 0
-              ? "Rooms, restaurants, or delivery partners are still waiting for admin action."
-              : "All approval queues are currently under control.",
-          to: "/admin/dashboard",
-          highlight: (analytics.metrics?.approval_backlog || 0) > 0,
-        },
-        {
-          id: "orders-today",
-          title: `${summary.total_orders_today || 0} food orders today`,
-          body:
-            (summary.total_orders_today || 0) > 0
-              ? "Track live food activity and delivery ownership from the orders monitor."
-              : "No food orders have been placed today yet.",
-          to: "/admin/orders",
-          highlight: (summary.total_orders_today || 0) > 0,
-        },
-      ];
-
-      if (latestAction) {
-        nextNotifications.push({
-          id: `latest-action-${latestAction.id}`,
-          title: latestAction.action,
-          body: `Latest admin activity by ${latestAction.admin__username || "admin"}.`,
-          to: "/admin/logs",
-          highlight: false,
-        });
-      }
-
-      pendingReports.forEach((report) => {
-        nextNotifications.push({
-          id: `report-${report.id}`,
-          title: `Report #${report.id} is pending`,
-          body: report.reason || "Needs admin review.",
-          to: "/admin/reports",
-          highlight: true,
-        });
-      });
-
-      setNotifications(nextNotifications);
-    } catch (error) {
-      console.error("Failed to load admin notifications", error);
-      setNotifications([
-        {
-          id: "fallback",
-          title: "Notifications unavailable",
-          body: "Try refreshing the panel in a moment.",
-          to: "/admin/dashboard",
-          highlight: false,
-        },
-      ]);
+      const res = await api.get("/admin/notifications/");
+      setNotifications(res.data?.results ?? res.data ?? []);
+    } catch {
+      setNotifications([]);
     } finally {
       setNotificationsLoading(false);
     }
+  };
+
+  const handleMarkRead = async (id) => {
+    try {
+      await api.patch(`/admin/notifications/${id}/mark_read/`);
+      setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
+    } catch {}
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.patch("/admin/notifications/mark_all_read/");
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    } catch {}
+  };
+
+  const handleDeleteOne = async (e, id) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await api.delete(`/admin/notifications/${id}/`);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    } catch {}
+  };
+
+  const handleDeleteAll = async () => {
+    try {
+      await api.delete("/admin/notifications/delete_all/");
+      setNotifications([]);
+    } catch {}
   };
 
   const handleLogout = () => {
@@ -276,13 +246,14 @@ export default function AdminLayout() {
                 </button>
 
                 {notificationsOpen ? (
-                  <div className="absolute right-0 top-14 z-50 w-[360px] overflow-hidden rounded-[28px] border border-violet-100 bg-white shadow-[0_28px_60px_-24px_rgba(76,29,149,0.32)]">
+                  <div className="absolute right-0 top-14 z-50 w-[380px] overflow-hidden rounded-[28px] border border-violet-100 bg-white shadow-[0_28px_60px_-24px_rgba(76,29,149,0.32)]">
+                    {/* Header */}
                     <div className="border-b border-violet-100 bg-[linear-gradient(135deg,#fbf8ff_0%,#f2ebff_100%)] px-5 py-4">
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="text-xs font-bold uppercase tracking-[0.24em] text-violet-500">Notifications</p>
                           <p className="mt-1 text-sm font-semibold text-slate-700">
-                            {unreadCount > 0 ? `${unreadCount} item${unreadCount > 1 ? "s" : ""} need attention` : "Everything looks calm right now"}
+                            {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
                           </p>
                         </div>
                         <button
@@ -292,34 +263,68 @@ export default function AdminLayout() {
                           Refresh
                         </button>
                       </div>
+                      {/* Action bar */}
+                      {notifications.length > 0 && (
+                        <div className="mt-3 flex items-center gap-2">
+                          <button
+                            onClick={handleMarkAllRead}
+                            className="flex-1 rounded-xl border border-violet-200 bg-white py-1.5 text-xs font-semibold text-violet-700 transition hover:bg-violet-50"
+                          >
+                            Mark all read
+                          </button>
+                          <button
+                            onClick={handleDeleteAll}
+                            className="flex-1 rounded-xl border border-rose-200 bg-white py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+                          >
+                            Delete all
+                          </button>
+                        </div>
+                      )}
                     </div>
 
+                    {/* List */}
                     <div className="max-h-[420px] overflow-y-auto p-3">
                       {notificationsLoading ? (
                         <div className="flex items-center justify-center py-12">
                           <div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-200 border-t-violet-600" />
                         </div>
+                      ) : notifications.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                          <Bell size={32} className="mb-3 opacity-30" />
+                          <p className="text-sm font-medium">No notifications yet</p>
+                        </div>
                       ) : (
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                           {notifications.map((item) => (
-                            <Link
+                            <div
                               key={item.id}
-                              to={item.to}
-                              onClick={() => setNotificationsOpen(false)}
-                              className={`block rounded-[22px] border px-4 py-4 transition ${
-                                item.highlight
+                              className={`group relative flex items-start gap-3 rounded-[18px] border px-4 py-3 transition cursor-pointer ${
+                                !item.is_read
                                   ? "border-violet-200 bg-violet-50/70 hover:bg-violet-100/70"
-                                  : "border-slate-200 bg-white hover:bg-slate-50"
+                                  : "border-slate-100 bg-white hover:bg-slate-50"
                               }`}
+                              onClick={() => {
+                                if (!item.is_read) handleMarkRead(item.id);
+                                navigate(NOTIF_ROUTE_MAP[item.notification_type] ?? "/admin/dashboard");
+                                setNotificationsOpen(false);
+                              }}
                             >
-                              <div className="flex items-start gap-3">
-                                <div className={`mt-0.5 h-2.5 w-2.5 rounded-full ${item.highlight ? "bg-rose-500" : "bg-violet-300"}`} />
-                                <div className="min-w-0">
-                                  <p className="text-sm font-bold text-slate-900">{item.title}</p>
-                                  <p className="mt-1 text-xs leading-5 text-slate-500">{item.body}</p>
-                                </div>
+                              <div className={`mt-1 h-2 w-2 shrink-0 rounded-full ${!item.is_read ? "bg-rose-500" : "bg-slate-300"}`} />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold text-slate-900 leading-snug">{item.title}</p>
+                                <p className="mt-0.5 text-xs leading-5 text-slate-500">{item.body}</p>
+                                <p className="mt-1 text-[10px] text-violet-400">
+                                  {new Date(item.created_at).toLocaleString()}
+                                </p>
                               </div>
-                            </Link>
+                              <button
+                                onClick={(e) => handleDeleteOne(e, item.id)}
+                                className="ml-1 shrink-0 rounded-full p-1 text-slate-300 opacity-0 transition hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100"
+                                title="Delete"
+                              >
+                                ✕
+                              </button>
+                            </div>
                           ))}
                         </div>
                       )}
