@@ -6,6 +6,9 @@ const initialState = {
   price: '',
   image: null,
   category: '',
+  food_id: '',
+  meal_type: '',
+  veg_nonveg: '',
 };
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -81,6 +84,9 @@ export default function FoodItemModal({ open, item, onClose, onSubmit, categoryO
       price: item.price,
       image: null,
       category: normalizeCategoryName(extractCategory(item.description || '')) || '',
+      food_id: item.food_id || '',
+      meal_type: item.meal_type || '',
+      veg_nonveg: item.veg_nonveg || '',
     });
     setPreview(item.image_url || '');
   }, [item, open]);
@@ -177,6 +183,9 @@ export default function FoodItemModal({ open, item, onClose, onSubmit, categoryO
     payload.append('description', buildDescription('', formData.category));
     payload.append('price', formData.price);
     payload.append('is_available', 'true');
+    if (formData.food_id.trim()) payload.append('food_id', formData.food_id.trim());
+    if (formData.meal_type) payload.append('meal_type', formData.meal_type);
+    if (formData.veg_nonveg) payload.append('veg_nonveg', formData.veg_nonveg);
     if (formData.image) {
       payload.append('image', formData.image);
     }
@@ -274,6 +283,61 @@ export default function FoodItemModal({ open, item, onClose, onSubmit, categoryO
                 required
               />
             </div>
+
+            <div className="menu-modal-field">
+              <label htmlFor="food-id">Food ID</label>
+              <input
+                id="food-id"
+                name="food_id"
+                value={formData.food_id}
+                onChange={handleChange}
+                placeholder="e.g. FOOD-001"
+              />
+            </div>
+          </div>
+
+          <div className="menu-modal-grid">
+            <div className="menu-modal-field">
+              <label htmlFor="food-restaurant-id">Restaurant ID</label>
+              <input
+                id="food-restaurant-id"
+                value={item?.restaurant_id ?? item?.restaurant ?? ''}
+                readOnly
+                disabled
+                placeholder="Auto-filled from restaurant"
+              />
+            </div>
+
+            <div className="menu-modal-field">
+              <label htmlFor="food-meal-type">Meal Type</label>
+              <select
+                id="food-meal-type"
+                name="meal_type"
+                value={formData.meal_type}
+                onChange={handleChange}
+              >
+                <option value="">Select meal type</option>
+                <option value="breakfast">Breakfast</option>
+                <option value="lunch">Lunch</option>
+                <option value="dinner">Dinner</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="menu-modal-grid">
+            <div className="menu-modal-field">
+              <label htmlFor="food-veg-nonveg">Veg / Non-Veg</label>
+              <select
+                id="food-veg-nonveg"
+                name="veg_nonveg"
+                value={formData.veg_nonveg}
+                onChange={handleChange}
+              >
+                <option value="">Select type</option>
+                <option value="veg">Vege</option>
+                <option value="nonveg">Non-Vege</option>
+              </select>
+            </div>
           </div>
 
           <div className="menu-modal-field">
@@ -284,7 +348,7 @@ export default function FoodItemModal({ open, item, onClose, onSubmit, categoryO
               </div>
               <div>
                 <strong>{preview ? 'Change menu image' : 'Choose a food or drink image'}</strong>
-                <p>Use a clear, bright image so your menu feels premium and easy to scan.</p>
+                <p>PNG, JPG, WEBP supported</p>
               </div>
             </label>
             <input
@@ -295,15 +359,6 @@ export default function FoodItemModal({ open, item, onClose, onSubmit, categoryO
               onChange={handleChange}
               className="menu-file-input"
             />
-          </div>
-
-          <div className="menu-modal-grid menu-modal-grid--lower">
-            <div className="menu-modal-field">
-              <div className="menu-mini-card">
-                <span>Category</span>
-                <strong>{formData.category || 'Other'}</strong>
-              </div>
-            </div>
           </div>
 
           {preview ? <div className="menu-preview-wrap"><img src={preview} alt="Food preview" className="menu-preview-image" /></div> : null}

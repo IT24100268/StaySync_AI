@@ -7,9 +7,11 @@ from django.db import models
 
 class Restaurant(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='restaurants')
+    restaurant_id = models.CharField(max_length=20, unique=True, null=True, blank=True)
     name = models.CharField(max_length=255)
     email = models.EmailField(max_length=255)
     phone = models.CharField(max_length=32)
+    area = models.CharField(max_length=255, blank=True, default='')
     address = models.TextField()
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
@@ -24,11 +26,25 @@ class Restaurant(models.Model):
 
 
 class FoodItem(models.Model):
+    MEAL_TYPE_CHOICES = [
+        ('Breakfast', 'Breakfast'),
+        ('Lunch', 'Lunch'),
+        ('Dinner', 'Dinner'),
+    ]
+
+    VEG_CHOICES = [
+        ('Veg', 'Veg'),
+        ('NonVeg', 'NonVeg'),
+    ]
+
     restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='food_items')
+    food_id = models.CharField(max_length=20, unique=True, null=True, blank=True)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.00'))])
     image = models.ImageField(upload_to='food_items/', null=True, blank=True)
+    meal_type = models.CharField(max_length=10, choices=MEAL_TYPE_CHOICES, null=True, blank=True)
+    veg_nonveg = models.CharField(max_length=10, choices=VEG_CHOICES, null=True, blank=True)
     is_available = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

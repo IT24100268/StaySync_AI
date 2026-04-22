@@ -47,8 +47,7 @@ def get_primary_owner_contact(user):
 
 
 def get_owner_rooms(user):
-    owner_contacts = get_owner_contacts(user)
-    return Room.objects.filter(owner_contact__in=owner_contacts)
+    return Room.objects.filter(owner=user)
 
 
 def sync_room_images(room, request):
@@ -75,9 +74,7 @@ class OwnerRoomViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        # Owner sees only their own rooms
-        owner_contacts = get_owner_contacts(self.request.user)
-        return Room.objects.filter(owner_contact__in=owner_contacts).order_by('-created_at')
+        return Room.objects.filter(owner=self.request.user).order_by('-created_at')
     
     def create(self, request, *args, **kwargs):
         # Block room creation if owner is under verification
@@ -111,7 +108,11 @@ class OwnerRoomViewSet(viewsets.ModelViewSet):
             logger.info(f"Create room data: {data}")
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
-            serializer.save(owner_contact=get_primary_owner_contact(request.user), status='APPROVED')
+            serializer.save(
+                owner=request.user,
+                owner_contact=get_primary_owner_contact(request.user),
+                status='APPROVED',
+            )
             headers = self.get_success_headers(serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except Exception as e:
@@ -209,8 +210,7 @@ def check_hostel_id(request):
 def upload_room_photos(request, pk):
     """Upload photos for a room listing"""
     try:
-        owner_contacts = get_owner_contacts(request.user)
-        room = Room.objects.get(pk=pk, owner_contact__in=owner_contacts)
+        room = Room.objects.get(pk=pk, owner=request.user)
 
         sync_room_images(room, request)
         return Response({'message': f'{room.images.count()} photos saved successfully'}, status=status.HTTP_201_CREATED)
@@ -222,8 +222,7 @@ def upload_room_photos(request, pk):
 @permission_classes([IsAuthenticated])
 def owner_analytics_summary(request):
     """Get owner dashboard analytics"""
-    owner_contacts = get_owner_contacts(request.user)
-    rooms = Room.objects.filter(owner_contact__in=owner_contacts)
+    rooms = Room.objects.filter(owner=request.user)
     room_ids = list(rooms.values_list('id', flat=True))
     bookings = Booking.objects.filter(room_id__in=room_ids).select_related('room')
 
@@ -245,8 +244,7 @@ def owner_analytics_summary(request):
 @permission_classes([IsAuthenticated])
 def owner_enquiries(request):
     """Get bookings/enquiries for owner's rooms"""
-    owner_contacts = get_owner_contacts(request.user)
-    rooms = Room.objects.filter(owner_contact__in=owner_contacts)
+    rooms = Room.objects.filter(owner=request.user)
     room_ids = list(rooms.values_list('id', flat=True))
     
     bookings = (
@@ -280,8 +278,7 @@ def owner_enquiries(request):
 def update_booking_status(request, booking_id):
     """Approve or reject a booking"""
     try:
-        owner_contacts = get_owner_contacts(request.user)
-        rooms = Room.objects.filter(owner_contact__in=owner_contacts)
+        rooms = Room.objects.filter(owner=request.user)
         room_ids = list(rooms.values_list('id', flat=True))
         
         booking = Booking.objects.get(id=booking_id, room_id__in=room_ids)

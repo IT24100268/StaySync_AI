@@ -134,7 +134,7 @@ export default function OwnerListingForm() {
     rent: "",
     deposit: "",
     facilities: [],
-    genderAllowed: "any",
+    genderAllowed: "both",
     latitude: "",
     longitude: "",
     address: "",
@@ -274,7 +274,7 @@ export default function OwnerListingForm() {
         rent: data.rent ?? "",
         deposit: data.deposit ?? "",
         facilities: data.facilities || [],
-        genderAllowed: data.gender_allowed || "any",
+        genderAllowed: data.gender_allowed || "both",
         latitude: data.latitude || "",
         longitude: data.longitude || "",
         address: data.address || "",
@@ -594,9 +594,9 @@ export default function OwnerListingForm() {
                 onChange={(e) => setFormData({ ...formData, genderAllowed: e.target.value })}
                 className={inputCls}
               >
-                <option value="any">Any</option>
-                <option value="male">Male Only</option>
-                <option value="female">Female Only</option>
+                <option value="both">Any</option>
+                <option value="boys">Male Only</option>
+                <option value="girls">Female Only</option>
               </select>
             </div>
 
@@ -718,8 +718,18 @@ export default function OwnerListingForm() {
                 <input
                   type="text"
                   value={formData.latitude}
-                  readOnly
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData((p) => ({ ...p, latitude: val }));
+                    const lat = parseCoordinate(val);
+                    const lng = parseCoordinate(formData.longitude);
+                    if (lat !== null && lng !== null) {
+                      if (markerRef.current) markerRef.current.setPosition({ lat, lng });
+                      if (mapRef.current) { mapRef.current.panTo({ lat, lng }); mapRef.current.setZoom(16); }
+                    }
+                  }}
                   className={inputCls}
+                  placeholder="e.g. 9.684800"
                 />
               </div>
 
@@ -728,8 +738,18 @@ export default function OwnerListingForm() {
                 <input
                   type="text"
                   value={formData.longitude}
-                  readOnly
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData((p) => ({ ...p, longitude: val }));
+                    const lat = parseCoordinate(formData.latitude);
+                    const lng = parseCoordinate(val);
+                    if (lat !== null && lng !== null) {
+                      if (markerRef.current) markerRef.current.setPosition({ lat, lng });
+                      if (mapRef.current) { mapRef.current.panTo({ lat, lng }); mapRef.current.setZoom(16); }
+                    }
+                  }}
                   className={inputCls}
+                  placeholder="e.g. 80.022000"
                 />
               </div>
             </div>

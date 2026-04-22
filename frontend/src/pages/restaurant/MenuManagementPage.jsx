@@ -157,6 +157,7 @@ function MenuCard({ item, onEdit, onDelete, onToggleAvailability }) {
 
 export default function MenuManagementPage() {
   const [items, setItems] = useState([]);
+  const [restaurantId, setRestaurantId] = useState(null);
   const [filteredText, setFilteredText] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [modalOpen, setModalOpen] = useState(false);
@@ -169,10 +170,13 @@ export default function MenuManagementPage() {
       setLoading(true);
       setError('');
 
-      const response = await restaurantApi.getFoodItems();
-      const list = response.data?.results || response.data;
-
+      const [foodRes, profileRes] = await Promise.all([
+        restaurantApi.getFoodItems(),
+        restaurantApi.getProfile(),
+      ]);
+      const list = foodRes.data?.results || foodRes.data;
       setItems(Array.isArray(list) ? list : []);
+      setRestaurantId(profileRes.data?.id ?? null);
     } catch (err) {
       const details = err?.response?.data;
       const detailText =
@@ -231,7 +235,7 @@ export default function MenuManagementPage() {
   }, [categorizedItems, activeCategory, filteredText]);
 
   const onAddNew = () => {
-    setEditingItem(null);
+    setEditingItem({ restaurant_id: restaurantId });
     setModalOpen(true);
   };
 
@@ -242,7 +246,7 @@ export default function MenuManagementPage() {
 
   const handleSubmit = async (payload) => {
     try {
-      if (editingItem) {
+      if (editingItem?.id) {
         await restaurantApi.updateFoodItem(editingItem.id, payload);
       } else {
         await restaurantApi.createFoodItem(payload);

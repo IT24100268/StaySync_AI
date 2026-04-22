@@ -14,6 +14,7 @@ class RestaurantSerializer(serializers.ModelSerializer):
             'name',
             'email',
             'phone',
+            'area',
             'address',
             'latitude',
             'longitude',
@@ -25,21 +26,29 @@ class RestaurantSerializer(serializers.ModelSerializer):
 
 class FoodItemSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
+    restaurant_id = serializers.SerializerMethodField()
 
     class Meta:
         model = FoodItem
         fields = [
             'id',
+            'food_id',
             'restaurant',
+            'restaurant_id',
             'name',
             'description',
             'price',
             'image',
             'image_url',
+            'meal_type',
+            'veg_nonveg',
             'is_available',
             'created_at',
         ]
-        read_only_fields = ['id', 'restaurant', 'created_at', 'image_url']
+        read_only_fields = ['id', 'restaurant', 'created_at', 'image_url', 'restaurant_id']
+
+    def get_restaurant_id(self, obj):
+        return getattr(obj.restaurant, 'id', None)
 
     def validate_name(self, value):
         if not value or len(value.strip()) < 3:
@@ -134,6 +143,7 @@ class RestaurantRegisterSerializer(serializers.Serializer):
     restaurant_name = serializers.CharField(max_length=255)
     restaurant_email = serializers.EmailField(max_length=255)
     phone = serializers.CharField(max_length=32)
+    area = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
     address = serializers.CharField()
 
     def validate_username(self, value):
@@ -177,6 +187,7 @@ class RestaurantRegisterSerializer(serializers.Serializer):
             name=validated_data['restaurant_name'],
             email=validated_data['restaurant_email'],
             phone=validated_data['phone'],
+            area=validated_data.get('area', ''),
             address=validated_data['address'],
         )
 

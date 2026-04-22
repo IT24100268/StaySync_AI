@@ -12,6 +12,7 @@ class Restaurant(models.Model):
     ]
     
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_restaurants')
+    restaurant_id = models.CharField(max_length=10, unique=True, null=True, blank=True)
     name = models.CharField(max_length=255)
     email = models.EmailField()
     phone = models.CharField(max_length=20)

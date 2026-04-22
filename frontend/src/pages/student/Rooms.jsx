@@ -382,6 +382,9 @@ export default function Rooms() {
                         </div>
 
                         <div className="room-card__body">
+                          {room.hostel_id && (
+                            <span className="room-card__hostel-id">{room.hostel_id}</span>
+                          )}
                           <h3>{title}</h3>
                           <p className="room-card__price">{formatCurrency(room.price)} / month</p>
                           <p className="room-card__meta">{subtitle}</p>

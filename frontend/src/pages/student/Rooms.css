@@ -399,6 +399,18 @@
   background: linear-gradient(120deg, #1f4f96, #4b8ef6);
 }
 
+.room-card__hostel-id {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  color: #b98b1f;
+  background: #fff8e8;
+  border: 1px solid #eadab1;
+  border-radius: 999px;
+  padding: 3px 9px;
+  letter-spacing: 0.04em;
+}
+
 .room-card__body {
   display: grid;
   gap: 7px;

@@ -1,44 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { loadGoogleMaps } from '../../utils/googleMapsLoader';
 
 const JAFFNA_UNIVERSITY_CENTER = { lat: 9.6848, lng: 80.0220 };
-const GOOGLE_MAP_SCRIPT_ID = 'google-maps-script';
-
-function isConfiguredGoogleMapsKey(apiKey) {
-  return Boolean(apiKey && apiKey.trim() && apiKey !== 'your-google-maps-api-key');
-}
-
-function loadGoogleMaps(apiKey) {
-  if (!isConfiguredGoogleMapsKey(apiKey)) {
-    return Promise.reject(
-      new Error('Google Maps is not configured yet. Add a real VITE_GOOGLE_MAPS_API_KEY in frontend/.env and restart the frontend.')
-    );
-  }
-
-  if (window.google?.maps) {
-    return Promise.resolve(window.google.maps);
-  }
-
-  const existingScript = document.getElementById(GOOGLE_MAP_SCRIPT_ID);
-  if (existingScript) {
-    return new Promise((resolve, reject) => {
-      existingScript.addEventListener('load', () => resolve(window.google?.maps), { once: true });
-      existingScript.addEventListener('error', () => reject(new Error('Failed to load Google Maps.')), { once: true });
-    });
-  }
-
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.id = GOOGLE_MAP_SCRIPT_ID;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&loading=async`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => resolve(window.google?.maps);
-    script.onerror = () => reject(new Error('Failed to load Google Maps.'));
-    document.head.appendChild(script);
-  });
-}
 
 const Register = () => {
   const [step, setStep] = useState(1);
@@ -64,6 +29,7 @@ const Register = () => {
   const markerRef = useRef(null);
   const geocoderRef = useRef(null);
   const mapListenersRef = useRef([]);
+  const manualCoordTimerRef = useRef(null);
   const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const locationMapEnabled = step === 2 && ['hostel_owner', 'restaurant_owner'].includes(userType);
 
@@ -78,6 +44,9 @@ const Register = () => {
     setUserType(role);
     setProfileData({});
     setDisplayImagePreview('');
+    mapRef.current = null;
+    markerRef.current = null;
+    geocoderRef.current = null;
     setStep(2);
   };
 
@@ -195,6 +164,20 @@ const Register = () => {
     }
 
     await reverseGeocode(lat, lng);
+  };
+
+  const handleManualCoordChange = (field, value) => {
+    setProfileValue(field, value);
+    clearTimeout(manualCoordTimerRef.current);
+    manualCoordTimerRef.current = setTimeout(() => {
+      const lat = field === 'latitude' ? parseFloat(value) : parseFloat(profileData.latitude);
+      const lng = field === 'longitude' ? parseFloat(value) : parseFloat(profileData.longitude);
+      if (Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        if (markerRef.current) markerRef.current.setPosition({ lat, lng });
+        if (mapRef.current) { mapRef.current.panTo({ lat, lng }); mapRef.current.setZoom(16); }
+        reverseGeocode(lat, lng);
+      }
+    }, 600);
   };
 
   const handleUseCurrentLocation = () => {
@@ -433,13 +416,13 @@ const Register = () => {
               <div style={styles.coordinateGrid}>
                 <input
                   value={profileData.latitude || ''}
-                  readOnly
+                  onChange={(e) => handleManualCoordChange('latitude', e.target.value)}
                   placeholder="Latitude"
                   style={{ ...styles.input, marginBottom: 0 }}
                 />
                 <input
                   value={profileData.longitude || ''}
-                  readOnly
+                  onChange={(e) => handleManualCoordChange('longitude', e.target.value)}
                   placeholder="Longitude"
                   style={{ ...styles.input, marginBottom: 0 }}
                 />
@@ -456,7 +439,7 @@ const Register = () => {
               <div style={styles.mapNote}>
                 {resolvingLocation
                   ? 'Updating the location label from the map...'
-                  : 'Click the map or drag the marker to set the hostel location.'}
+                  : 'Click the map, drag the marker, or type coordinates to set the hostel location.'}
               </div>
             </div>
             <div style={styles.uploadCard}>
@@ -501,6 +484,13 @@ const Register = () => {
               style={styles.input}
             />
             <input
+              name="area"
+              placeholder="Area (e.g., Jaffna Town, Nallur)"
+              onChange={(e) => setProfileValue('area', e.target.value)}
+              required
+              style={styles.input}
+            />
+            <input
               name="phone_number"
               placeholder="Phone Number"
               onChange={(e) => setProfileValue('phone_number', e.target.value)}
@@ -540,13 +530,13 @@ const Register = () => {
               <div style={styles.coordinateGrid}>
                 <input
                   value={profileData.latitude || ''}
-                  readOnly
+                  onChange={(e) => handleManualCoordChange('latitude', e.target.value)}
                   placeholder="Latitude"
                   style={{ ...styles.input, marginBottom: 0 }}
                 />
                 <input
                   value={profileData.longitude || ''}
-                  readOnly
+                  onChange={(e) => handleManualCoordChange('longitude', e.target.value)}
                   placeholder="Longitude"
                   style={{ ...styles.input, marginBottom: 0 }}
                 />
@@ -563,7 +553,7 @@ const Register = () => {
               <div style={styles.mapNote}>
                 {resolvingLocation
                   ? 'Updating the location label from the map...'
-                  : 'Click the map or drag the marker to set the restaurant location.'}
+                  : 'Click the map, drag the marker, or type coordinates to set the restaurant location.'}
               </div>
             </div>
             <div style={styles.uploadCard}>
@@ -691,7 +681,7 @@ const Register = () => {
           </div>
         ) : (
           <form onSubmit={handleSubmit} style={styles.card}>
-            <button type="button" onClick={() => setStep(1)} style={styles.backBtn}>
+            <button type="button" onClick={() => { mapRef.current = null; markerRef.current = null; geocoderRef.current = null; setStep(1); }} style={styles.backBtn}>
               ← Back
             </button>
             <h2 style={styles.title}>Register as {roleOptions.find(r => r.value === userType)?.label}</h2>

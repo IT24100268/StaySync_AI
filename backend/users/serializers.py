@@ -35,7 +35,7 @@ class RestaurantOwnerProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RestaurantOwnerProfile
-        fields = ['restaurant_name', 'address', 'latitude', 'longitude', 'phone_number', 'display_image']
+        fields = ['restaurant_name', 'area', 'address', 'latitude', 'longitude', 'phone_number', 'display_image']
 
     def get_display_image(self, obj):
         return build_media_url(self.context.get('request'), obj.display_image)

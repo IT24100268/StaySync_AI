@@ -173,7 +173,7 @@ export default function UsersManagement() {
     setLoading(true);
     try {
       const { data } = await api.get("/admin/users/");
-      setUsers(data.results || data || []);
+      setUsers(Array.isArray(data) ? data : (data.results || []));
     } catch (error) {
       console.error("Failed to fetch users:", error);
     } finally {

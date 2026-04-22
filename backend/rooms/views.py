@@ -16,6 +16,7 @@ class RoomListView(generics.ListAPIView):
     filterset_class = RoomFilter
     ordering_fields = ['price', 'distance_from_university', 'created_at']
     permission_classes = [IsAuthenticated]
+    pagination_class = None
     
     def get_queryset(self):
         from users.models import HostelOwnerProfile

@@ -361,6 +361,20 @@ class RestaurantAdminViewSet(viewsets.ModelViewSet):
         
         # Update is_approved for backward compatibility
         restaurant.is_approved = (new_status == 'APPROVED')
+
+        # Auto-assign restaurant_id when approved for the first time
+        if new_status == 'APPROVED' and not restaurant.restaurant_id:
+            last = Restaurant.objects.filter(
+                restaurant_id__isnull=False
+            ).order_by('restaurant_id').last()
+            next_num = 1
+            if last and last.restaurant_id:
+                try:
+                    next_num = int(last.restaurant_id[1:]) + 1
+                except ValueError:
+                    next_num = Restaurant.objects.filter(restaurant_id__isnull=False).count() + 1
+            restaurant.restaurant_id = f'R{next_num:04d}'
+
         restaurant.save()
         
         create_admin_log(
@@ -380,6 +394,7 @@ class UserAdminViewSet(viewsets.ModelViewSet):
     queryset = User.objects.filter(is_staff=False, is_superuser=False).order_by('-date_joined')
     serializer_class = UserAdminSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
+    pagination_class = None
 
     def get_queryset(self):
         queryset = super().get_queryset()

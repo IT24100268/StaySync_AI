@@ -783,6 +783,7 @@ const Dashboard = () => {
 
                     <div className="listing-card__body">
                       <h3>{restaurant.name}</h3>
+                      <p className="listing-card__meta">ID: {restaurant.restaurant_id || restaurant.id}</p>
                       <p className="listing-card__price">{restaurant.phone || "Contact unavailable"}</p>
                       <p className="listing-card__meta">{restaurant.address || "Address unavailable"}</p>
                       <Link to={`/restaurants/${restaurant.id}`} className="dashboard-btn dashboard-btn--primary">

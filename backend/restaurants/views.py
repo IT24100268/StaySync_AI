@@ -208,6 +208,7 @@ class RestaurantListView(generics.ListAPIView):
     """Public list of restaurants for students"""
     serializer_class = RestaurantSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def _deduplicate_by_owner(self, queryset):
         seen_owner_ids = set()
@@ -223,7 +224,8 @@ class RestaurantListView(generics.ListAPIView):
 
     def get_queryset(self):
         sync_legacy_restaurants_and_menu()
-        return Restaurant.objects.filter(status='APPROVED').order_by('-created_at')
+        qs = Restaurant.objects.filter(status='APPROVED').order_by('owner_id', '-created_at')
+        return self._deduplicate_by_owner(qs)
 
 
 class RestaurantDetailView(generics.RetrieveAPIView):
@@ -240,8 +242,7 @@ class RestaurantMenuView(generics.ListAPIView):
     """Get menu items for a specific restaurant"""
     serializer_class = MenuSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def get_queryset(self):
-        sync_legacy_restaurants_and_menu()
         restaurant_id = self.kwargs.get('pk')
         return Menu.objects.filter(restaurant_id=restaurant_id, is_available=True).order_by('-created_at')

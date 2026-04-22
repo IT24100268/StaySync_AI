@@ -3,9 +3,31 @@ from users.models import User
 
 class Room(models.Model):
     GENDER_CHOICES = [
-        ('male', 'Male Only'),
-        ('female', 'Female Only'),
-        ('any', 'Any'),
+        ('girls', 'Girls'),
+        ('boys', 'Boys'),
+        ('both', 'Both'),
+    ]
+
+    AREA_CHOICES = [
+        ('Annasathiram', 'Annasathiram'),
+        ('Arasadi', 'Arasadi'),
+        ('Ariyalai', 'Ariyalai'),
+        ('Chunnakam', 'Chunnakam'),
+        ('Jaffna Town', 'Jaffna Town'),
+        ('Kaithady', 'Kaithady'),
+        ('Kaladdy', 'Kaladdy'),
+        ('Kantharmadam', 'Kantharmadam'),
+        ('Kokuvil', 'Kokuvil'),
+        ('Kokuvil East', 'Kokuvil East'),
+        ('Kondavil', 'Kondavil'),
+        ('Manipay', 'Manipay'),
+        ('Nachimar Koviladi', 'Nachimar Koviladi'),
+        ('Nallur', 'Nallur'),
+        ('Navatkuli', 'Navatkuli'),
+        ('Tellippalai', 'Tellippalai'),
+        ('Thirunelvely', 'Thirunelvely'),
+        ('Uduvil', 'Uduvil'),
+        ('Vannarpannai', 'Vannarpannai'),
     ]
     
     STATUS_CHOICES = [
@@ -24,19 +46,27 @@ class Room(models.Model):
     hostel_id = models.CharField(max_length=10, unique=True, blank=True)
     room_type = models.CharField(max_length=10, choices=ROOM_TYPE_CHOICES, default='single')
     max_capacity = models.PositiveSmallIntegerField(default=1)
-    estimated_rating = models.DecimalField(max_digits=2, decimal_places=1, default=3.0)
-    area = models.CharField(max_length=50, blank=True)
+    estimated_rating = models.DecimalField(max_digits=3, decimal_places=1, default=3.5)
+    area = models.CharField(max_length=100, choices=AREA_CHOICES, blank=True)
     title = models.CharField(max_length=255)
     description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     deposit = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     address = models.TextField(blank=True)
-    latitude = models.DecimalField(max_digits=9, decimal_places=6)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     facilities = models.JSONField(default=list)
-    gender_allowed = models.CharField(max_length=10, choices=GENDER_CHOICES, default='any')
+    gender_allowed = models.CharField(max_length=10, choices=GENDER_CHOICES, default='both')
+    attached_bathroom = models.BooleanField(default=False)
+    ac_available = models.BooleanField(default=False)
+    fan_available = models.BooleanField(default=False)
+    furnished = models.BooleanField(default=False)
+    study_table = models.BooleanField(default=False)
+    cupboard = models.BooleanField(default=False)
+    balcony = models.BooleanField(default=False)
     distance_from_university = models.DecimalField(max_digits=5, decimal_places=2, help_text="Distance in km")
     owner_contact = models.CharField(max_length=255)
+    owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='owned_rooms')
     rules = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='APPROVED')
     views = models.IntegerField(default=0)

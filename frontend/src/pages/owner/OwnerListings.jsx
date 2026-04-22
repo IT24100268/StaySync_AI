@@ -8,6 +8,7 @@ import {
   MapPin,
   Pencil,
   Plus,
+  Trash2,
   ToggleLeft,
   ToggleRight,
 } from "lucide-react";
@@ -42,7 +43,7 @@ function statusLabel(status, available) {
   return normalized.replace(/_/g, " ");
 }
 
-function ListingCard({ listing, onToggleAvailability }) {
+function ListingCard({ listing, onToggleAvailability, onRemove }) {
   const image = listing.images?.[0]?.url || LISTING_IMAGE_FALLBACK;
   const facilities = listing.facilities?.slice(0, 3) || [];
   const isAvailable = Boolean(listing.available);
@@ -177,6 +178,16 @@ function ListingCard({ listing, onToggleAvailability }) {
                 </span>
                 View
               </Link>
+
+              <button
+                onClick={() => onRemove(listing.id, listing.title)}
+                className="inline-flex items-center gap-2 rounded-[16px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-black text-rose-600 shadow-[0_10px_22px_rgba(225,29,72,0.06)] transition hover:-translate-y-0.5 hover:border-rose-300 hover:bg-rose-100"
+              >
+                <span className="grid h-8 w-8 place-items-center rounded-[12px] bg-white text-rose-500">
+                  <Trash2 size={15} />
+                </span>
+                Remove
+              </button>
             </div>
           </div>
         </div>
@@ -201,6 +212,16 @@ export default function OwnerListings() {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const removeRoom = async (id, title) => {
+    if (!window.confirm(`Remove "${title}"? This cannot be undone.`)) return;
+    try {
+      await ownerApi.delete(`/owner/listings/${id}/`);
+      setListings((prev) => prev.filter((l) => l.id !== id));
+    } catch (e) {
+      alert(e.response?.data?.error || "Failed to remove room.");
     }
   };
 
@@ -294,6 +315,7 @@ export default function OwnerListings() {
               key={listing.id}
               listing={listing}
               onToggleAvailability={toggleAvailability}
+              onRemove={removeRoom}
             />
           ))}
         </div>

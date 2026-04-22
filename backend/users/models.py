@@ -75,6 +75,7 @@ class OwnerVerificationRequest(models.Model):
 class RestaurantOwnerProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='restaurant_profile')
     restaurant_name = models.CharField(max_length=255)
+    area = models.CharField(max_length=255, blank=True, default='')
     address = models.TextField()
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)

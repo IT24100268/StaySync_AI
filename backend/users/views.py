@@ -35,28 +35,29 @@ def normalize_coordinate(value, field_name):
 
 def sync_restaurant_records(owner, payload):
     """
-    Keep both restaurant tables aligned with the latest owner profile data.
+    Keep the legacy restaurant table aligned with the latest owner profile data.
+    The public restaurants table is synced on-demand via sync_legacy_restaurants_and_menu.
     """
     if not payload:
         return
 
-    from restaurants.models import Restaurant as PublicRestaurant
     from restaurant.models import Restaurant as LegacyRestaurant
 
-    for model in (PublicRestaurant, LegacyRestaurant):
-        restaurant_obj = model.objects.filter(owner=owner).order_by('id').first()
-        if restaurant_obj is None:
-            model.objects.create(owner=owner, **payload)
+    restaurant_obj = LegacyRestaurant.objects.filter(owner=owner).order_by('id').first()
+    if restaurant_obj is None:
+        LegacyRestaurant.objects.create(owner=owner, **{k: v for k, v in payload.items() if k != 'area'})
+        return
+
+    update_fields = []
+    for field, value in payload.items():
+        if field == 'area':
             continue
+        if getattr(restaurant_obj, field, None) != value:
+            setattr(restaurant_obj, field, value)
+            update_fields.append(field)
 
-        update_fields = []
-        for field, value in payload.items():
-            if getattr(restaurant_obj, field) != value:
-                setattr(restaurant_obj, field, value)
-                update_fields.append(field)
-
-        if update_fields:
-            restaurant_obj.save(update_fields=update_fields)
+    if update_fields:
+        restaurant_obj.save(update_fields=update_fields)
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -223,7 +224,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
                     allowed = ('hostel_name', 'address', 'latitude', 'longitude', 'phone_number', 'business_reg_no')
                 elif user.user_type == 'restaurant_owner' and hasattr(user, 'restaurant_profile'):
                     profile_obj = user.restaurant_profile
-                    allowed = ('restaurant_name', 'address', 'latitude', 'longitude', 'phone_number')
+                    allowed = ('restaurant_name', 'area', 'address', 'latitude', 'longitude', 'phone_number')
                 elif user.user_type == 'student' and hasattr(user, 'student_profile'):
                     profile_obj = user.student_profile
                     allowed = ('university', 'gender_preference', 'budget', 'phone_number', 'latitude', 'longitude')
@@ -270,6 +271,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
                             'name': getattr(profile_obj, 'restaurant_name', '') or user.username,
                             'email': user.email or '',
                             'phone': getattr(profile_obj, 'phone_number', '') or '',
+                            'area': getattr(profile_obj, 'area', '') or '',
                             'address': getattr(profile_obj, 'address', '') or '',
                             'latitude': getattr(profile_obj, 'latitude', None),
                             'longitude': getattr(profile_obj, 'longitude', None),
