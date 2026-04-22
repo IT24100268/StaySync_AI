@@ -160,35 +160,28 @@ def sync_legacy_restaurants_and_menu():
 
         legacy_foods = LegacyFoodItem.objects.filter(restaurant=legacy).order_by('-created_at')
         for legacy_food in legacy_foods:
-            menu_item, _ = Menu.objects.get_or_create(
+            menu_item, created = Menu.objects.get_or_create(
                 restaurant=mapped,
                 name=legacy_food.name,
+                price=legacy_food.price,
                 defaults={
                     'description': legacy_food.description,
-                    'price': legacy_food.price,
                     'is_available': legacy_food.is_available,
                 },
             )
 
-            menu_changed = False
-            if menu_item.description != legacy_food.description:
-                menu_item.description = legacy_food.description
-                menu_changed = True
-            if menu_item.price != legacy_food.price:
-                menu_item.price = legacy_food.price
-                menu_changed = True
-            if menu_item.is_available != legacy_food.is_available:
-                menu_item.is_available = legacy_food.is_available
-                menu_changed = True
-
-            legacy_image = getattr(legacy_food, 'image', None)
-            if legacy_image and getattr(legacy_image, 'name', ''):
-                if not menu_item.image or menu_item.image.name != legacy_image.name:
-                    menu_item.image = legacy_image
+            if not created:
+                menu_changed = False
+                if menu_item.is_available != legacy_food.is_available:
+                    menu_item.is_available = legacy_food.is_available
                     menu_changed = True
-
-            if menu_changed:
-                menu_item.save()
+                legacy_image = getattr(legacy_food, 'image', None)
+                if legacy_image and getattr(legacy_image, 'name', ''):
+                    if not menu_item.image or menu_item.image.name != legacy_image.name:
+                        menu_item.image = legacy_image
+                        menu_changed = True
+                if menu_changed:
+                    menu_item.save()
 
     # Backfill owners who have profile/public rows but no legacy row yet.
     User = get_user_model()

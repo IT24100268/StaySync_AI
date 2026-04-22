@@ -1,0 +1,301 @@
+food_id,restaurant_id,food_item,meal_type,veg_nonveg,price_lkr
+F0001,R0001,Plain Hoppers,Breakfast,Veg,180
+F0002,R0001,Egg Hoppers,Breakfast,NonVeg,240
+F0003,R0001,String Hoppers with Sambar,Breakfast,Veg,280
+F0004,R0001,Chicken Fried Rice,Lunch,NonVeg,810
+F0005,R0001,Vegetable Fried Rice,Lunch,Veg,660
+F0006,R0001,Seafood Fried Rice,Lunch,NonVeg,940
+F0007,R0001,Chicken Kottu,Dinner,NonVeg,910
+F0008,R0001,Vegetable Kottu,Dinner,Veg,720
+F0009,R0001,Egg Kottu,Dinner,NonVeg,780
+F0010,R0001,Chicken Fried Rice,Lunch,NonVeg,805
+F0011,R0002,Idiyappam with Coconut Milk,Breakfast,Veg,320
+F0012,R0002,Idli with Sambar,Breakfast,Veg,280
+F0013,R0002,Masala Dosa,Breakfast,Veg,400
+F0014,R0002,Chicken Biryani,Lunch,NonVeg,1030
+F0015,R0002,Vegetable Biryani,Lunch,Veg,760
+F0016,R0002,Fish Curry Rice,Lunch,NonVeg,800
+F0017,R0002,Cheese Kottu,Dinner,Veg,860
+F0018,R0002,Chicken Shawarma,Dinner,NonVeg,700
+F0019,R0002,Veg Shawarma,Dinner,Veg,600
+F0020,R0002,Veg Shawarma,Dinner,Veg,590
+F0021,R0003,Parotta with Dhal Curry,Breakfast,Veg,350
+F0022,R0003,Pittu with Coconut,Breakfast,Veg,330
+F0023,R0003,Puttu with Banana,Breakfast,Veg,310
+F0024,R0003,Dhal Curry Rice,Lunch,Veg,650
+F0025,R0003,Mutton Curry Rice,Lunch,NonVeg,1100
+F0026,R0003,Nasi Goreng,Lunch,NonVeg,990
+F0027,R0003,Grilled Chicken with Salad,Dinner,NonVeg,1250
+F0028,R0003,Paneer Wrap,Dinner,Veg,690
+F0029,R0003,Parotta with Chicken Curry,Dinner,NonVeg,850
+F0030,R0003,Chicken Noodles,Lunch,NonVeg,775
+F0031,R0004,Milk Rice with Sambol,Breakfast,Veg,380
+F0032,R0004,Bread Omelette,Breakfast,NonVeg,310
+F0033,R0004,Chicken Roti,Breakfast,NonVeg,400
+F0034,R0004,Veg Noodles,Lunch,Veg,710
+F0035,R0004,Chicken Noodles,Lunch,NonVeg,810
+F0036,R0004,Paneer Rice Bowl,Lunch,Veg,780
+F0037,R0004,Parotta with Veg Kurma,Dinner,Veg,700
+F0038,R0004,Chicken Burger Combo,Dinner,NonVeg,910
+F0039,R0004,Veg Burger Combo,Dinner,Veg,780
+F0040,R0004,Mushroom Pasta,Dinner,Veg,840
+F0041,R0005,Vegetable Roti,Breakfast,Veg,300
+F0042,R0005,Ulundhu Vadai,Breakfast,Veg,220
+F0043,R0005,Poori with Potato Masala,Breakfast,Veg,380
+F0044,R0005,Beef Curry Rice,Lunch,NonVeg,990
+F0045,R0005,Lemon Rice with Veg Curry,Lunch,Veg,660
+F0046,R0005,Egg Fried Rice,Lunch,NonVeg,800
+F0047,R0005,Chicken Pizza Personal,Dinner,NonVeg,1390
+F0048,R0005,Margherita Pizza Personal,Dinner,Veg,1220
+F0049,R0005,Tandoori Chicken Plate,Dinner,NonVeg,1320
+F0050,R0005,Vegetable Biryani,Lunch,Veg,795
+F0051,R0006,Breakfast Kothu Special,Breakfast,NonVeg,410
+F0052,R0006,Plain Hoppers,Breakfast,Veg,180
+F0053,R0006,Egg Hoppers,Breakfast,NonVeg,240
+F0054,R0006,Mixed Grill Rice,Lunch,NonVeg,1110
+F0055,R0006,Chicken Fried Rice,Lunch,NonVeg,810
+F0056,R0006,Vegetable Fried Rice,Lunch,Veg,660
+F0057,R0006,Mushroom Pasta,Dinner,Veg,800
+F0058,R0006,Chicken Kottu,Dinner,NonVeg,910
+F0059,R0006,Vegetable Kottu,Dinner,Veg,720
+F0060,R0006,Parotta with Veg Kurma,Dinner,Veg,710
+F0061,R0007,String Hoppers with Sambar,Breakfast,Veg,300
+F0062,R0007,Idiyappam with Coconut Milk,Breakfast,Veg,320
+F0063,R0007,Idli with Sambar,Breakfast,Veg,280
+F0064,R0007,Seafood Fried Rice,Lunch,NonVeg,960
+F0065,R0007,Chicken Biryani,Lunch,NonVeg,1030
+F0066,R0007,Vegetable Biryani,Lunch,Veg,760
+F0067,R0007,Egg Kottu,Dinner,NonVeg,800
+F0068,R0007,Cheese Kottu,Dinner,Veg,860
+F0069,R0007,Chicken Shawarma,Dinner,NonVeg,700
+F0070,R0007,Egg Fried Rice,Lunch,NonVeg,805
+F0071,R0008,Masala Dosa,Breakfast,Veg,420
+F0072,R0008,Parotta with Dhal Curry,Breakfast,Veg,350
+F0073,R0008,Pittu with Coconut,Breakfast,Veg,330
+F0074,R0008,Fish Curry Rice,Lunch,NonVeg,820
+F0075,R0008,Dhal Curry Rice,Lunch,Veg,650
+F0076,R0008,Mutton Curry Rice,Lunch,NonVeg,1100
+F0077,R0008,Veg Shawarma,Dinner,Veg,620
+F0078,R0008,Grilled Chicken with Salad,Dinner,NonVeg,1250
+F0079,R0008,Paneer Wrap,Dinner,Veg,690
+F0080,R0008,Cheese Kottu,Dinner,Veg,835
+F0081,R0009,Puttu with Banana,Breakfast,Veg,330
+F0082,R0009,Milk Rice with Sambol,Breakfast,Veg,380
+F0083,R0009,Bread Omelette,Breakfast,NonVeg,310
+F0084,R0009,Nasi Goreng,Lunch,NonVeg,1010
+F0085,R0009,Veg Noodles,Lunch,Veg,710
+F0086,R0009,Chicken Noodles,Lunch,NonVeg,810
+F0087,R0009,Parotta with Chicken Curry,Dinner,NonVeg,870
+F0088,R0009,Parotta with Veg Kurma,Dinner,Veg,700
+F0089,R0009,Chicken Burger Combo,Dinner,NonVeg,910
+F0090,R0009,Nasi Goreng,Lunch,NonVeg,960
+F0091,R0010,Chicken Roti,Breakfast,NonVeg,420
+F0092,R0010,Vegetable Roti,Breakfast,Veg,300
+F0093,R0010,Ulundhu Vadai,Breakfast,Veg,220
+F0094,R0010,Paneer Rice Bowl,Lunch,Veg,800
+F0095,R0010,Beef Curry Rice,Lunch,NonVeg,990
+F0096,R0010,Lemon Rice with Veg Curry,Lunch,Veg,660
+F0097,R0010,Veg Burger Combo,Dinner,Veg,800
+F0098,R0010,Chicken Pizza Personal,Dinner,NonVeg,1390
+F0099,R0010,Margherita Pizza Personal,Dinner,Veg,1220
+F0100,R0010,Margherita Pizza Personal,Dinner,Veg,1165
+F0101,R0011,Poori with Potato Masala,Breakfast,Veg,300
+F0102,R0011,Breakfast Kothu Special,Breakfast,NonVeg,410
+F0103,R0011,Plain Hoppers,Breakfast,Veg,180
+F0104,R0011,Egg Fried Rice,Lunch,NonVeg,720
+F0105,R0011,Mixed Grill Rice,Lunch,NonVeg,1110
+F0106,R0011,Chicken Fried Rice,Lunch,NonVeg,810
+F0107,R0011,Tandoori Chicken Plate,Dinner,NonVeg,1240
+F0108,R0011,Mushroom Pasta,Dinner,Veg,800
+F0109,R0011,Chicken Kottu,Dinner,NonVeg,910
+F0110,R0011,Seafood Fried Rice,Lunch,NonVeg,980
+F0111,R0012,Egg Hoppers,Breakfast,NonVeg,260
+F0112,R0012,String Hoppers with Sambar,Breakfast,Veg,300
+F0113,R0012,Idiyappam with Coconut Milk,Breakfast,Veg,320
+F0114,R0012,Vegetable Fried Rice,Lunch,Veg,680
+F0115,R0012,Seafood Fried Rice,Lunch,NonVeg,960
+F0116,R0012,Chicken Biryani,Lunch,NonVeg,1030
+F0117,R0012,Vegetable Kottu,Dinner,Veg,740
+F0118,R0012,Egg Kottu,Dinner,NonVeg,800
+F0119,R0012,Cheese Kottu,Dinner,Veg,860
+F0120,R0012,Paneer Wrap,Dinner,Veg,705
+F0121,R0013,Idli with Sambar,Breakfast,Veg,300
+F0122,R0013,Masala Dosa,Breakfast,Veg,420
+F0123,R0013,Parotta with Dhal Curry,Breakfast,Veg,350
+F0124,R0013,Vegetable Biryani,Lunch,Veg,780
+F0125,R0013,Fish Curry Rice,Lunch,NonVeg,820
+F0126,R0013,Dhal Curry Rice,Lunch,Veg,650
+F0127,R0013,Chicken Shawarma,Dinner,NonVeg,720
+F0128,R0013,Veg Shawarma,Dinner,Veg,620
+F0129,R0013,Grilled Chicken with Salad,Dinner,NonVeg,1250
+F0130,R0013,Beef Curry Rice,Lunch,NonVeg,980
+F0131,R0014,Pittu with Coconut,Breakfast,Veg,350
+F0132,R0014,Puttu with Banana,Breakfast,Veg,330
+F0133,R0014,Milk Rice with Sambol,Breakfast,Veg,380
+F0134,R0014,Mutton Curry Rice,Lunch,NonVeg,1120
+F0135,R0014,Nasi Goreng,Lunch,NonVeg,1010
+F0136,R0014,Veg Noodles,Lunch,Veg,710
+F0137,R0014,Paneer Wrap,Dinner,Veg,710
+F0138,R0014,Parotta with Chicken Curry,Dinner,NonVeg,870
+F0139,R0014,Parotta with Veg Kurma,Dinner,Veg,700
+F0140,R0014,Vegetable Kottu,Dinner,Veg,805
+F0141,R0015,Bread Omelette,Breakfast,NonVeg,330
+F0142,R0015,Chicken Roti,Breakfast,NonVeg,420
+F0143,R0015,Vegetable Roti,Breakfast,Veg,300
+F0144,R0015,Chicken Noodles,Lunch,NonVeg,830
+F0145,R0015,Paneer Rice Bowl,Lunch,Veg,800
+F0146,R0015,Beef Curry Rice,Lunch,NonVeg,990
+F0147,R0015,Chicken Burger Combo,Dinner,NonVeg,930
+F0148,R0015,Veg Burger Combo,Dinner,Veg,800
+F0149,R0015,Chicken Pizza Personal,Dinner,NonVeg,1390
+F0150,R0015,Dhal Curry Rice,Lunch,Veg,605
+F0151,R0016,Ulundhu Vadai,Breakfast,Veg,150
+F0152,R0016,Poori with Potato Masala,Breakfast,Veg,300
+F0153,R0016,Breakfast Kothu Special,Breakfast,NonVeg,410
+F0154,R0016,Lemon Rice with Veg Curry,Lunch,Veg,580
+F0155,R0016,Egg Fried Rice,Lunch,NonVeg,720
+F0156,R0016,Mixed Grill Rice,Lunch,NonVeg,1110
+F0157,R0016,Margherita Pizza Personal,Dinner,Veg,1140
+F0158,R0016,Tandoori Chicken Plate,Dinner,NonVeg,1240
+F0159,R0016,Mushroom Pasta,Dinner,Veg,800
+F0160,R0016,Veg Burger Combo,Dinner,Veg,730
+F0161,R0017,Plain Hoppers,Breakfast,Veg,200
+F0162,R0017,Egg Hoppers,Breakfast,NonVeg,260
+F0163,R0017,String Hoppers with Sambar,Breakfast,Veg,300
+F0164,R0017,Chicken Fried Rice,Lunch,NonVeg,830
+F0165,R0017,Vegetable Fried Rice,Lunch,Veg,680
+F0166,R0017,Seafood Fried Rice,Lunch,NonVeg,960
+F0167,R0017,Chicken Kottu,Dinner,NonVeg,930
+F0168,R0017,Vegetable Kottu,Dinner,Veg,740
+F0169,R0017,Egg Kottu,Dinner,NonVeg,800
+F0170,R0017,Chicken Fried Rice,Lunch,NonVeg,835
+F0171,R0018,Idiyappam with Coconut Milk,Breakfast,Veg,340
+F0172,R0018,Idli with Sambar,Breakfast,Veg,300
+F0173,R0018,Masala Dosa,Breakfast,Veg,420
+F0174,R0018,Chicken Biryani,Lunch,NonVeg,1050
+F0175,R0018,Vegetable Biryani,Lunch,Veg,780
+F0176,R0018,Fish Curry Rice,Lunch,NonVeg,820
+F0177,R0018,Cheese Kottu,Dinner,Veg,880
+F0178,R0018,Chicken Shawarma,Dinner,NonVeg,720
+F0179,R0018,Veg Shawarma,Dinner,Veg,620
+F0180,R0018,Veg Shawarma,Dinner,Veg,620
+F0181,R0019,Parotta with Dhal Curry,Breakfast,Veg,370
+F0182,R0019,Pittu with Coconut,Breakfast,Veg,350
+F0183,R0019,Puttu with Banana,Breakfast,Veg,330
+F0184,R0019,Dhal Curry Rice,Lunch,Veg,670
+F0185,R0019,Mutton Curry Rice,Lunch,NonVeg,1120
+F0186,R0019,Nasi Goreng,Lunch,NonVeg,1010
+F0187,R0019,Grilled Chicken with Salad,Dinner,NonVeg,1270
+F0188,R0019,Paneer Wrap,Dinner,Veg,710
+F0189,R0019,Parotta with Chicken Curry,Dinner,NonVeg,870
+F0190,R0019,Chicken Noodles,Lunch,NonVeg,805
+F0191,R0020,Milk Rice with Sambol,Breakfast,Veg,400
+F0192,R0020,Bread Omelette,Breakfast,NonVeg,330
+F0193,R0020,Chicken Roti,Breakfast,NonVeg,420
+F0194,R0020,Veg Noodles,Lunch,Veg,730
+F0195,R0020,Chicken Noodles,Lunch,NonVeg,830
+F0196,R0020,Paneer Rice Bowl,Lunch,Veg,800
+F0197,R0020,Parotta with Veg Kurma,Dinner,Veg,720
+F0198,R0020,Chicken Burger Combo,Dinner,NonVeg,930
+F0199,R0020,Veg Burger Combo,Dinner,Veg,800
+F0200,R0020,Mushroom Pasta,Dinner,Veg,870
+F0201,R0021,Vegetable Roti,Breakfast,Veg,220
+F0202,R0021,Ulundhu Vadai,Breakfast,Veg,150
+F0203,R0021,Poori with Potato Masala,Breakfast,Veg,300
+F0204,R0021,Beef Curry Rice,Lunch,NonVeg,910
+F0205,R0021,Lemon Rice with Veg Curry,Lunch,Veg,580
+F0206,R0021,Egg Fried Rice,Lunch,NonVeg,720
+F0207,R0021,Chicken Pizza Personal,Dinner,NonVeg,1310
+F0208,R0021,Margherita Pizza Personal,Dinner,Veg,1140
+F0209,R0021,Tandoori Chicken Plate,Dinner,NonVeg,1240
+F0210,R0021,Vegetable Biryani,Lunch,Veg,825
+F0211,R0022,Breakfast Kothu Special,Breakfast,NonVeg,430
+F0212,R0022,Plain Hoppers,Breakfast,Veg,200
+F0213,R0022,Egg Hoppers,Breakfast,NonVeg,260
+F0214,R0022,Mixed Grill Rice,Lunch,NonVeg,1130
+F0215,R0022,Chicken Fried Rice,Lunch,NonVeg,830
+F0216,R0022,Vegetable Fried Rice,Lunch,Veg,680
+F0217,R0022,Mushroom Pasta,Dinner,Veg,820
+F0218,R0022,Chicken Kottu,Dinner,NonVeg,930
+F0219,R0022,Vegetable Kottu,Dinner,Veg,740
+F0220,R0023,String Hoppers with Sambar,Breakfast,Veg,320
+F0221,R0023,Idiyappam with Coconut Milk,Breakfast,Veg,340
+F0222,R0023,Idli with Sambar,Breakfast,Veg,300
+F0223,R0023,Seafood Fried Rice,Lunch,NonVeg,980
+F0224,R0023,Chicken Biryani,Lunch,NonVeg,1050
+F0225,R0023,Vegetable Biryani,Lunch,Veg,780
+F0226,R0023,Egg Kottu,Dinner,NonVeg,820
+F0227,R0023,Cheese Kottu,Dinner,Veg,880
+F0228,R0023,Chicken Shawarma,Dinner,NonVeg,720
+F0229,R0024,Masala Dosa,Breakfast,Veg,440
+F0230,R0024,Parotta with Dhal Curry,Breakfast,Veg,370
+F0231,R0024,Pittu with Coconut,Breakfast,Veg,350
+F0232,R0024,Fish Curry Rice,Lunch,NonVeg,840
+F0233,R0024,Dhal Curry Rice,Lunch,Veg,670
+F0234,R0024,Mutton Curry Rice,Lunch,NonVeg,1120
+F0235,R0024,Veg Shawarma,Dinner,Veg,640
+F0236,R0024,Grilled Chicken with Salad,Dinner,NonVeg,1270
+F0237,R0024,Paneer Wrap,Dinner,Veg,710
+F0238,R0025,Puttu with Banana,Breakfast,Veg,350
+F0239,R0025,Milk Rice with Sambol,Breakfast,Veg,400
+F0240,R0025,Bread Omelette,Breakfast,NonVeg,330
+F0241,R0025,Nasi Goreng,Lunch,NonVeg,1030
+F0242,R0025,Veg Noodles,Lunch,Veg,730
+F0243,R0025,Chicken Noodles,Lunch,NonVeg,830
+F0244,R0025,Parotta with Chicken Curry,Dinner,NonVeg,890
+F0245,R0025,Parotta with Veg Kurma,Dinner,Veg,720
+F0246,R0025,Chicken Burger Combo,Dinner,NonVeg,930
+F0247,R0026,Chicken Roti,Breakfast,NonVeg,340
+F0248,R0026,Vegetable Roti,Breakfast,Veg,220
+F0249,R0026,Ulundhu Vadai,Breakfast,Veg,150
+F0250,R0026,Paneer Rice Bowl,Lunch,Veg,720
+F0251,R0026,Beef Curry Rice,Lunch,NonVeg,910
+F0252,R0026,Lemon Rice with Veg Curry,Lunch,Veg,580
+F0253,R0026,Veg Burger Combo,Dinner,Veg,720
+F0254,R0026,Chicken Pizza Personal,Dinner,NonVeg,1310
+F0255,R0026,Margherita Pizza Personal,Dinner,Veg,1140
+F0256,R0027,Poori with Potato Masala,Breakfast,Veg,320
+F0257,R0027,Breakfast Kothu Special,Breakfast,NonVeg,430
+F0258,R0027,Plain Hoppers,Breakfast,Veg,200
+F0259,R0027,Egg Fried Rice,Lunch,NonVeg,740
+F0260,R0027,Mixed Grill Rice,Lunch,NonVeg,1130
+F0261,R0027,Chicken Fried Rice,Lunch,NonVeg,830
+F0262,R0027,Tandoori Chicken Plate,Dinner,NonVeg,1260
+F0263,R0027,Mushroom Pasta,Dinner,Veg,820
+F0264,R0027,Chicken Kottu,Dinner,NonVeg,930
+F0265,R0028,Egg Hoppers,Breakfast,NonVeg,280
+F0266,R0028,String Hoppers with Sambar,Breakfast,Veg,320
+F0267,R0028,Idiyappam with Coconut Milk,Breakfast,Veg,340
+F0268,R0028,Vegetable Fried Rice,Lunch,Veg,700
+F0269,R0028,Seafood Fried Rice,Lunch,NonVeg,980
+F0270,R0028,Chicken Biryani,Lunch,NonVeg,1050
+F0271,R0028,Vegetable Kottu,Dinner,Veg,760
+F0272,R0028,Egg Kottu,Dinner,NonVeg,820
+F0273,R0028,Cheese Kottu,Dinner,Veg,880
+F0274,R0029,Idli with Sambar,Breakfast,Veg,320
+F0275,R0029,Masala Dosa,Breakfast,Veg,440
+F0276,R0029,Parotta with Dhal Curry,Breakfast,Veg,370
+F0277,R0029,Vegetable Biryani,Lunch,Veg,800
+F0278,R0029,Fish Curry Rice,Lunch,NonVeg,840
+F0279,R0029,Dhal Curry Rice,Lunch,Veg,670
+F0280,R0029,Chicken Shawarma,Dinner,NonVeg,740
+F0281,R0029,Veg Shawarma,Dinner,Veg,640
+F0282,R0029,Grilled Chicken with Salad,Dinner,NonVeg,1270
+F0283,R0030,Pittu with Coconut,Breakfast,Veg,370
+F0284,R0030,Puttu with Banana,Breakfast,Veg,350
+F0285,R0030,Milk Rice with Sambol,Breakfast,Veg,400
+F0286,R0030,Mutton Curry Rice,Lunch,NonVeg,1140
+F0287,R0030,Nasi Goreng,Lunch,NonVeg,1030
+F0288,R0030,Veg Noodles,Lunch,Veg,730
+F0289,R0030,Paneer Wrap,Dinner,Veg,730
+F0290,R0030,Parotta with Chicken Curry,Dinner,NonVeg,890
+F0291,R0030,Parotta with Veg Kurma,Dinner,Veg,720
+F0292,R0031,Bread Omelette,Breakfast,NonVeg,250
+F0293,R0031,Chicken Roti,Breakfast,NonVeg,340
+F0294,R0031,Vegetable Roti,Breakfast,Veg,220
+F0295,R0031,Chicken Noodles,Lunch,NonVeg,750
+F0296,R0031,Paneer Rice Bowl,Lunch,Veg,720
+F0297,R0031,Beef Curry Rice,Lunch,NonVeg,910
+F0298,R0031,Chicken Burger Combo,Dinner,NonVeg,850
+F0299,R0031,Veg Burger Combo,Dinner,Veg,720
+F0300,R0031,Chicken Pizza Personal,Dinner,NonVeg,1310
