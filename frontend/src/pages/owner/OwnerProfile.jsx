@@ -413,6 +413,16 @@ export default function OwnerProfile() {
     if (!isEditing) return;
     setSaving(true);
     setMessage(null);
+    if (!/^0[0-9]{9}$/.test(form.phone_number)) {
+      setMessage({ type: 'error', text: 'Enter a valid Sri Lankan phone number (e.g. 0771234567)' })
+      setSaving(false)
+      return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setMessage({ type: 'error', text: 'Enter a valid email address (e.g. name@example.com)' })
+      setSaving(false)
+      return
+    }
     try {
       const payload = new FormData();
       payload.append("username", form.username);
@@ -451,7 +461,11 @@ export default function OwnerProfile() {
     }
   };
 
-  const set = (key) => (e) => setForm((p) => ({ ...p, [key]: e.target.value }));
+  const set = (key) => (e) => {
+    const val = e.target.value
+    if (key === 'phone_number' && !/^[0-9]*$/.test(val)) return
+    setForm((p) => ({ ...p, [key]: val }))
+  };
 
   return (
     <div className="space-y-6">

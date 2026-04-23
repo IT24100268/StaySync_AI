@@ -243,10 +243,16 @@ const Register = () => {
       return;
     }
 
+    // Validate email
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      setError('Enter a valid email address (e.g. name@example.com)');
+      return;
+    }
+
     // Validate phone number
     const phone = profileData.phone_number;
-    if (phone && !/^[0-9+\-\s()]+$/.test(phone)) {
-      setError('Please enter a valid phone number');
+    if (phone && !/^0[0-9]{9}$/.test(phone)) {
+      setError('Enter a valid Sri Lankan phone number (e.g. 0771234567)');
       return;
     }
 
@@ -353,8 +359,9 @@ const Register = () => {
             />
             <input
               name="phone_number"
-              placeholder="Phone Number"
-              onChange={(e) => setProfileValue('phone_number', e.target.value)}
+              placeholder="Phone Number (e.g. 0771234567)"
+              value={profileData.phone_number || ''}
+              onChange={(e) => { if (/^[0-9]*$/.test(e.target.value)) setProfileValue('phone_number', e.target.value) }}
               required
               style={styles.input}
             />
@@ -372,8 +379,9 @@ const Register = () => {
             />
             <input
               name="phone_number"
-              placeholder="Phone Number"
-              onChange={(e) => setProfileValue('phone_number', e.target.value)}
+              placeholder="Phone Number (e.g. 0771234567)"
+              value={profileData.phone_number || ''}
+              onChange={(e) => { if (/^[0-9]*$/.test(e.target.value)) setProfileValue('phone_number', e.target.value) }}
               required
               style={styles.input}
             />
@@ -492,8 +500,9 @@ const Register = () => {
             />
             <input
               name="phone_number"
-              placeholder="Phone Number"
-              onChange={(e) => setProfileValue('phone_number', e.target.value)}
+              placeholder="Phone Number (e.g. 0771234567)"
+              value={profileData.phone_number || ''}
+              onChange={(e) => { if (/^[0-9]*$/.test(e.target.value)) setProfileValue('phone_number', e.target.value) }}
               required
               style={styles.input}
             />
@@ -612,8 +621,9 @@ const Register = () => {
             )}
             <input
               name="phone_number"
-              placeholder="Phone Number"
-              onChange={(e) => setProfileValue('phone_number', e.target.value)}
+              placeholder="Phone Number (e.g. 0771234567)"
+              value={profileData.phone_number || ''}
+              onChange={(e) => { if (/^[0-9]*$/.test(e.target.value)) setProfileValue('phone_number', e.target.value) }}
               required
               style={styles.input}
             />

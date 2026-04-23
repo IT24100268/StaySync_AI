@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import StatusBadge from '../../components/StatusBadge';
 import { restaurantApi } from '../../services/restaurantApi';
+import './RestaurantDashboard.css';
 
 function normalizeOrders(responseData) {
   if (Array.isArray(responseData)) return responseData;
@@ -239,6 +240,12 @@ export default function OrdersPage() {
   const [markingCollectedId, setMarkingCollectedId] = useState(null);
   const [markingTakeawayReadyId, setMarkingTakeawayReadyId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [acceptModal, setAcceptModal] = useState(null); // order
+  const [rejectModal, setRejectModal] = useState(null); // order
+  const [prepTime, setPrepTime] = useState('');
+  const [prepError, setPrepError] = useState('');
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectError, setRejectError] = useState('');
   const PAGE_SIZE = 10;
 
   const loadOrders = async () => {
@@ -262,34 +269,52 @@ export default function OrdersPage() {
     loadOrders();
   }, []);
 
-  const acceptOrder = async (order) => {
-    const currentPrep = Number(order.preparation_time || 25);
-    const input = window.prompt('Enter preparation time in minutes:', String(currentPrep));
-    if (input === null) return;
-    const preparationTime = Number(input);
-    if (!Number.isFinite(preparationTime) || preparationTime < 0) {
-      setError('Please enter a valid preparation time.');
+  const acceptOrder = (order) => {
+    setPrepTime(String(order.preparation_time || 25));
+    setPrepError('');
+    setAcceptModal(order);
+  };
+
+  const confirmAccept = async () => {
+    const preparationTime = Number(prepTime);
+    if (!Number.isFinite(preparationTime) || preparationTime < 1) {
+      setPrepError('Please enter a valid preparation time (minimum 1 minute).');
       return;
     }
-
     try {
-      await restaurantApi.acceptOrder(order.id, preparationTime);
+      await restaurantApi.acceptOrder(acceptModal.id, preparationTime);
+      setAcceptModal(null);
+      setPrepTime('');
+      setPrepError('');
       loadOrders();
       setError('');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to accept order.');
+      setAcceptModal(null);
     }
   };
 
-  const rejectOrder = async (order) => {
-    const reason = window.prompt('Enter rejection reason:', 'Restaurant is busy');
-    if (reason === null) return;
+  const rejectOrder = (order) => {
+    setRejectReason('');
+    setRejectError('');
+    setRejectModal(order);
+  };
+
+  const confirmReject = async () => {
+    if (!rejectReason.trim()) {
+      setRejectError('Please enter a rejection reason.');
+      return;
+    }
     try {
-      await restaurantApi.rejectOrder(order.id, reason || 'Restaurant is busy');
+      await restaurantApi.rejectOrder(rejectModal.id, rejectReason.trim());
+      setRejectModal(null);
+      setRejectReason('');
+      setRejectError('');
       loadOrders();
       setError('');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to reject order.');
+      setRejectModal(null);
     }
   };
 
@@ -830,6 +855,67 @@ export default function OrdersPage() {
           </div>
         </section>
       </div>
+
+      {acceptModal ? (
+        <div className="restaurant-order-modal-backdrop" onClick={() => setAcceptModal(null)}>
+          <section className="restaurant-order-modal" onClick={(e) => e.stopPropagation()}>
+            <header className="restaurant-order-modal__header">
+              <div>
+                <p>Accept Order</p>
+                <h3>Order #{acceptModal.id}</h3>
+              </div>
+              <button type="button" onClick={() => setAcceptModal(null)}>Close</button>
+            </header>
+            <div style={{ padding: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 8 }}>
+                Preparation time (minutes)
+                <input
+                  type="number"
+                  min="1"
+                  value={prepTime}
+                  onChange={(e) => setPrepTime(e.target.value)}
+                  style={{ display: 'block', width: '100%', marginTop: 4, padding: '8px', borderRadius: 8, border: '1px solid #ddd' }}
+                />
+              </label>
+              {prepError ? <p style={{ color: 'red', marginBottom: 8 }}>{prepError}</p> : null}
+              <button type="button" className="restaurant-orders-action-btn" onClick={confirmAccept}>
+                <CheckCircle2 size={14} />
+                <span>Confirm Accept</span>
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {rejectModal ? (
+        <div className="restaurant-order-modal-backdrop" onClick={() => setRejectModal(null)}>
+          <section className="restaurant-order-modal" onClick={(e) => e.stopPropagation()}>
+            <header className="restaurant-order-modal__header">
+              <div>
+                <p>Reject Order</p>
+                <h3>Order #{rejectModal.id}</h3>
+              </div>
+              <button type="button" onClick={() => setRejectModal(null)}>Close</button>
+            </header>
+            <div style={{ padding: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 8 }}>
+                Rejection reason
+                <textarea
+                  rows={3}
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  style={{ display: 'block', width: '100%', marginTop: 4, padding: '8px', borderRadius: 8, border: '1px solid #ddd' }}
+                />
+              </label>
+              {rejectError ? <p style={{ color: 'red', marginBottom: 8 }}>{rejectError}</p> : null}
+              <button type="button" className="restaurant-orders-reject-btn" onClick={confirmReject}>
+                <XCircle size={14} />
+                <span>Confirm Reject</span>
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {selectedOrder ? (
         <div className="restaurant-order-modal-backdrop" onClick={closeOrderDetails}>

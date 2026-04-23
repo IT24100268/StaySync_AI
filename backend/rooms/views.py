@@ -40,8 +40,20 @@ class RoomDetailView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        # Only show APPROVED rooms
-        return Room.objects.filter(status='APPROVED')
+        from users.models import HostelOwnerProfile
+        blocked_contacts = list(
+            HostelOwnerProfile.objects.filter(user__is_blocked=True)
+            .values_list('phone_number', flat=True)
+        )
+        blocked_emails = list(
+            HostelOwnerProfile.objects.filter(user__is_blocked=True)
+            .values_list('user__email', flat=True)
+        )
+        excluded_contacts = [c for c in blocked_contacts + blocked_emails if c and c.strip()]
+        qs = Room.objects.filter(status='APPROVED')
+        if excluded_contacts:
+            qs = qs.exclude(owner_contact__in=excluded_contacts)
+        return qs
 
     def retrieve(self, request, *args, **kwargs):
         room = self.get_object()

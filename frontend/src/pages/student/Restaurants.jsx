@@ -382,6 +382,9 @@ export default function Restaurants() {
 
                 <div className="restaurant-feature-card__body">
                   <h2>{selectedRestaurant?.name}</h2>
+                  <p className="restaurant-feature-card__meta" style={{fontWeight:'700', color:'#ef7f1a'}}>
+                    ID: {selectedRestaurant?.restaurant_id ?? `R-${selectedRestaurant?.id}`}
+                  </p>
                   <p className="restaurant-feature-card__price">
                     {selectedRestaurant?.menu?.minPrice !== null
                       ? `${formatCurrency(selectedRestaurant.menu.minPrice)} starting`
@@ -466,6 +469,9 @@ export default function Restaurants() {
 
                       <div className="restaurant-card__body">
                         <h4>{restaurant.name}</h4>
+                        <p style={{fontSize:'12px', fontWeight:'700', color:'#ef7f1a', margin:'2px 0'}}>
+                          ID: {restaurant.restaurant_id ?? `R-${restaurant.id}`}
+                        </p>
                         <p className="restaurant-card__price">
                           {restaurant.menu.minPrice !== null
                             ? `${formatCurrency(restaurant.menu.minPrice)} starting`

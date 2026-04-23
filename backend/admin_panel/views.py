@@ -26,6 +26,38 @@ from .utils import create_admin_log
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_notifications(request):
+    """Returns only warnings and block notifications for the currently logged-in user."""
+    import json
+    user = request.user
+    notifications = []
+
+    logs = AdminLog.objects.filter(
+        target_type='USER',
+        target_id=user.id
+    ).order_by('-created_at')[:50]
+
+    for log in logs:
+        action_lower = (log.action or '').lower()
+        # Only include warnings and block actions
+        if not any(word in action_lower for word in ['warn', 'block', 'suspend', 'restrict']):
+            continue
+        try:
+            details = json.loads(log.details) if isinstance(log.details, str) else (log.details or {})
+        except Exception:
+            details = {}
+        notifications.append({
+            'id': log.id,
+            'action': log.action,
+            'details': details,
+            'created_at': log.created_at.isoformat(),
+        })
+
+    return Response({'notifications': notifications, 'warnings_count': user.warnings_count})
+
+
+@api_view(['GET'])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def admin_analytics_summary(request):
     """Get admin dashboard analytics summary"""

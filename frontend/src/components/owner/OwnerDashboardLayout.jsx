@@ -67,10 +67,11 @@ export default function OwnerDashboardLayout() {
   const fetchNotifications = async () => {
     setNotificationsLoading(true);
     try {
-      const [enquiriesRes, listingsRes, ownerRes] = await Promise.all([
+      const [enquiriesRes, listingsRes, ownerRes, myNotifsRes] = await Promise.all([
         ownerApi.get("/owner/enquiries/"),
         ownerApi.get("/owner/listings/"),
         ownerApi.get("/auth/profile/").catch(() => ({ data: null })),
+        ownerApi.get("/admin/my-notifications/").catch(() => ({ data: { notifications: [] } })),
       ]);
 
       const enquiries = Array.isArray(enquiriesRes.data) ? enquiriesRes.data : [];
@@ -79,6 +80,7 @@ export default function OwnerDashboardLayout() {
       const verification = ownerRes.data?.verification || {
         status: ownerRes.data?.is_approved ? "approved" : "pending",
       };
+      const adminLogs = myNotifsRes.data?.notifications || [];
 
       const pendingEnquiries = enquiries.filter((item) => item.status === "pending");
       const approvedBookings = enquiries.filter((item) => item.status === "approved");
@@ -157,7 +159,31 @@ export default function OwnerDashboardLayout() {
         });
       }
 
-      setNotifications([...latestPending, ...nextNotifications]);
+      // Admin warnings
+      const adminWarnings = adminLogs.map((log) => {
+        const details = log.details || {};
+        let title = log.action;
+        let body = "";
+        if (details.warning_note) {
+          title = "⚠️ Warning from Admin";
+          body = details.warning_note;
+        } else if (log.action?.toLowerCase().includes("block")) {
+          title = "🚫 Account Action";
+          body = details.reason || details.block_reason || log.action;
+        } else if (log.action?.toLowerCase().includes("warn")) {
+          title = "⚠️ " + log.action;
+          body = details.warning_note || "";
+        }
+        return {
+          id: `admin-log-${log.id}`,
+          title,
+          body,
+          to: "/owner/dashboard",
+          highlight: true,
+        };
+      });
+
+      setNotifications([...adminWarnings, ...latestPending, ...nextNotifications]);
       setReadIds(new Set());
       setClearedIds(new Set());
     } catch (error) {

@@ -6,15 +6,17 @@ import django.db.models.deletion
 def backfill_owner(apps, schema_editor):
     Room = apps.get_model('rooms', 'Room')
     User = apps.get_model('users', 'User')
-    HostelOwnerProfile = apps.get_model('users', 'HostelOwnerProfile')
+    try:
+        HostelOwnerProfile = apps.get_model('users', 'HostelOwnerProfile')
+    except LookupError:
+        HostelOwnerProfile = None
 
     for room in Room.objects.filter(owner__isnull=True):
         contact = (room.owner_contact or '').strip()
         if not contact:
             continue
-        # Try matching by email first, then by phone number on hostel profile
         user = User.objects.filter(email=contact).first()
-        if not user:
+        if not user and HostelOwnerProfile:
             profile = HostelOwnerProfile.objects.filter(phone_number=contact).first()
             if profile:
                 user = profile.user
@@ -27,6 +29,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('rooms', '0011_room_ai_fields'),
+        ('users', '0003_user_is_approved_alter_user_user_type_studentprofile_and_more'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

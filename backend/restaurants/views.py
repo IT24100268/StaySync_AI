@@ -217,7 +217,10 @@ class RestaurantListView(generics.ListAPIView):
 
     def get_queryset(self):
         sync_legacy_restaurants_and_menu()
-        qs = Restaurant.objects.filter(status='APPROVED').order_by('owner_id', '-created_at')
+        qs = Restaurant.objects.filter(
+            status='APPROVED',
+            owner__is_blocked=False
+        ).order_by('owner_id', '-created_at')
         return self._deduplicate_by_owner(qs)
 
 
@@ -228,7 +231,7 @@ class RestaurantDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         sync_legacy_restaurants_and_menu()
-        return Restaurant.objects.filter(status='APPROVED')
+        return Restaurant.objects.filter(status='APPROVED', owner__is_blocked=False)
 
 
 class RestaurantMenuView(generics.ListAPIView):
@@ -238,4 +241,9 @@ class RestaurantMenuView(generics.ListAPIView):
 
     def get_queryset(self):
         restaurant_id = self.kwargs.get('pk')
-        return Menu.objects.filter(restaurant_id=restaurant_id, is_available=True).order_by('-created_at')
+        return Menu.objects.filter(
+            restaurant_id=restaurant_id,
+            is_available=True,
+            restaurant__status='APPROVED',
+            restaurant__owner__is_blocked=False
+        ).order_by('-created_at')

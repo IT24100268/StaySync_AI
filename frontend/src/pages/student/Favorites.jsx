@@ -4,6 +4,30 @@ import api from "../../services/api";
 import { STUDENT_LAYOUT, STUDENT_THEME as THEME } from "../../styles/studentTheme";
 import "./Favorites.css";
 
+const UNIVERSITY_LAT = 9.684058615838461;
+const UNIVERSITY_LNG = 80.02305072385631;
+
+const getRoomDistance = (room) => {
+  const lat = Number(room.latitude);
+  const lng = Number(room.longitude);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && (Math.abs(lat) > 0.001 || Math.abs(lng) > 0.001)) {
+    const R = 6371;
+    const dLat = ((lat - UNIVERSITY_LAT) * Math.PI) / 180;
+    const dLng = ((lng - UNIVERSITY_LNG) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((UNIVERSITY_LAT * Math.PI) / 180) *
+        Math.cos((lat * Math.PI) / 180) *
+        Math.sin(dLng / 2) ** 2;
+    return (R * 2 * Math.asin(Math.sqrt(a))).toFixed(1);
+  }
+  const fromUniversity = Number(room.distance_from_university);
+  if (Number.isFinite(fromUniversity) && fromUniversity > 0) {
+    return fromUniversity.toFixed(1);
+  }
+  return null;
+};
+
 const Favorites = () => {
   const [favorites, setFavorites] = useState([]);
   const navigate = useNavigate();
@@ -59,7 +83,10 @@ const Favorites = () => {
                     LKR {Number(fav.room.price).toLocaleString()} / month
                   </div>
                   <div style={styles.meta}>
-                    📍 {fav.room.distance_from_university} km
+                    {(() => {
+                      const dist = getRoomDistance(fav.room);
+                      return dist ? `📍 ${dist} km from university` : null;
+                    })()}
                   </div>
 
                   <button

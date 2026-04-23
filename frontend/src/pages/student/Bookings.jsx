@@ -14,6 +14,34 @@ import {
 import api from "../../services/api";
 import "./Bookings.css";
 
+const UNIVERSITY_LAT = 9.684058615838461;
+const UNIVERSITY_LNG = 80.02305072385631;
+
+const haversineKm = (lat1, lng1, lat2, lng2) => {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+};
+
+const getRoomDistance = (room) => {
+  const lat = Number(room.latitude);
+  const lng = Number(room.longitude);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && (Math.abs(lat) > 0.001 || Math.abs(lng) > 0.001)) {
+    return haversineKm(UNIVERSITY_LAT, UNIVERSITY_LNG, lat, lng).toFixed(1);
+  }
+  const fromUniversity = Number(room.distance_from_university);
+  if (Number.isFinite(fromUniversity) && fromUniversity > 0) {
+    return fromUniversity.toFixed(1);
+  }
+  return null;
+};
+
 const toArray = (payload) => {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.results)) return payload.results;
@@ -242,6 +270,7 @@ export default function Bookings() {
               const ownerName = room.hostel_name || "Hostel Owner";
               const ownerPhone = room.hostel_phone || room.owner_contact || "Unavailable";
               const ownerEmail = room.hostel_email || "Unavailable";
+              const distanceKm = getRoomDistance(room);
 
               return (
                 <article key={booking.id} className="booking-card">
@@ -259,15 +288,17 @@ export default function Bookings() {
                         <h3>{room.title || "Room Booking"}</h3>
                         <p>{room.address || room.hostel_address || "Address unavailable"}</p>
                       </div>
-                      <span className={`status-badge ${statusMeta.className}`}>
-                        <StatusIcon size={14} />
+                      <span className={`status-badge status-badge--lg ${statusMeta.className}`}>
+                        <StatusIcon size={15} />
                         {statusMeta.label}
                       </span>
                     </div>
 
                     <div className="booking-card__chips">
                       <span>{formatCurrency(room.price)} / month</span>
-                      <span>{room.distance_from_university || "0"} km</span>
+                      {distanceKm ? (
+                        <span><MapPin size={11} /> {distanceKm} km from university</span>
+                      ) : null}
                       <span>{String(room.gender_allowed || "any").toUpperCase()}</span>
                     </div>
 
@@ -303,7 +334,7 @@ export default function Bookings() {
                     <div className="booking-card__actions">
                       <button
                         type="button"
-                        className="bookings-btn bookings-btn--primary"
+                        className="bookings-btn bookings-btn--outline"
                         onClick={() => navigate(`/rooms/${room.id}`)}
                       >
                         View Room

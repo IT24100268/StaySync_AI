@@ -17,6 +17,7 @@ urlpatterns = [
     path('api/owner/', include('owner.urls')),
     path('api/delivery/', include('delivery.urls')),
     path('api/reviews/', include('reviews.urls')),
+    path('api/ai/', include('ai_recommendations.urls')),
 ]
 
 if settings.DEBUG:

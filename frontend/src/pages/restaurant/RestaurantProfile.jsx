@@ -28,26 +28,38 @@ function loadGoogleMaps(apiKey) {
     );
   }
 
-  if (window.google?.maps) {
+  if (window.google?.maps?.Map) {
     return Promise.resolve(window.google.maps);
   }
 
   const existingScript = document.getElementById(GOOGLE_MAP_SCRIPT_ID);
   if (existingScript) {
     return new Promise((resolve, reject) => {
-      existingScript.addEventListener('load', () => resolve(window.google?.maps), { once: true });
+      if (window.google?.maps?.Map) return resolve(window.google.maps);
+      const prev = window.__googleMapsReady__;
+      window.__googleMapsReady__ = () => {
+        if (prev) prev();
+        resolve(window.google.maps);
+      };
       existingScript.addEventListener('error', () => reject(new Error('Failed to load Google Maps.')), { once: true });
     });
   }
 
   return new Promise((resolve, reject) => {
+    const callbackName = '__googleMapsReady__';
+    window[callbackName] = () => {
+      delete window[callbackName];
+      resolve(window.google.maps);
+    };
     const script = document.createElement('script');
     script.id = GOOGLE_MAP_SCRIPT_ID;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&loading=async`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=${callbackName}`;
     script.async = true;
     script.defer = true;
-    script.onload = () => resolve(window.google?.maps);
-    script.onerror = () => reject(new Error('Failed to load Google Maps.'));
+    script.onerror = () => {
+      delete window[callbackName];
+      reject(new Error('Failed to load Google Maps.'));
+    };
     document.head.appendChild(script);
   });
 }
@@ -385,6 +397,16 @@ export default function RestaurantProfile() {
 
     setSaving(true);
     setMessage(null);
+    if (!/^0[0-9]{9}$/.test(form.phone_number)) {
+      setMessage({ type: 'error', text: 'Enter a valid Sri Lankan phone number (e.g. 0771234567)' })
+      setSaving(false)
+      return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setMessage({ type: 'error', text: 'Enter a valid email address (e.g. name@example.com)' })
+      setSaving(false)
+      return
+    }
 
     try {
       const payload = new FormData();
@@ -425,7 +447,9 @@ export default function RestaurantProfile() {
   };
 
   const setField = (key) => (event) => {
-    setForm((current) => ({ ...current, [key]: event.target.value }));
+    const val = event.target.value
+    if (key === 'phone_number' && !/^[0-9]*$/.test(val)) return
+    setForm((current) => ({ ...current, [key]: val }));
   };
 
   return (

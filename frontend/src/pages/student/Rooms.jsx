@@ -297,8 +297,9 @@ export default function Rooms() {
                       onChange={handleFilterChange}
                     >
                       <option value="">Any</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
+                      <option value="boys">Male</option>
+                      <option value="girls">Female</option>
+                      <option value="both">Both</option>
                     </select>
                   </label>
 

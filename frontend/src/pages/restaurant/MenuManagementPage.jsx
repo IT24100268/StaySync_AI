@@ -235,7 +235,7 @@ export default function MenuManagementPage() {
   }, [categorizedItems, activeCategory, filteredText]);
 
   const onAddNew = () => {
-    setEditingItem({ restaurant_id: restaurantId });
+    setEditingItem(null);
     setModalOpen(true);
   };
 
@@ -390,6 +390,7 @@ export default function MenuManagementPage() {
       <FoodItemModal
         open={modalOpen}
         item={editingItem}
+        restaurantId={restaurantId}
         categoryOptions={categories
           .map((category) => category.name)
           .filter((name) => name && name !== 'All')}

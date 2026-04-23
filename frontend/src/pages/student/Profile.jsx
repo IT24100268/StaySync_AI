@@ -207,6 +207,7 @@ const Profile = () => {
 
   const handleChange = (event) => {
     const { name, value } = event.target;
+    if (name === 'phone_number' && !/^[0-9]*$/.test(value)) return
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -216,6 +217,15 @@ const Profile = () => {
     setSaveState({ type: "", message: "" });
 
     try {
+      const phoneField = form.phone_number
+      if (phoneField && !/^0[0-9]{9}$/.test(phoneField)) {
+        setSaveState({ type: 'error', message: 'Enter a valid Sri Lankan phone number (e.g. 0771234567)' })
+        return
+      }
+      if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+        setSaveState({ type: 'error', message: 'Enter a valid email address (e.g. name@example.com)' })
+        return
+      }
       const payload = {
         username: form.username.trim(),
         email: form.email.trim(),

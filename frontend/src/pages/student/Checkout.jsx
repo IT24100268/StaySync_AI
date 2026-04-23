@@ -2,46 +2,53 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import { STUDENT_LAYOUT, STUDENT_THEME as THEME } from "../../styles/studentTheme";
+import { loadGoogleMaps } from "../../utils/googleMapsLoader";
 
-const GOOGLE_MAP_SCRIPT_ID = "google-maps-checkout";
 const JAFFNA_CENTER = { lat: 9.6615, lng: 80.0255 };
 
-function loadGoogleMaps(apiKey) {
-  if (window.google?.maps?.Map) return Promise.resolve();
-  if (document.getElementById(GOOGLE_MAP_SCRIPT_ID)) {
-    return new Promise((resolve) => {
-      const interval = setInterval(() => {
-        if (window.google?.maps?.Map) { clearInterval(interval); resolve(); }
-      }, 150);
-    });
-  }
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.id = GOOGLE_MAP_SCRIPT_ID;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=directions`;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load Google Maps"));
-    document.head.appendChild(script);
-  });
+function ConfirmModal({ message, onConfirm, onCancel }) {
+  return (
+    <div style={modal.overlay}>
+      <div style={modal.box}>
+        <div style={modal.icon}>🛒</div>
+        <h3 style={modal.title}>Confirm Order</h3>
+        <p style={modal.message}>{message}</p>
+        <div style={modal.actions}>
+          <button style={{ ...STUDENT_LAYOUT.outlineBtn, flex: 1 }} onClick={onCancel}>Cancel</button>
+          <button style={{ ...STUDENT_LAYOUT.primaryBtn, flex: 1 }} onClick={onConfirm}>Confirm</button>
+        </div>
+      </div>
+    </div>
+  );
 }
+
+const modal = {
+  overlay: {
+    position: "fixed", inset: 0, zIndex: 1000,
+    background: "rgba(15, 23, 42, 0.45)",
+    backdropFilter: "blur(4px)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    padding: 16,
+  },
+  box: {
+    background: "rgba(255,255,255,0.96)",
+    border: `1px solid rgba(15,23,42,0.10)`,
+    borderRadius: 20,
+    boxShadow: "0 24px 60px rgba(20,45,90,0.22)",
+    padding: "28px 28px 24px",
+    width: "100%", maxWidth: 400,
+    display: "grid", gap: 12, textAlign: "center",
+  },
+  icon: { fontSize: 36 },
+  title: { margin: 0, fontSize: 20, fontWeight: 900, color: THEME.text },
+  message: { margin: 0, fontSize: 14, fontWeight: 700, color: THEME.muted, lineHeight: 1.6 },
+  actions: { display: "flex", gap: 10, marginTop: 4 },
+};
 
 const Checkout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { cart, restaurant, totalPrice } = location.state || {};
-
-  const [orderType, setOrderType] = useState("delivery");
-  const [address, setAddress] = useState("");
-  const [coords, setCoords] = useState(null);          // { lat, lng }
-  const [locMethod, setLocMethod] = useState("map");   // "map" | "gps"
-  const [gpsLoading, setGpsLoading] = useState(false);
-  const [mapReady, setMapReady] = useState(false);
-  const [mapError, setMapError] = useState("");
-  const [quote, setQuote] = useState(null);            // AI quote from backend
-  const [quoteLoading, setQuoteLoading] = useState(false);
-  const [placing, setPlacing] = useState(false);
-  const [error, setError] = useState("");
 
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -49,116 +56,135 @@ const Checkout = () => {
   const geocoderRef = useRef(null);
   const directionsRendererRef = useRef(null);
   const directionsServiceRef = useRef(null);
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-  // Load Google Maps
-  useEffect(() => {
-    loadGoogleMaps(apiKey)
-      .then(() => { setMapReady(true); setMapError(""); })
-      .catch((e) => setMapError(e.message));
-  }, [apiKey]);
+  const [orderType, setOrderType] = useState("delivery");
+  const [address, setAddress] = useState("");
+  const [coords, setCoords] = useState(null);
+  const [locMethod, setLocMethod] = useState("map");
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [quote, setQuote] = useState(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [placing, setPlacing] = useState(false);
+  const [error, setError] = useState("");
+  const [confirmModal, setConfirmModal] = useState(false);
 
-  // Init map once ready
-  useEffect(() => {
-    if (!mapReady || !mapContainerRef.current || mapRef.current) return;
+  // Draw route between restaurant and delivery pin
+  const drawRoute = (deliveryCoords) => {
+    if (
+      !mapRef.current ||
+      !directionsServiceRef.current ||
+      !directionsRendererRef.current
+    ) return;
 
-    const map = new window.google.maps.Map(mapContainerRef.current, {
-      center: JAFFNA_CENTER,
-      zoom: 13,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-    });
+    const restLat = parseFloat(restaurant?.latitude);
+    const restLng = parseFloat(restaurant?.longitude);
+    const hasRestCoords = Number.isFinite(restLat) && Number.isFinite(restLng)
+      && (Math.abs(restLat) > 0.001 || Math.abs(restLng) > 0.001);
 
-    const marker = new window.google.maps.Marker({
-      map,
-      position: JAFFNA_CENTER,
-      draggable: true,
-    });
+    const origin = hasRestCoords
+      ? { lat: restLat, lng: restLng }
+      : restaurant?.address || 'Jaffna, Sri Lanka';
 
-    geocoderRef.current = new window.google.maps.Geocoder();
-    directionsServiceRef.current = new window.google.maps.DirectionsService();
-    directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
-      suppressMarkers: false,
-      polylineOptions: { strokeColor: "#1f4f96", strokeWeight: 5, strokeOpacity: 0.8 },
-    });
-    directionsRendererRef.current.setMap(map);
-    mapRef.current = map;
-    markerRef.current = marker;
+    const destination = { lat: deliveryCoords.lat, lng: deliveryCoords.lng };
 
-    const onPick = (latLng) => {
-      const lat = latLng.lat();
-      const lng = latLng.lng();
-      marker.setPosition({ lat, lng });
-      setCoords({ lat, lng });
-      reverseGeocode(lat, lng);
-      drawRoute(lat, lng);
-    };
-
-    map.addListener("click", (e) => onPick(e.latLng));
-    marker.addListener("dragend", (e) => onPick(e.latLng));
-  }, [mapReady]);
-
-  const reverseGeocode = (lat, lng) => {
-    if (!geocoderRef.current) return;
-    geocoderRef.current.geocode({ location: { lat, lng } }, (results, status) => {
-      if (status === "OK" && results[0]) {
-        setAddress(results[0].formatted_address);
-      } else {
-        setAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-      }
-    });
-  };
-
-  const drawRoute = (destLat, destLng) => {
-    if (!directionsServiceRef.current || !directionsRendererRef.current || !restaurant) return;
-    const origin = { lat: parseFloat(restaurant.latitude), lng: parseFloat(restaurant.longitude) };
-    const destination = { lat: destLat, lng: destLng };
-    // hide plain marker while route is shown
-    if (markerRef.current) markerRef.current.setMap(null);
     directionsServiceRef.current.route(
-      {
-        origin,
-        destination,
-        travelMode: window.google.maps.TravelMode.DRIVING,
-      },
+      { origin, destination, travelMode: window.google.maps.TravelMode.DRIVING },
       (result, status) => {
-        if (status === "OK") {
+        if (status === 'OK') {
           directionsRendererRef.current.setDirections(result);
-        } else {
-          // fallback: just show marker if directions fail
-          if (markerRef.current) {
-            markerRef.current.setPosition(destination);
-            markerRef.current.setMap(mapRef.current);
-          }
+          if (markerRef.current) markerRef.current.setVisible(false);
         }
       }
     );
   };
 
-  const panMapTo = (lat, lng) => {
-    if (!mapRef.current || !markerRef.current) return;
-    mapRef.current.panTo({ lat, lng });
-    mapRef.current.setZoom(14);
-    markerRef.current.setPosition({ lat, lng });
-    drawRoute(lat, lng);
+  // Load Google Maps
+  useEffect(() => {
+    if (orderType !== "delivery" || locMethod !== "map") return;
+    loadGoogleMaps(googleMapsApiKey)
+      .then(() => {
+        if (!mapContainerRef.current || mapRef.current) return;
+        const center = coords
+          ? { lat: coords.lat, lng: coords.lng }
+          : JAFFNA_CENTER;
+
+        mapRef.current = new window.google.maps.Map(mapContainerRef.current, {
+          center,
+          zoom: coords ? 16 : 13,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+          gestureHandling: "greedy",
+        });
+
+        markerRef.current = new window.google.maps.Marker({
+          map: mapRef.current,
+          position: center,
+          draggable: true,
+        });
+
+        geocoderRef.current = new window.google.maps.Geocoder();
+        directionsServiceRef.current = new window.google.maps.DirectionsService();
+        directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
+          suppressMarkers: false,
+          polylineOptions: { strokeColor: '#1f4f96', strokeWeight: 5, strokeOpacity: 0.8 },
+        });
+        directionsRendererRef.current.setMap(mapRef.current);
+
+        mapRef.current.addListener("click", (e) => {
+          handlePick(e.latLng.lat(), e.latLng.lng());
+        });
+
+        markerRef.current.addListener("dragend", (e) => {
+          handlePick(e.latLng.lat(), e.latLng.lng());
+        });
+
+        // Draw route if coords already set (e.g. GPS was used first)
+        if (coords) drawRoute(coords);
+      })
+      .catch(() => {});
+  }, [orderType, locMethod]);
+
+  // Pan map and draw route when coords change (pin or GPS)
+  useEffect(() => {
+    if (!coords) return;
+    const pos = { lat: coords.lat, lng: coords.lng };
+    if (mapRef.current && markerRef.current) {
+      mapRef.current.panTo(pos);
+      mapRef.current.setZoom(14);
+      markerRef.current.setPosition(pos);
+    }
+    // Use timeout to ensure directionsService/Renderer are ready after map init
+    const timer = setTimeout(() => drawRoute(coords), 300);
+    return () => clearTimeout(timer);
+  }, [coords]);
+
+  const handlePick = (lat, lng) => {
+    setCoords({ lat, lng });
+    setAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+    // reverse geocode via Nominatim (free)
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+      .then((r) => r.json())
+      .then((d) => { if (d.display_name) setAddress(d.display_name); })
+      .catch(() => {});
   };
 
-  // Use GPS
   const handleGPS = () => {
     if (!navigator.geolocation) { setError("Geolocation not supported."); return; }
     setGpsLoading(true);
     setError("");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        setCoords({ lat, lng });
-        reverseGeocode(lat, lng);
-        panMapTo(lat, lng);
+        handlePick(pos.coords.latitude, pos.coords.longitude);
         setGpsLoading(false);
+        // Switch to map view so the route is visible
+        mapRef.current = null;
+        directionsRendererRef.current = null;
+        directionsServiceRef.current = null;
+        setLocMethod("map");
       },
-      (err) => {
+      () => {
         setError("Location access denied. Please allow location or pin on map.");
         setGpsLoading(false);
       },
@@ -196,15 +222,15 @@ const Checkout = () => {
     if (!cart?.length) { setError("Your cart is empty."); return; }
     if (orderType === "delivery" && !coords) { setError("Please pick your delivery location on the map or use GPS."); return; }
     if (orderType === "delivery" && !quote) { setError("Waiting for delivery fee calculation. Please wait."); return; }
-    if (!window.confirm(`Confirm ${orderType} order for LKR ${finalTotal?.toLocaleString()}?`)) return;
+    setConfirmModal(true);
+  };
 
+  const handleConfirmedOrder = async () => {
+    setConfirmModal(false);
     setPlacing(true);
     try {
-      await api.post("/orders/create/", {
+      const payload = {
         restaurant_id: restaurant.id,
-        delivery_address: orderType === "delivery" ? address : "N/A",
-        delivery_latitude: orderType === "delivery" ? coords.lat : undefined,
-        delivery_longitude: orderType === "delivery" ? coords.lng : undefined,
         payment_method: "cod",
         order_type: orderType,
         food_price: totalPrice,
@@ -213,10 +239,18 @@ const Checkout = () => {
           quantity: item.quantity,
           price: item.price,
         })),
-      });
+      };
+      if (orderType === "delivery") {
+        payload.delivery_address = address;
+        payload.delivery_latitude = parseFloat(coords.lat.toFixed(6));
+        payload.delivery_longitude = parseFloat(coords.lng.toFixed(6));
+      }
+      await api.post("/orders/create/", payload);
+      navigate("/orders");
       navigate("/orders");
     } catch (e) {
-      const msg = e.response?.data?.error || e.response?.data?.detail || "Failed to place order.";
+      const data = e.response?.data;
+      const msg = data?.error || data?.detail || JSON.stringify(data) || "Failed to place order.";
       setError(msg);
     } finally {
       setPlacing(false);
@@ -235,6 +269,13 @@ const Checkout = () => {
 
   return (
     <div style={STUDENT_LAYOUT.page}>
+      {confirmModal && (
+        <ConfirmModal
+          message={`Place ${orderType} order from ${restaurant?.name} for LKR ${finalTotal?.toLocaleString()}?`}
+          onConfirm={handleConfirmedOrder}
+          onCancel={() => setConfirmModal(false)}
+        />
+      )}
       <div style={{ ...STUDENT_LAYOUT.container, maxWidth: 900 }}>
 
         {/* Header */}
@@ -329,7 +370,14 @@ const Checkout = () => {
                 {["map", "gps"].map((m) => (
                   <button
                     key={m}
-                    onClick={() => setLocMethod(m)}
+                    onClick={() => { 
+                      setLocMethod(m); 
+                      if (m === "map") { 
+                        mapRef.current = null;
+                        directionsRendererRef.current = null;
+                        directionsServiceRef.current = null;
+                      } 
+                    }}
                     style={{
                       ...STUDENT_LAYOUT.outlineBtn,
                       background: locMethod === m ? THEME.navy : "white",
@@ -364,19 +412,16 @@ const Checkout = () => {
                 </div>
               )}
 
-              {/* Map panel — always mounted so map initialises, hidden when GPS tab active */}
-              <div style={{ display: locMethod === "map" ? "block" : "none" }}>
-                <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: THEME.muted }}>
-                  Click on the map or drag the marker to set your delivery location.
-                </p>
-                <div style={s.mapWrap}>
-                  {mapError ? (
-                    <div style={s.mapError}>{mapError}</div>
-                  ) : (
+              {locMethod === "map" && (
+                <div>
+                  <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: THEME.muted }}>
+                    Click on the map or drag the marker to set your delivery location.
+                  </p>
+                  <div style={s.mapWrap}>
                     <div ref={mapContainerRef} style={{ width: "100%", height: "100%" }} />
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Address display */}
               {address && (

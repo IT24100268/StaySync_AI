@@ -36,6 +36,14 @@ function TopNavigation() {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [orders, setOrders] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [adminLogs, setAdminLogs] = useState([]);
+  const [restaurantStatus, setRestaurantStatus] = useState(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState(new Set());
+  const [deletedKeys, setDeletedKeys] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('restaurant_notif_deleted') || '[]')); }
+    catch { return new Set(); }
+  });
   const [seenIds, setSeenIds] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('restaurant_notif_seen') || '[]')); }
     catch { return new Set(); }
@@ -53,6 +61,19 @@ function TopNavigation() {
         if (ordersRes.status === 'fulfilled') setOrders(toArray(ordersRes.value?.data));
         if (reviewsRes.status === 'fulfilled') setReviews(toArray(reviewsRes.value?.data));
       } catch {}
+
+      // Fetch admin warnings via user-accessible endpoint
+      try {
+        const myNotifsRes = await api.get('/admin/my-notifications/');
+        setAdminLogs(myNotifsRes.data?.notifications || []);
+      } catch {}
+
+      // Fetch restaurant status + review_note
+      try {
+        const restRes = await api.get('/restaurants/');
+        const list = toArray(restRes.data?.results || restRes.data);
+        if (list.length > 0) setRestaurantStatus(list[0]);
+      } catch {}
     };
     load();
     const interval = setInterval(load, 30000);
@@ -63,6 +84,8 @@ function TopNavigation() {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setNotificationOpen(false);
+        setSelectMode(false);
+        setSelectedKeys(new Set());
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -71,23 +94,55 @@ function TopNavigation() {
 
   const notifications = useMemo(() => {
     const list = [];
+
+    // Order notifications
     orders.forEach((order) => {
       const status = String(order?.status || '').toLowerCase();
       const key = `order-${order.id}-${status}`;
       let text = '';
       let icon = 'order';
-      if (status === 'pending') { text = `New order #${order.id} is waiting for your confirmation.`; icon = 'order'; }
-      else if (status === 'accepted') { text = `Order #${order.id} accepted — start preparing.`; icon = 'order'; }
+      if (status === 'pending') { text = `New order #${order.id} is waiting for your confirmation.`; }
+      else if (status === 'accepted') { text = `Order #${order.id} accepted — start preparing.`; }
       else if (status === 'delivered') { text = `Order #${order.id} delivered successfully.`; icon = 'payment'; }
       if (text) list.push({ key, text, icon, time: order.updated_at || order.created_at });
     });
+
+    // Review notifications
     reviews.forEach((review) => {
       const key = `review-${review.id}`;
       const text = `New ${review.rating}★ review: "${String(review.comment || '').slice(0, 60)}${review.comment?.length > 60 ? '…' : ''}"`;
       list.push({ key, text, icon: 'review', time: review.created_at });
     });
-    return list.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0)).slice(0, 10);
-  }, [orders, reviews]);
+
+    // Admin warning logs
+    adminLogs.forEach((log) => {
+      let details = log.details || {};
+      const key = `log-${log.id}`;
+      let text = log.action;
+      if (details.warning_note) text = `⚠️ Warning from Admin: ${details.warning_note}`;
+      else if (log.action?.toLowerCase().includes('block')) text = `🚫 ${log.action}${details.reason || details.block_reason ? `: ${details.reason || details.block_reason}` : ''}`;
+      else if (log.action?.toLowerCase().includes('warn')) text = `⚠️ ${log.action}${details.warning_note ? ` — ${details.warning_note}` : ''}`;
+      list.push({ key, text, icon: 'admin', time: log.created_at });
+    });
+
+    // Restaurant status notification
+    if (restaurantStatus) {
+      const r = restaurantStatus;
+      let text = '';
+      const key = `rest-status-${r.id}`;
+      if (r.status === 'REJECTED') text = `❌ Restaurant Rejected: ${r.review_note || 'No reason provided'}`;
+      else if (r.status === 'NEEDS_CHANGES') text = `📝 Needs Changes: ${r.review_note || 'No reason provided'}`;
+      else if (r.status === 'SUSPENDED') text = `🔴 Restaurant Suspended: ${r.review_note || 'Contact admin'}`;
+      else if (r.status === 'APPROVED') text = `✅ Your restaurant has been approved!`;
+      else if (r.status === 'PENDING') text = `⏳ Your restaurant is pending admin approval.`;
+      if (text) list.push({ key, text, icon: 'admin', time: r.reviewed_at || r.created_at });
+    }
+
+    return list
+      .filter((n) => !deletedKeys.has(n.key))
+      .sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0))
+      .slice(0, 20);
+  }, [orders, reviews, adminLogs, restaurantStatus, deletedKeys, user]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !seenIds.has(n.key)).length,
@@ -98,12 +153,56 @@ function TopNavigation() {
     setNotificationOpen((prev) => {
       if (!prev) {
         const allIds = notifications.map((n) => n.key);
-        const updated = new Set(allIds);
-        setSeenIds(updated);
+        setSeenIds(new Set(allIds));
         localStorage.setItem('restaurant_notif_seen', JSON.stringify(allIds));
+      } else {
+        setSelectMode(false);
+        setSelectedKeys(new Set());
       }
       return !prev;
     });
+  };
+
+  const handleMarkAllRead = () => {
+    const allIds = notifications.map((n) => n.key);
+    setSeenIds(new Set(allIds));
+    localStorage.setItem('restaurant_notif_seen', JSON.stringify(allIds));
+  };
+
+  const handleDeleteAll = () => {
+    const updated = new Set([...deletedKeys, ...notifications.map((n) => n.key)]);
+    setDeletedKeys(updated);
+    setSelectedKeys(new Set());
+    localStorage.setItem('restaurant_notif_deleted', JSON.stringify([...updated]));
+  };
+
+  const handleDeleteSelected = () => {
+    const updated = new Set([...deletedKeys, ...selectedKeys]);
+    setDeletedKeys(updated);
+    setSelectedKeys(new Set());
+    localStorage.setItem('restaurant_notif_deleted', JSON.stringify([...updated]));
+  };
+
+  const handleToggleSelect = (key) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedKeys(
+      selectedKeys.size === notifications.length
+        ? new Set()
+        : new Set(notifications.map((n) => n.key))
+    );
+  };
+
+  const formatDate = (value) => {
+    if (!value) return '';
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-LK', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
   const profile = useMemo(() => {
@@ -178,6 +277,33 @@ function TopNavigation() {
                   <strong>Notifications</strong>
                   <span>{notifications.length} total</span>
                 </div>
+
+                {notifications.length > 0 && (
+                  <div className="rest-notif-dropdown__actions">
+                    <button type="button" onClick={() => {
+                      if (selectMode) { setSelectMode(false); setSelectedKeys(new Set()); }
+                      else setSelectMode(true);
+                    }}>
+                      {selectMode ? 'Cancel' : 'Select'}
+                    </button>
+                    {selectMode && (
+                      <button type="button" onClick={handleSelectAll}>
+                        {selectedKeys.size === notifications.length ? 'Deselect All' : 'Select All'}
+                      </button>
+                    )}
+                    <button type="button" onClick={handleMarkAllRead}>Mark All Read</button>
+                    {selectMode && selectedKeys.size > 0 ? (
+                      <button type="button" className="rest-notif-btn--danger" onClick={handleDeleteSelected}>
+                        Delete ({selectedKeys.size})
+                      </button>
+                    ) : (
+                      <button type="button" className="rest-notif-btn--danger" onClick={handleDeleteAll}>
+                        Delete All
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {notifications.length === 0 ? (
                   <p className="restaurant-notif-dropdown__empty">No notifications yet.</p>
                 ) : (
@@ -185,12 +311,35 @@ function TopNavigation() {
                     {notifications.map((n) => (
                       <li
                         key={n.key}
-                        className={`restaurant-notif-item${seenIds.has(n.key) ? ' is-read' : ''}`}
+                        className={[
+                          'rest-notif-item',
+                          seenIds.has(n.key) ? 'is-read' : '',
+                          selectedKeys.has(n.key) ? 'is-selected' : '',
+                        ].join(' ').trim()}
                       >
-                        <div className={`notification-icon ${n.icon === 'review' ? 'review' : n.icon === 'payment' ? 'payment' : 'new-order'}`}>
-                          {n.icon === 'review' ? <Star size={14} /> : n.icon === 'payment' ? <CircleDollarSign size={14} /> : <ReceiptText size={14} />}
-                        </div>
-                        <span>{n.text}</span>
+                        {selectMode && (
+                          <input
+                            type="checkbox"
+                            className="rest-notif-item__check"
+                            checked={selectedKeys.has(n.key)}
+                            onChange={() => handleToggleSelect(n.key)}
+                          />
+                        )}
+                        <span className="rest-notif-item__text">
+                          {n.text}
+                          <span className="rest-notif-item__time">{formatDate(n.time)}</span>
+                        </span>
+                        <button
+                          type="button"
+                          className="rest-notif-item__del"
+                          onClick={() => {
+                            const updated = new Set([...deletedKeys, n.key]);
+                            setDeletedKeys(updated);
+                            localStorage.setItem('restaurant_notif_deleted', JSON.stringify([...updated]));
+                          }}
+                        >
+                          ✕
+                        </button>
                       </li>
                     ))}
                   </ul>

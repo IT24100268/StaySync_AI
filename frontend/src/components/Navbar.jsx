@@ -8,6 +8,7 @@ import {
   LogOut,
   Menu,
   ShoppingBag,
+  Sparkles,
   Star,
   User,
   UtensilsCrossed,
@@ -24,6 +25,7 @@ const NAV_LINKS = [
   { to: "/restaurants", label: "Restaurants", icon: UtensilsCrossed, matches: ["/restaurants"] },
   { to: "/orders", label: "Orders", icon: ShoppingBag, matches: ["/orders", "/tracking"] },
   { to: "/reviews", label: "Reviews", icon: Star, matches: ["/reviews"] },
+  { to: "/ai-planner", label: "AI Planner", icon: Sparkles, matches: ["/ai-planner"] },
   { to: "/profile", label: "Profile", icon: User, matches: ["/profile"] },
 ];
 

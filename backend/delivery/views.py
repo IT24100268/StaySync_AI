@@ -1,3 +1,4 @@
+from decimal import Decimal
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
@@ -232,7 +233,7 @@ def update_delivery_status(request, delivery_id):
         Earnings.objects.create(
             partner=partner,
             delivery=delivery,
-            amount=delivery.order.total_price * 0.2
+            amount=delivery.order.total_price * Decimal('0.2')
         )
     
     delivery.save()

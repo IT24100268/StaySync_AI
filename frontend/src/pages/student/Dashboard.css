@@ -23,6 +23,10 @@
   border-radius: 18px;
   background: color-mix(in srgb, var(--student-surface) 92%, rgba(240, 245, 255, 0.95));
   box-shadow: var(--student-shadow);
+}
+
+.dashboard-card,
+.dashboard-alert {
   backdrop-filter: blur(8px);
 }
 
@@ -32,6 +36,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  overflow: visible;
+  position: relative;
+  z-index: 200;
 }
 
 .dashboard-toolbar__search {
@@ -497,7 +504,6 @@
 }
 
 .dashboard-map {
-  height: 100%;
   display: grid;
   gap: 10px;
 }
@@ -513,8 +519,8 @@
   min-height: 36px;
   border-radius: 11px;
   border: 1px solid color-mix(in srgb, var(--student-primary) 24%, transparent);
-  background: linear-gradient(120deg, var(--student-primary), var(--student-accent));
-  color: #fff;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--student-primary);
   font-size: 12px;
   font-weight: 800;
   padding: 0 13px;
@@ -534,11 +540,18 @@
 }
 
 .dashboard-map__canvas {
-  min-height: 320px;
+  height: 340px;
   border-radius: 15px;
   border: 1px solid rgba(15, 23, 42, 0.1);
   overflow: hidden;
   background: #dfe8f7;
+}
+
+.dashboard-map__canvas iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
 }
 
 .dashboard-map__google {
@@ -864,18 +877,19 @@
 
 .dashboard-notif-wrap {
   position: relative;
+  z-index: 300;
 }
 
 .dashboard-notif-dropdown {
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
-  width: 320px;
+  width: 360px;
   border-radius: 16px;
-  border: 1px solid var(--student-border);
+  border: 1px solid rgba(15, 23, 42, 0.12);
   background: #fff;
-  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
-  z-index: 100;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18);
+  z-index: 9999;
   overflow: hidden;
 }
 
@@ -916,21 +930,108 @@
   overflow-y: auto;
 }
 
-.dashboard-notif-item a {
-  display: block;
-  padding: 10px 14px;
+.dashboard-notif-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  transition: background 0.12s ease;
+}
+
+.dashboard-notif-item:last-child {
+  border-bottom: none;
+}
+
+.dashboard-notif-item:hover {
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.dashboard-notif-item.is-selected {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.dashboard-notif-item__check {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: var(--student-primary);
+}
+
+.dashboard-notif-item__text {
+  flex: 1;
+  min-width: 0;
   font-size: 13px;
   font-weight: 700;
   color: #1e293b;
   text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dashboard-notif-item__text:hover {
+  color: var(--student-primary);
+}
+
+.dashboard-notif-item.is-read .dashboard-notif-item__text {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.dashboard-notif-item__time {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.dashboard-notif-item__del {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  background: rgba(254, 226, 226, 0.6);
+  color: #dc2626;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.dashboard-notif-item:hover .dashboard-notif-item__del {
+  opacity: 1;
+}
+
+.dashboard-notif-dropdown__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  flex-wrap: wrap;
+}
+
+.dashboard-notif-dropdown__actions button {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--student-primary);
+  cursor: pointer;
   transition: background 0.12s ease;
 }
 
-.dashboard-notif-item a:hover {
-  background: rgba(99, 102, 241, 0.06);
+.dashboard-notif-dropdown__actions button:hover {
+  background: rgba(99, 102, 241, 0.08);
 }
 
-.dashboard-notif-item.is-read a {
-  color: #94a3b8;
-  font-weight: 600;
+.dashboard-notif-btn--danger {
+  color: #dc2626 !important;
+  border-color: rgba(220, 38, 38, 0.24) !important;
+  background: rgba(254, 226, 226, 0.6) !important;
 }

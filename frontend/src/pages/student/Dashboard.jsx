@@ -1,9 +1,35 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bell, MapPin, Search, X } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 import "./Dashboard.css";
+
+// Fix default marker icons broken by webpack/vite
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
+
+const UNIVERSITY_LAT = 9.684058615838461;
+const UNIVERSITY_LNG = 80.02305072385631;
+
+const haversineKm = (lat1, lng1, lat2, lng2) => {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+};
 
 const INITIAL_FILTERS = {
   location: "",
@@ -110,6 +136,13 @@ const Dashboard = () => {
     try { return new Set(JSON.parse(localStorage.getItem("notif_seen") || "[]")); }
     catch { return new Set(); }
   });
+  const [deletedKeys, setDeletedKeys] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("notif_deleted") || "[]")); }
+    catch { return new Set(); }
+  });
+  const [selectedKeys, setSelectedKeys] = useState(new Set());
+  const [selectMode, setSelectMode] = useState(false);
+  const [adminLogs, setAdminLogs] = useState([]);
   const notifRef = useRef(null);
 
   const applyLocalRoomFilters = (roomList, nextFilters) => {
@@ -172,6 +205,11 @@ const Dashboard = () => {
           api.get("/orders/"),
           api.get("/bookings/"),
         ]);
+
+        // Fetch admin warnings separately (non-blocking)
+        api.get("/admin/my-notifications/").then((res) => {
+          setAdminLogs(res.data?.notifications || []);
+        }).catch(() => {});
 
         if (!isMounted) return;
 
@@ -316,7 +354,6 @@ const Dashboard = () => {
   }, [currentLocation, mapLocations]);
 
   const mapZoom = currentLocation ? 15 : mapLocations.length > 0 ? 13 : 11;
-  const mapEmbedUrl = `https://maps.google.com/maps?q=${derivedMapCenter.lat},${derivedMapCenter.lng}&z=${mapZoom}&output=embed`;
 
   const studentName = user?.username || "Student";
   const studentInitials = getInitials(user);
@@ -334,6 +371,18 @@ const Dashboard = () => {
 
   const notifications = useMemo(() => {
     const list = [];
+
+    // Admin warnings
+    adminLogs.forEach((log) => {
+      const details = log.details || {};
+      const key = `admin-log-${log.id}`;
+      let message = log.action;
+      if (details.warning_note) message = `⚠️ Warning from Admin: ${details.warning_note}`;
+      else if (log.action?.toLowerCase().includes("block")) message = `🚫 ${log.action}${details.reason || details.block_reason ? `: ${details.reason || details.block_reason}` : ''}`;
+      else if (log.action?.toLowerCase().includes("warn")) message = `⚠️ ${log.action}${details.warning_note ? ` — ${details.warning_note}` : ''}`;
+      list.push({ key, message, link: "/profile", time: log.created_at });
+    });
+
     orders.forEach((order) => {
       const status = String(order?.status || "").toLowerCase();
       const key = `order-${order.id}-${status}`;
@@ -356,8 +405,10 @@ const Dashboard = () => {
       else if (status === "pending") message = `Booking for "${booking.room?.title || "a room"}" is pending.`;
       if (message) list.push({ key, message, link: "/bookings", time: booking.updated_at || booking.created_at });
     });
-    return list.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
-  }, [orders, bookings]);
+    return list
+      .filter((n) => !deletedKeys.has(n.key))
+      .sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
+  }, [orders, bookings, deletedKeys, adminLogs]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !seenIds.has(n.key)).length,
@@ -371,9 +422,50 @@ const Dashboard = () => {
         const updated = new Set(allIds);
         setSeenIds(updated);
         localStorage.setItem("notif_seen", JSON.stringify(allIds));
+      } else {
+        setSelectMode(false);
+        setSelectedKeys(new Set());
       }
       return !prev;
     });
+  };
+
+  const handleMarkAllRead = () => {
+    const allIds = notifications.map((n) => n.key);
+    const updated = new Set(allIds);
+    setSeenIds(updated);
+    localStorage.setItem("notif_seen", JSON.stringify(allIds));
+  };
+
+  const handleDeleteAll = () => {
+    const allKeys = notifications.map((n) => n.key);
+    const updated = new Set([...deletedKeys, ...allKeys]);
+    setDeletedKeys(updated);
+    setSelectedKeys(new Set());
+    localStorage.setItem("notif_deleted", JSON.stringify([...updated]));
+  };
+
+  const handleDeleteSelected = () => {
+    const updated = new Set([...deletedKeys, ...selectedKeys]);
+    setDeletedKeys(updated);
+    setSelectedKeys(new Set());
+    localStorage.setItem("notif_deleted", JSON.stringify([...updated]));
+  };
+
+  const handleToggleSelect = (key) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedKeys.size === notifications.length) {
+      setSelectedKeys(new Set());
+    } else {
+      setSelectedKeys(new Set(notifications.map((n) => n.key)));
+    }
   };
 
   useEffect(() => {
@@ -511,15 +603,67 @@ const Dashboard = () => {
                     <strong>Notifications</strong>
                     <span>{notifications.length} total</span>
                   </div>
+
+                  {notifications.length > 0 && (
+                    <div className="dashboard-notif-dropdown__actions">
+                      <button type="button" onClick={() => {
+                        if (selectMode) {
+                          setSelectMode(false)
+                          setSelectedKeys(new Set())
+                        } else {
+                          setSelectMode(true)
+                        }
+                      }}>
+                        {selectMode ? 'Cancel Select' : 'Select'}
+                      </button>
+                      {selectMode && (
+                        <button type="button" onClick={handleSelectAll}>
+                          {selectedKeys.size === notifications.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                      )}
+                      <button type="button" onClick={handleMarkAllRead}>Mark All Read</button>
+                      {selectMode && selectedKeys.size > 0 ? (
+                        <button type="button" className="dashboard-notif-btn--danger" onClick={handleDeleteSelected}>
+                          Delete Selected ({selectedKeys.size})
+                        </button>
+                      ) : (
+                        <button type="button" className="dashboard-notif-btn--danger" onClick={handleDeleteAll}>
+                          Delete All
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {notifications.length === 0 ? (
                     <p className="dashboard-notif-dropdown__empty">No notifications yet.</p>
                   ) : (
                     <ul className="dashboard-notif-dropdown__list">
                       {notifications.map((n) => (
-                        <li key={n.key} className={`dashboard-notif-item${seenIds.has(n.key) ? " is-read" : ""}`}>
-                          <Link to={n.link} onClick={() => setNotifOpen(false)}>
+                        <li key={n.key} className={`dashboard-notif-item${seenIds.has(n.key) ? " is-read" : ""}${selectedKeys.has(n.key) ? " is-selected" : ""}`}>
+                          {selectMode && (
+                            <input
+                              type="checkbox"
+                              className="dashboard-notif-item__check"
+                              checked={selectedKeys.has(n.key)}
+                              onChange={() => handleToggleSelect(n.key)}
+                            />
+                          )}
+                          <Link to={n.link} className="dashboard-notif-item__text" onClick={() => setNotifOpen(false)}>
                             {n.message}
+                            <span className="dashboard-notif-item__time">{formatDate(n.time)}</span>
                           </Link>
+                          <button
+                            type="button"
+                            className="dashboard-notif-item__del"
+                            onClick={() => {
+                              const updated = new Set([...deletedKeys, n.key]);
+                              setDeletedKeys(updated);
+                              localStorage.setItem("notif_deleted", JSON.stringify([...updated]));
+                            }}
+                            aria-label="Delete notification"
+                          >
+                            <X size={13} />
+                          </button>
                         </li>
                       ))}
                     </ul>
@@ -586,9 +730,9 @@ const Dashboard = () => {
                 <span>Gender</span>
                 <select name="gender" value={filters.gender} onChange={handleFilterChange}>
                   <option value="">All</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="any">Any</option>
+                  <option value="boys">Male</option>
+                  <option value="girls">Female</option>
+                  <option value="both">Any</option>
                 </select>
               </label>
 
@@ -679,12 +823,28 @@ const Dashboard = () => {
               </div>
 
               <div className="dashboard-map__canvas">
-                <iframe
-                  title="Student dashboard map"
-                  src={mapEmbedUrl}
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
+                <MapContainer
+                  key={`${derivedMapCenter.lat}-${derivedMapCenter.lng}`}
+                  center={[derivedMapCenter.lat, derivedMapCenter.lng]}
+                  zoom={mapZoom}
+                  style={{ width: "100%", height: "100%" }}
+                  scrollWheelZoom={false}
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  />
+                  {currentLocation && (
+                    <Marker position={[currentLocation.lat, currentLocation.lng]}>
+                      <Popup>Your Location</Popup>
+                    </Marker>
+                  )}
+                  {mapLocations.map((point) => (
+                    <Marker key={point.key} position={[point.latitude, point.longitude]}>
+                      <Popup>{point.label} ({point.type})</Popup>
+                    </Marker>
+                  ))}
+                </MapContainer>
               </div>
 
               {mapLocations.length === 0 ? (
@@ -703,50 +863,46 @@ const Dashboard = () => {
               <Link to="/rooms">View All</Link>
             </div>
 
-            {recommendedHostels.length === 0 ? (
+            {rooms.length === 0 ? (
               <div className="dashboard-empty">No rooms available for the selected filters.</div>
             ) : (
               <div className="listing-grid">
-                {recommendedHostels.map((hostel) => {
-                  const detailsLink = hostel.ownerContact
-                    ? `/rooms?owner_contact=${encodeQueryValue(hostel.ownerContact)}&hostel=${encodeQueryValue(
-                        hostel.hostelName || "Hostel"
-                      )}`
-                    : `/rooms/${hostel.primaryRoomId}`;
-                  const roomImage = hostel.hostelImage || "";
-                  const roomTags = Array.isArray(hostel.tags) ? hostel.tags : [];
+                {rooms.slice(0, 4).map((room) => {
+                  const roomImage = room.images?.[0]?.image || room.hostel_image || "";
+                  const roomTags = Array.isArray(room.facilities) ? room.facilities.slice(0, 3) : [];
 
                   return (
-                    <article key={hostel.key} className="listing-card">
+                    <article key={room.id} className="listing-card">
                       <div className="listing-card__image-wrap">
                         {roomImage ? (
-                          <img
-                            src={roomImage}
-                            alt={hostel.hostelName}
-                            className="listing-card__image"
-                          />
+                          <img src={roomImage} alt={room.title} className="listing-card__image" />
                         ) : (
-                          <div className="listing-card__image listing-card__image--empty">No Hostel Image</div>
+                          <div className="listing-card__image listing-card__image--empty">No Room Image</div>
                         )}
                       </div>
 
                       <div className="listing-card__body">
-                        <h3>{hostel.hostelName}</h3>
-                        <p className="listing-card__price">{hostel.hostelPhone || "Contact unavailable"}</p>
-                        <p className="listing-card__meta">{hostel.hostelEmail || "Email unavailable"}</p>
-                        <p className="listing-card__meta">{hostel.hostelAddress}</p>
+                        <h3>{room.title || "Room"}</h3>
+                        {room.hostel_name && <p className="listing-card__meta">{room.hostel_name}</p>}
+                        <p className="listing-card__price">{formatCurrency(room.price)} / month</p>
+                        <p className="listing-card__meta">{room.address || room.hostel_address || "Address unavailable"}</p>
+                        {room.area ? <p className="listing-card__meta">{room.area}</p> : null}
+                        {(() => {
+                          const lat = parseCoordinate(room.latitude, "lat");
+                          const lng = parseCoordinate(room.longitude, "lng");
+                          const dist = lat !== null && lng !== null
+                            ? haversineKm(UNIVERSITY_LAT, UNIVERSITY_LNG, lat, lng).toFixed(2)
+                            : null;
+                          return dist !== null ? (
+                            <p className="listing-card__meta"><MapPin size={12} /> {dist} km from university</p>
+                          ) : null;
+                        })()}
                         <div className="listing-card__tags">
-                          <span className="listing-card__tag">
-                            {hostel.roomCount} room{hostel.roomCount > 1 ? "s" : ""}
-                          </span>
-                          <span className="listing-card__tag">{hostel.sampleRoomTitle}</span>
                           {roomTags.map((tag) => (
-                            <span key={`${hostel.key}-${tag}`} className="listing-card__tag">
-                              {tag}
-                            </span>
+                            <span key={`${room.id}-${tag}`} className="listing-card__tag">{tag}</span>
                           ))}
                         </div>
-                        <Link to={detailsLink} className="dashboard-btn dashboard-btn--primary">
+                        <Link to={`/rooms/${room.id}`} className="dashboard-btn dashboard-btn--primary">
                           View Details
                         </Link>
                       </div>
@@ -783,7 +939,7 @@ const Dashboard = () => {
 
                     <div className="listing-card__body">
                       <h3>{restaurant.name}</h3>
-                      <p className="listing-card__meta">ID: {restaurant.restaurant_id || restaurant.id}</p>
+                      <p className="listing-card__meta" style={{fontWeight: '700', color: '#ef7f1a'}}>ID: {restaurant.restaurant_id ?? `R-${restaurant.id}`}</p>
                       <p className="listing-card__price">{restaurant.phone || "Contact unavailable"}</p>
                       <p className="listing-card__meta">{restaurant.address || "Address unavailable"}</p>
                       <Link to={`/restaurants/${restaurant.id}`} className="dashboard-btn dashboard-btn--primary">

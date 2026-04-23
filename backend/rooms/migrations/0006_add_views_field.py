@@ -10,9 +10,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='room',
-            name='views',
-            field=models.IntegerField(default=0),
-        ),
+        # views field already added by 0005_room_views — no-op to avoid duplicate column
     ]

@@ -31,6 +31,7 @@ function Profile() {
   const [fetchLoading, setFetchLoading] = useState(true)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
   const fieldSx = {
     '& .MuiInputBase-root': {
       backgroundColor: '#fffdf8',
@@ -88,14 +89,38 @@ function Profile() {
   }, [])
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+    if (name === 'phone' && !/^[0-9]*$/.test(value)) return
+    setFormData({ ...formData, [name]: value })
+  }
+
+  const validate = () => {
+    const errors = {}
+    const phoneRegex = /^0[0-9]{9}$/
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+    if (!phoneRegex.test(formData.phone))
+      errors.phone = 'Enter a valid Sri Lankan phone number (e.g. 0771234567)'
+
+    if (!emailRegex.test(formData.email))
+      errors.email = 'Enter a valid email address (e.g. name@example.com)'
+
+    return errors
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setLoading(true)
     setSuccess('')
     setError('')
+
+    const errors = validate()
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
+      return
+    }
+    setFieldErrors({})
+
+    setLoading(true)
     try {
       await api.put('/api/delivery/auth/profile/', formData)
       setProfileSnapshot({ ...formData })
@@ -216,6 +241,7 @@ function Profile() {
     }
     setIsEditing(false)
     setError('')
+    setFieldErrors({})
   }
 
   const profileName = String(formData.username || currentUsername || 'Delivery Partner').trim()
@@ -334,6 +360,8 @@ function Profile() {
                       fullWidth
                       disabled={!isEditing}
                       InputProps={{ readOnly: !isEditing }}
+                      error={!!fieldErrors.email}
+                      helperText={fieldErrors.email || ''}
                       sx={fieldSx}
                     />
                   </Grid>
@@ -347,6 +375,8 @@ function Profile() {
                       fullWidth
                       disabled={!isEditing}
                       InputProps={{ readOnly: !isEditing }}
+                      error={!!fieldErrors.phone}
+                      helperText={fieldErrors.phone || 'Sri Lankan format: 0771234567'}
                       sx={fieldSx}
                     />
                   </Grid>

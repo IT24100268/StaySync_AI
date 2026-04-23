@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'admin_panel',
     'owner',
     'reviews',
+    'ai_recommendations',
 ]
 
 MIDDLEWARE = [

@@ -41,7 +41,7 @@ function buildDescription(description = '', category = 'Other') {
   return `${CATEGORY_META_PREFIX}${normalizedCategory}]\n${cleaned}`.trim();
 }
 
-export default function FoodItemModal({ open, item, onClose, onSubmit, categoryOptions = [] }) {
+export default function FoodItemModal({ open, item, onClose, onSubmit, categoryOptions = [], restaurantId = null }) {
   const [formData, setFormData] = useState(initialState);
   const [preview, setPreview] = useState('');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
@@ -80,8 +80,8 @@ export default function FoodItemModal({ open, item, onClose, onSubmit, categoryO
     }
 
     setFormData({
-      name: item.name,
-      price: item.price,
+      name: item.name || '',
+      price: item.price || '',
       image: null,
       category: normalizeCategoryName(extractCategory(item.description || '')) || '',
       food_id: item.food_id || '',
@@ -301,7 +301,7 @@ export default function FoodItemModal({ open, item, onClose, onSubmit, categoryO
               <label htmlFor="food-restaurant-id">Restaurant ID</label>
               <input
                 id="food-restaurant-id"
-                value={item?.restaurant_id ?? item?.restaurant ?? ''}
+                value={item?.restaurant_id ?? restaurantId ?? ''}
                 readOnly
                 disabled
                 placeholder="Auto-filled from restaurant"

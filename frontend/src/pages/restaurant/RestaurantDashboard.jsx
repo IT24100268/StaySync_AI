@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowUpRight,
+  Bell,
   CircleDollarSign,
   Flame,
   ListOrdered,
@@ -10,6 +11,7 @@ import {
   PackageCheck,
   Sparkles,
   Star,
+  X,
 } from 'lucide-react';
 import {
   Area,
@@ -174,9 +176,26 @@ export default function RestaurantDashboard() {
   const [acceptModalOpen, setAcceptModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [prepTime, setPrepTime] = useState('');
+  const [prepError, setPrepError] = useState('');
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectingOrder, setRejectingOrder] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState(null); // { message, onConfirm }
+
+  // ── Notification state ────────────────────────────────────────────────────
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifList, setNotifList] = useState([]);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState(new Set());
+  const [deletedKeys, setDeletedKeys] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('rest_notif_deleted') || '[]')); }
+    catch { return new Set(); }
+  });
+  const [seenIds, setSeenIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('rest_notif_seen') || '[]')); }
+    catch { return new Set(); }
+  });
+  const notifRef = useRef(null);
 
   const {
     items,
@@ -189,6 +208,134 @@ export default function RestaurantDashboard() {
   } = useFoodItems();
 
   const { addToast } = useToast();
+
+  // ── Fetch notifications from admin logs + restaurant status ────────────────────────────────────────────────────
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      const list = [];
+      try {
+        // 1. Admin logs targeting this user (warnings, status changes)
+        const logsRes = await api.get('/admin/logs/?limit=50');
+        const logs = toArray(logsRes.data?.results || logsRes.data);
+        const myId = user?.id;
+        logs.forEach((log) => {
+          if (String(log.target_id) !== String(myId) && log.target_type !== 'USER') return;
+          if (String(log.target_id) !== String(myId)) return;
+          let details = {};
+          try { details = typeof log.details === 'string' ? JSON.parse(log.details) : (log.details || {}); } catch {}
+          const key = `log-${log.id}`;
+          let message = log.action;
+          if (details.warning_note) message = `⚠️ Warning from Admin: ${details.warning_note}`;
+          else if (details.block_reason || log.action?.toLowerCase().includes('block')) message = `🚫 Account blocked: ${details.reason || details.block_reason || log.action}`;
+          else if (log.action?.toLowerCase().includes('warn')) message = `⚠️ ${log.action}${details.warning_note ? ` — ${details.warning_note}` : ''}`;
+          list.push({ key, message, time: log.created_at, type: 'admin' });
+        });
+      } catch {}
+
+      try {
+        // 2. Restaurant approval status + review note
+        const profileRes = await api.get('/auth/profile/');
+        const profile = profileRes.data;
+        const restProfile = profile?.profile || {};
+        // fetch restaurant record for review_note
+        const restRes = await api.get('/restaurants/');
+        const restaurants = toArray(restRes.data?.results || restRes.data);
+        const myRest = restaurants.find((r) => r.owner === profile.id || r.owner?.id === profile.id) || restaurants[0];
+        if (myRest) {
+          if (myRest.status === 'REJECTED' || myRest.status === 'NEEDS_CHANGES') {
+            const note = myRest.review_note || 'No reason provided';
+            list.push({ key: `rest-status-${myRest.id}`, message: `❌ Restaurant ${myRest.status === 'REJECTED' ? 'Rejected' : 'Needs Changes'}: ${note}`, time: myRest.reviewed_at || myRest.created_at, type: 'status' });
+          } else if (myRest.status === 'SUSPENDED') {
+            list.push({ key: `rest-suspended-${myRest.id}`, message: `🔴 Restaurant Suspended: ${myRest.review_note || 'Contact admin for details'}`, time: myRest.reviewed_at || myRest.created_at, type: 'status' });
+          } else if (myRest.status === 'APPROVED') {
+            list.push({ key: `rest-approved-${myRest.id}`, message: `✅ Your restaurant has been approved!`, time: myRest.reviewed_at || myRest.created_at, type: 'status' });
+          } else if (myRest.status === 'PENDING') {
+            list.push({ key: `rest-pending-${myRest.id}`, message: `⏳ Your restaurant is pending admin approval.`, time: myRest.created_at, type: 'status' });
+          }
+        }
+      } catch {}
+
+      const filtered = list
+        .filter((n) => !deletedKeys.has(n.key))
+        .sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
+      setNotifList(filtered);
+    };
+    if (user?.id) fetchNotifications();
+  }, [user, deletedKeys]);
+
+  const unreadCount = useMemo(
+    () => notifList.filter((n) => !seenIds.has(n.key)).length,
+    [notifList, seenIds]
+  );
+
+  const handleNotifOpen = () => {
+    setNotifOpen((prev) => {
+      if (!prev) {
+        const allIds = notifList.map((n) => n.key);
+        setSeenIds(new Set(allIds));
+        localStorage.setItem('rest_notif_seen', JSON.stringify(allIds));
+      } else {
+        setSelectMode(false);
+        setSelectedKeys(new Set());
+      }
+      return !prev;
+    });
+  };
+
+  const handleMarkAllRead = () => {
+    const allIds = notifList.map((n) => n.key);
+    setSeenIds(new Set(allIds));
+    localStorage.setItem('rest_notif_seen', JSON.stringify(allIds));
+  };
+
+  const handleDeleteAll = () => {
+    const updated = new Set([...deletedKeys, ...notifList.map((n) => n.key)]);
+    setDeletedKeys(updated);
+    setSelectedKeys(new Set());
+    localStorage.setItem('rest_notif_deleted', JSON.stringify([...updated]));
+  };
+
+  const handleDeleteSelected = () => {
+    const updated = new Set([...deletedKeys, ...selectedKeys]);
+    setDeletedKeys(updated);
+    setSelectedKeys(new Set());
+    localStorage.setItem('rest_notif_deleted', JSON.stringify([...updated]));
+  };
+
+  const handleToggleSelect = (key) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedKeys(
+      selectedKeys.size === notifList.length
+        ? new Set()
+        : new Set(notifList.map((n) => n.key))
+    );
+  };
+
+  const formatNotifDate = (value) => {
+    if (!value) return '';
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-LK', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  // Close notif on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false);
+        setSelectMode(false);
+        setSelectedKeys(new Set());
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const loadDashboard = async () => {
     const [ordersResult, overviewResult, reviewsResult] = await Promise.allSettled([
@@ -522,7 +669,10 @@ export default function RestaurantDashboard() {
       return;
     }
 
-    const confirmed = window.confirm(`Delete ${item.name}? This cannot be undone.`);
+    const confirmed = await new Promise((resolve) => {
+      setConfirmDialog({ message: `Delete "${item.name}"? This cannot be undone.`, onConfirm: () => resolve(true), onCancel: () => resolve(false) });
+    });
+    setConfirmDialog(null);
     if (!confirmed) return;
 
     try {
@@ -543,7 +693,11 @@ export default function RestaurantDashboard() {
       return;
     }
 
-    if (!window.confirm(`Mark ${item.name} as ${item.is_available ? 'out of stock' : 'available'}?`)) return;
+    const confirmed = await new Promise((resolve) => {
+      setConfirmDialog({ message: `Mark "${item.name}" as ${item.is_available ? 'out of stock' : 'available'}?`, onConfirm: () => resolve(true), onCancel: () => resolve(false) });
+    });
+    setConfirmDialog(null);
+    if (!confirmed) return;
 
     try {
       await toggleAvailability(item.id);
@@ -613,9 +767,10 @@ export default function RestaurantDashboard() {
 
   const confirmAcceptOrder = async () => {
     if (!prepTime || Number(prepTime) < 1) {
-      alert('Please enter preparation time (minimum 1 minute)');
+      setPrepError('Please enter preparation time (minimum 1 minute)');
       return;
     }
+    setPrepError('');
 
     try {
       await api.post(`/orders/restaurant/${selectedOrder.id}/accept/`, {
@@ -651,6 +806,91 @@ export default function RestaurantDashboard() {
 
   return (
     <div className="restaurant-dashboard dashboard-mock-theme">
+
+      {/* ── Notification Bell ─────────────────────────────────────────── */}
+      <div className="rest-notif-wrap" ref={notifRef}>
+        <button type="button" className="rest-notif-bell" onClick={handleNotifOpen}>
+          <Bell size={18} />
+          {unreadCount > 0 && <span className="rest-notif-badge">{unreadCount}</span>}
+        </button>
+
+        {notifOpen && (
+          <div className="rest-notif-dropdown">
+            <div className="rest-notif-dropdown__head">
+              <strong>Notifications</strong>
+              <span>{notifList.length} total</span>
+            </div>
+
+            {notifList.length > 0 && (
+              <div className="rest-notif-dropdown__actions">
+                <button type="button" onClick={() => {
+                  if (selectMode) { setSelectMode(false); setSelectedKeys(new Set()); }
+                  else setSelectMode(true);
+                }}>
+                  {selectMode ? 'Cancel' : 'Select'}
+                </button>
+                {selectMode && (
+                  <button type="button" onClick={handleSelectAll}>
+                    {selectedKeys.size === notifList.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                )}
+                <button type="button" onClick={handleMarkAllRead}>Mark All Read</button>
+                {selectMode && selectedKeys.size > 0 ? (
+                  <button type="button" className="rest-notif-btn--danger" onClick={handleDeleteSelected}>
+                    Delete ({selectedKeys.size})
+                  </button>
+                ) : (
+                  <button type="button" className="rest-notif-btn--danger" onClick={handleDeleteAll}>
+                    Delete All
+                  </button>
+                )}
+              </div>
+            )}
+
+            {notifList.length === 0 ? (
+              <p className="rest-notif-dropdown__empty">No notifications yet.</p>
+            ) : (
+              <ul className="rest-notif-dropdown__list">
+                {notifList.map((n) => (
+                  <li
+                    key={n.key}
+                    className={[
+                      'rest-notif-item',
+                      seenIds.has(n.key) ? 'is-read' : '',
+                      selectedKeys.has(n.key) ? 'is-selected' : '',
+                    ].join(' ').trim()}
+                  >
+                    {selectMode && (
+                      <input
+                        type="checkbox"
+                        className="rest-notif-item__check"
+                        checked={selectedKeys.has(n.key)}
+                        onChange={() => handleToggleSelect(n.key)}
+                      />
+                    )}
+                    <span className="rest-notif-item__text">
+                      {n.message}
+                      <span className="rest-notif-item__time">{formatNotifDate(n.time)}</span>
+                    </span>
+                    <button
+                      type="button"
+                      className="rest-notif-item__del"
+                      onClick={() => {
+                        const updated = new Set([...deletedKeys, n.key]);
+                        setDeletedKeys(updated);
+                        localStorage.setItem('rest_notif_deleted', JSON.stringify([...updated]));
+                      }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+
       <section className="dashboard-hero-card">
         <div className="dashboard-hero-card__image">
           <img
@@ -1025,35 +1265,35 @@ export default function RestaurantDashboard() {
         <div className="modal-overlay" onClick={() => setAcceptModalOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Accept Delivery Order #{selectedOrder?.id}</h3>
-            <p className="modal-description">
-              How many minutes for food preparation?
-            </p>
-
+            <p className="modal-description">How many minutes for food preparation?</p>
             <input
               type="number"
               min="1"
               value={prepTime}
-              onChange={(e) => setPrepTime(e.target.value)}
+              onChange={(e) => { setPrepTime(e.target.value); setPrepError(''); }}
               placeholder="e.g., 15"
               className="modal-input"
             />
-
+            {prepError && (
+              <p style={{ margin: '8px 0 0', color: '#dc2626', fontSize: '0.88rem', fontWeight: 700 }}>{prepError}</p>
+            )}
             <p className="modal-note">Estimated delivery: Prep time + 30 mins delivery</p>
-
             <div className="modal-actions">
-              <button onClick={confirmAcceptOrder} className="btn-success modal-btn-fill">
-                Confirm Accept
-              </button>
-              <button
-                onClick={() => {
-                  setAcceptModalOpen(false);
-                  setPrepTime('');
-                  setSelectedOrder(null);
-                }}
-                className="btn-secondary modal-btn-fill"
-              >
-                Cancel
-              </button>
+              <button onClick={confirmAcceptOrder} className="btn-success modal-btn-fill">Confirm Accept</button>
+              <button onClick={() => { setAcceptModalOpen(false); setPrepTime(''); setPrepError(''); setSelectedOrder(null); }} className="btn-secondary modal-btn-fill">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDialog && (
+        <div className="modal-overlay" onClick={() => { confirmDialog.onCancel(); setConfirmDialog(null); }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Confirm Action</h3>
+            <p className="modal-description">{confirmDialog.message}</p>
+            <div className="modal-actions">
+              <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }} className="btn-success modal-btn-fill">Confirm</button>
+              <button onClick={() => { confirmDialog.onCancel(); setConfirmDialog(null); }} className="btn-secondary modal-btn-fill">Cancel</button>
             </div>
           </div>
         </div>
@@ -1061,3 +1301,4 @@ export default function RestaurantDashboard() {
     </div>
   );
 }
+

@@ -26,6 +26,14 @@ export default function OwnerRegister() {
       setError("Passwords do not match");
       return;
     }
+    if (!/^0[0-9]{9}$/.test(formData.phone)) {
+      setError("Enter a valid Sri Lankan phone number (e.g. 0771234567)");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      setError("Enter a valid email address (e.g. name@example.com)");
+      return;
+    }
     setLoading(true);
     try {
       await register(formData);
@@ -38,11 +46,11 @@ export default function OwnerRegister() {
   };
 
   const fields = [
-    { key: "fullName", label: "Full Name", icon: User, type: "text", placeholder: "Liam Brown" },
-    { key: "email", label: "Email", icon: Mail, type: "email", placeholder: "owner@example.com" },
-    { key: "phone", label: "Phone", icon: Phone, type: "tel", placeholder: "0771234567" },
-    { key: "password", label: "Password", icon: Lock, type: "password", placeholder: "••••••••" },
-    { key: "confirmPassword", label: "Confirm Password", icon: Lock, type: "password", placeholder: "••••••••" },
+    { key: "fullName", label: "Full Name", icon: User, type: "text", placeholder: "Liam Brown", isPhone: false },
+    { key: "email", label: "Email", icon: Mail, type: "email", placeholder: "owner@example.com", isPhone: false },
+    { key: "phone", label: "Phone", icon: Phone, type: "tel", placeholder: "0771234567", isPhone: true },
+    { key: "password", label: "Password", icon: Lock, type: "password", placeholder: "••••••••", isPhone: false },
+    { key: "confirmPassword", label: "Confirm Password", icon: Lock, type: "password", placeholder: "••••••••", isPhone: false },
   ];
 
   return (
@@ -89,7 +97,7 @@ export default function OwnerRegister() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {fields.map(({ key, label, icon: Icon, type, placeholder }) => (
+            {fields.map(({ key, label, icon: Icon, type, placeholder, isPhone }) => (
               <div key={key}>
                 <label className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#6f6a5f]">
                   <Icon size={12} className="text-[#b98b1f]" /> {label}
@@ -98,7 +106,11 @@ export default function OwnerRegister() {
                   type={type}
                   required
                   value={formData[key]}
-                  onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    if (isPhone && !/^[0-9]*$/.test(val)) return
+                    setFormData({ ...formData, [key]: val })
+                  }}
                   className={inputCls}
                   placeholder={placeholder}
                 />

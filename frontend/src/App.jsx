@@ -52,6 +52,7 @@ import RestaurantProfile from './pages/restaurant/RestaurantProfile';
 import RestaurantReviews from './pages/restaurant/RestaurantReviews';
 import OwnerReviews from './pages/owner/OwnerReviews';
 import StudentReviews from './pages/student/StudentReviews';
+import AiPlanner from './pages/student/AiPlanner';
 import EarningsPage from './pages/restaurant/EarningsPage';
 import SettingsPage from './pages/restaurant/SettingsPage';
 
@@ -99,6 +100,7 @@ function App() {
             <Route path="/checkout" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><Checkout /></ProtectedLayout></PrivateRoute>} />
             <Route path="/orders" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><Orders /></ProtectedLayout></PrivateRoute>} />
             <Route path="/reviews" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><StudentReviews /></ProtectedLayout></PrivateRoute>} />
+            <Route path="/ai-planner" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><AiPlanner /></ProtectedLayout></PrivateRoute>} />
             <Route path="/tracking/:orderId" element={<PrivateRoute allowedRoles={['student']}><ProtectedLayout><Tracking /></ProtectedLayout></PrivateRoute>} />
             
             <Route path="/delivery/*" element={<DeliveryApp />} />

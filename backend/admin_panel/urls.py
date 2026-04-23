@@ -4,7 +4,7 @@ from .views import (
     RoomAdminViewSet, RestaurantAdminViewSet, DeliveryPartnerAdminViewSet,
     UserAdminViewSet, ReportViewSet, AdminLogViewSet, admin_analytics_summary,
     admin_orders_monitor, admin_analytics_detail, admin_dashboard_overview,
-    AdminNotificationViewSet, admin_restaurant_menu
+    AdminNotificationViewSet, admin_restaurant_menu, my_notifications
 )
 
 router = DefaultRouter()
@@ -22,5 +22,6 @@ urlpatterns = [
     path('orders/monitor/', admin_orders_monitor, name='admin-orders-monitor'),
     path('dashboard/overview/', admin_dashboard_overview, name='admin-dashboard-overview'),
     path('restaurants/<int:restaurant_id>/menu/', admin_restaurant_menu, name='admin-restaurant-menu'),
+    path('my-notifications/', my_notifications, name='my-notifications'),
     path('', include(router.urls)),
 ]

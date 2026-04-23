@@ -10,8 +10,18 @@ import {
   ShieldCheck,
   UserRound,
 } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
 import api from "../../services/api";
 import "./RoomDetail.css";
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
 
 const formatCurrency = (value) => {
   const numeric = Number(value);
@@ -26,6 +36,21 @@ const toTitleCase = (value) =>
     .filter(Boolean)
     .map((item) => item[0].toUpperCase() + item.slice(1).toLowerCase())
     .join(" ");
+
+const UNIVERSITY_LAT = 9.684058615838461;
+const UNIVERSITY_LNG = 80.02305072385631;
+
+const haversineKm = (lat1, lng1, lat2, lng2) => {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+};
 
 const parseCoordinate = (value, axis) => {
   if (value === null || value === undefined || value === "") return null;
@@ -87,9 +112,9 @@ export default function RoomDetail() {
   const latitude = parseCoordinate(room?.latitude, "lat");
   const longitude = parseCoordinate(room?.longitude, "lng");
   const hasMapCoordinates = latitude !== null && longitude !== null;
-  const mapEmbedUrl = hasMapCoordinates
-    ? `https://maps.google.com/maps?q=${latitude},${longitude}&z=15&output=embed`
-    : "";
+  const distanceFromUniversity = hasMapCoordinates
+    ? haversineKm(UNIVERSITY_LAT, UNIVERSITY_LNG, latitude, longitude).toFixed(2)
+    : null;
 
   const handleBooking = async () => {
     setBookingError("");
@@ -141,7 +166,13 @@ export default function RoomDetail() {
               </span>
             )}
             <p>
-              <MapPin size={14} /> {room.distance_from_university || "0"} km from university | Gender: {toTitleCase(room.gender_allowed)}
+              <MapPin size={14} />{" "}
+              {distanceFromUniversity !== null
+                ? `${distanceFromUniversity} km from university`
+                : room.distance_from_university
+                ? `${room.distance_from_university} km from university`
+                : "Distance unavailable"}{" "}
+              | Gender: {toTitleCase(room.gender_allowed)}
             </p>
           </div>
           <div className="rd-price-pill">
@@ -202,8 +233,14 @@ export default function RoomDetail() {
                   <strong>{toTitleCase(room.gender_allowed) || "Any"}</strong>
                 </div>
                 <div className="rd-info-row">
-                  <span>Distance</span>
-                  <strong>{room.distance_from_university || "0"} km</strong>
+                  <span>Distance from University</span>
+                  <strong>
+                    {distanceFromUniversity !== null
+                      ? `${distanceFromUniversity} km`
+                      : room.distance_from_university
+                      ? `${room.distance_from_university} km`
+                      : "Unavailable"}
+                  </strong>
                 </div>
                 <div className="rd-info-row">
                   <span>Location</span>
@@ -291,12 +328,20 @@ export default function RoomDetail() {
                   <MapPin size={16} /> Room Location
                 </h2>
                 <div className="rd-map-wrap">
-                  <iframe
-                    title="Room location"
-                    src={mapEmbedUrl}
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                  />
+                  <MapContainer
+                    center={[latitude, longitude]}
+                    zoom={15}
+                    style={{ width: "100%", height: "100%" }}
+                    scrollWheelZoom={false}
+                  >
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    />
+                    <Marker position={[latitude, longitude]}>
+                      <Popup>{room.title || "Room Location"}</Popup>
+                    </Marker>
+                  </MapContainer>
                 </div>
               </section>
             ) : null}
