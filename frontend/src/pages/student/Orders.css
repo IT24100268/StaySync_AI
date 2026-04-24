@@ -138,22 +138,24 @@
   flex-wrap: wrap;
 }
 
+button.orders-filter-chip,
 .orders-filter-chip {
   height: 34px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #fff;
-  color: #1f4f96;
+  border: 1px solid rgba(15, 23, 42, 0.12) !important;
+  background: #fff !important;
+  color: #1f4f96 !important;
   padding: 0 12px;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
 }
 
+button.orders-filter-chip.is-active,
 .orders-filter-chip.is-active {
-  color: #fff;
-  border-color: transparent;
-  background: linear-gradient(120deg, #1f4f96, #4b8ef6);
+  color: #fff !important;
+  border-color: transparent !important;
+  background: linear-gradient(120deg, #1f4f96, #4b8ef6) !important;
   box-shadow: 0 8px 16px rgba(31, 79, 150, 0.24);
 }
 
@@ -232,22 +234,24 @@
   margin-bottom: 10px;
 }
 
+button.orders-active-pill,
 .orders-active-pill {
   height: 32px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #fff;
-  color: #1f4f96;
+  border: 1px solid rgba(15, 23, 42, 0.12) !important;
+  background: #fff !important;
+  color: #1f4f96 !important;
   padding: 0 10px;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
 }
 
+button.orders-active-pill.is-active,
 .orders-active-pill.is-active {
-  color: #fff;
-  border-color: transparent;
-  background: linear-gradient(120deg, #1f4f96, #4b8ef6);
+  color: #fff !important;
+  border-color: transparent !important;
+  background: linear-gradient(120deg, #1f4f96, #4b8ef6) !important;
 }
 
 .orders-active-content {
@@ -828,48 +832,58 @@
   transform: translateY(-1px);
 }
 
-.orders-btn--primary {
-  color: #fff;
-  background: linear-gradient(120deg, #1f4f96, #4b8ef6);
+button.orders-btn--primary,
+a.orders-btn--primary,
+.orders-btn.orders-btn--primary {
+  color: #fff !important;
+  background: linear-gradient(120deg, #1f4f96, #4b8ef6) !important;
   box-shadow: 0 10px 20px rgba(31, 79, 150, 0.24);
 }
 
-.orders-btn--outline {
-  color: #1f4f96;
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(15, 23, 42, 0.14);
+button.orders-btn--outline,
+a.orders-btn--outline,
+.orders-btn.orders-btn--outline {
+  color: #1f4f96 !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(15, 23, 42, 0.14) !important;
 }
 
-.orders-btn--route {
-  color: #fff;
-  border-color: transparent;
-  background: linear-gradient(120deg, #1f4f96, #3579dd);
+button.orders-btn--route,
+a.orders-btn--route,
+.orders-btn.orders-btn--route {
+  color: #fff !important;
+  border-color: transparent !important;
+  background: linear-gradient(120deg, #1f4f96, #3579dd) !important;
   box-shadow: 0 10px 20px rgba(31, 79, 150, 0.28);
 }
 
-.orders-btn--track {
-  color: #fff;
-  border-color: transparent;
-  background: linear-gradient(120deg, #0f766e, #0ea5a4);
+button.orders-btn--track,
+a.orders-btn--track,
+.orders-btn.orders-btn--track {
+  color: #fff !important;
+  border-color: transparent !important;
+  background: linear-gradient(120deg, #0f766e, #0ea5a4) !important;
   box-shadow: 0 10px 20px rgba(14, 165, 164, 0.28);
 }
 
-.orders-btn--restaurant {
-  color: #1f4f96;
-  border-color: rgba(31, 79, 150, 0.24);
-  background:
-    radial-gradient(160px 90px at 100% 0%, rgba(116, 157, 241, 0.2), transparent 72%),
-    rgba(255, 255, 255, 0.96);
+button.orders-btn--restaurant,
+a.orders-btn--restaurant,
+.orders-btn.orders-btn--restaurant {
+  color: #1f4f96 !important;
+  border-color: rgba(31, 79, 150, 0.24) !important;
+  background: radial-gradient(160px 90px at 100% 0%, rgba(116, 157, 241, 0.2), transparent 72%), rgba(255, 255, 255, 0.96) !important;
 }
 
-.orders-btn--completed {
+button.orders-btn--completed,
+a.orders-btn--completed,
+.orders-btn.orders-btn--completed {
   height: 34px;
   border-radius: 999px;
   padding: 0 12px;
   font-size: 12px;
-  color: #fff;
-  border-color: transparent;
-  background: linear-gradient(120deg, #1f4f96, #4b8ef6);
+  color: #fff !important;
+  border-color: transparent !important;
+  background: linear-gradient(120deg, #1f4f96, #4b8ef6) !important;
   box-shadow: 0 8px 16px rgba(31, 79, 150, 0.24);
 }
 

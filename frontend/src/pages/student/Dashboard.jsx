@@ -589,6 +589,7 @@ const Dashboard = () => {
                 <X size={16} />
               </button>
             ) : null}
+            <button type="submit" style={{ display: "none" }} aria-hidden="true" />
           </form>
 
           <div className="dashboard-toolbar__actions">

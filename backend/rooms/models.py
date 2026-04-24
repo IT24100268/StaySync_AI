@@ -103,3 +103,36 @@ class Favorite(models.Model):
     
     def __str__(self):
         return f"{self.user.email} - {self.room.title}"
+
+
+class RoomInteraction(models.Model):
+    EVENT_CLICK = 'click'
+    EVENT_VIEW  = 'view'
+    EVENT_SAVE  = 'save'
+    EVENT_CHOICES = [
+        (EVENT_CLICK, 'Click'),
+        (EVENT_VIEW,  'View'),
+        (EVENT_SAVE,  'Save'),
+    ]
+    user        = models.ForeignKey(User, on_delete=models.CASCADE, related_name='room_interactions')
+    room        = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='interactions')
+    event_type  = models.CharField(max_length=10, choices=EVENT_CHOICES)
+    time_spent  = models.PositiveIntegerField(default=0)  # seconds
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.email} {self.event_type} room {self.room_id}"
+
+
+class RoomSearchHistory(models.Model):
+    user           = models.ForeignKey(User, on_delete=models.CASCADE, related_name='room_searches')
+    budget_min     = models.IntegerField(null=True, blank=True)
+    budget_max     = models.IntegerField(null=True, blank=True)
+    max_distance   = models.FloatField(null=True, blank=True)
+    gender_allowed = models.CharField(max_length=10, blank=True)
+    location       = models.CharField(max_length=100, blank=True)
+    facility       = models.CharField(max_length=100, blank=True)
+    created_at     = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.email} search at {self.created_at}"

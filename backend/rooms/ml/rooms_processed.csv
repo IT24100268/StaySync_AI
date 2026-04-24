@@ -1,0 +1,51 @@
+room_id,title,area,gender_allowed,room_type,monthly_rent_lkr,rating,distance_to_uoj_km,attached_bath,ac,wifi,max_capacity,budget_range,meals_included,parking,is_available
+1,single,Jaffna Town,Boys,Single,6000.00,3.0,0.00,False,False,False,1.0,budget,0,0,1
+2,Double room,Jaffna Town,Girls,Single,10000.00,3.0,0.00,False,False,False,1.0,mid,0,0,1
+3,Single Room,Jaffna Town,Boys,Single,5000.00,3.0,0.00,False,False,False,1.0,budget,0,0,1
+4,Shared room,,Female,Single,8000.00,3.0,0.00,False,False,False,1.0,budget,0,0,1
+5,Single Room,,Male,Single,7000.00,3.0,0.00,False,False,False,1.0,budget,0,0,1
+6,Shared Room,Jaffna Town,Girls,Single,9000.00,3.0,0.00,False,False,False,1.0,budget,0,0,1
+7,Single Room,,Female,Single,10000.00,3.0,0.00,False,False,False,1.0,mid,0,0,1
+8,Shared room,Jaffna Town,Girls,Single,6000.00,3.0,0.00,False,False,False,1.0,budget,0,0,1
+9,shared Room,Jaffna Town,Girls,Single,7000.00,3.0,0.00,False,False,False,1.0,budget,0,0,1
+11,Shared Room,Kokuvil,Boys,Single,8000.00,3.0,0.00,False,False,False,1.0,budget,0,0,1
+12,Premium Single Room - Jaffna Town,Kokuvil,Boys,Single,10000.00,4.5,0.00,False,False,False,1.0,mid,0,0,1
+13,Budget Triple Room - Nallur,Kokuvil,Boys,Shared,8000.00,4.0,0.00,False,False,False,3.0,budget,0,0,1
+14,Deluxe Twin Room - Kokuvil,Kokuvil,Girls,Shared,5000.00,4.6,0.00,False,False,False,2.0,budget,0,0,1
+15,Student Economy Room - Chunnakam,Kokuvil,Girls,Shared,7000.00,3.8,0.00,False,False,False,4.0,budget,0,0,1
+16,Quiet Single Study Room - Ariyalai,Kokuvil,Boys,Single,8000.00,3.8,0.00,False,False,False,1.0,budget,0,0,1
+17,Comfort Shared Room - Kondavil,Kokuvil,Girls,Single,11000.00,4.1,0.00,False,False,False,1.0,mid,0,0,1
+18,Safe Female Twin Stay - Uduvil,Kokuvil,Girls,Single,7000.00,4.5,0.00,False,False,False,1.0,budget,0,0,1
+19,Economy Family Style Room - Tellippalai,Kokuvil,Boys,Single,11000.00,4.0,0.00,False,False,False,1.0,mid,0,0,1
+20,Luxury Double Room - Thirunelvely,Thirunelvely,Both,Shared,6000.00,4.7,0.00,False,False,False,2.0,budget,0,0,1
+21,Executive Single Room - Kantharmadam,Kantharmadam,Both,Single,9000.00,4.5,0.00,False,False,False,1.0,budget,0,0,1
+22,Student Shared Room,Kantharmadam,Boys,Shared,10000.00,3.8,0.00,False,False,False,3.0,mid,0,0,1
+23,Premium Couple Room,Kantharmadam,Girls,Shared,8000.00,3.9,0.00,False,False,False,2.0,budget,0,0,1
+24,Quiet Standard Room - Kaithady,Kantharmadam,Boys,Shared,7000.00,4.0,0.00,False,False,False,3.0,budget,0,0,1
+25,City View Single Room - Jaffna Town,Kantharmadam,Girls,Shared,6000.00,4.3,0.00,False,False,False,2.0,budget,0,0,1
+26,Temple Side Twin Room - Nallur,Kantharmadam,Girls,Single,10000.00,4.8,0.00,False,False,False,1.0,mid,0,0,1
+27,University Budget Room,Kantharmadam,Boys,Shared,8500.00,4.0,0.00,False,False,False,2.0,budget,0,0,1
+28,Garden View Room,Kantharmadam,Girls,Single,6000.00,4.3,0.00,False,False,False,1.0,budget,0,0,1
+29,Professional Studio Room,Kantharmadam,Boys,Shared,7000.00,4.3,0.00,False,False,False,4.0,budget,0,0,1
+30,Budget Quad Room,Kantharmadam,Boys,Shared,6000.00,3.0,0.00,False,False,False,3.0,budget,0,0,1
+31,Premium double Room,Kokuvil,Girls,Shared,12000.00,5.0,0.00,False,False,False,2.0,mid,0,0,1
+32,Comfort Twin Room,Kondavil,Girls,Shared,10000.00,4.1,0.00,False,False,False,3.0,mid,0,0,1
+33,Family Sharing Room,Kondavil,Boys,Single,8500.00,4.2,0.00,False,False,False,1.0,budget,0,0,1
+34,Transit Single Room,Kondavil,Boys,Single,7500.00,4.1,0.00,False,False,False,1.0,budget,0,0,1
+35,North Side Study Room,Kondavil,Girls,Shared,6000.00,3.6,0.00,False,False,False,3.0,budget,0,0,1
+36,Premium Working Women's Room,Kondavil,Girls,Single,9000.00,4.4,0.00,False,False,False,1.0,budget,0,0,1
+37,Affordable Shared Room,Kantharmadam,Boys,Single,11000.00,4.6,0.00,False,False,False,1.0,mid,0,0,1
+38,Deluxe Double Room,Kondavil,Girls,Shared,6500.00,4.5,0.00,False,False,False,3.0,budget,0,0,1
+39,Scholar's Room,Kondavil,Boys,Shared,8000.00,4.1,0.00,False,False,False,3.0,budget,0,0,1
+40,Comfort Triple Room,Kondavil,Boys,Shared,8500.00,4.3,0.00,False,False,False,3.0,budget,0,0,1
+41,Temple View Twin Stay,Kondavil,Girls,Shared,7000.00,3.9,0.00,False,False,False,2.0,budget,0,0,1
+42,Smart Budget Room,Nallur,Boys,Shared,14000.00,3.4,0.00,False,False,False,1.0,mid,0,0,1
+43,Premium Female Suite - Nallur,Nallur,Girls,Shared,10000.00,4.8,0.00,False,False,False,8.0,mid,0,0,1
+44,Railway Access Room - Nallur,Nallur,Both,Shared,12000.00,3.9,0.00,False,False,False,1.0,mid,0,0,1
+45,Quiet Couple Room - Nallur,Nallur,Both,Shared,7000.00,4.0,0.00,False,False,False,2.0,budget,0,0,1
+46,Modern Study Room - Nallur,Nallur,Boys,Single,11000.00,4.4,0.00,False,False,False,1.0,mid,0,0,1
+47,Deluxe Sharing Room - Nallur,Nallur,Girls,Shared,6000.00,4.5,0.00,False,False,False,3.0,budget,0,0,1
+48,Town Side Shared Room - Nallur,Nallur,Boys,Shared,12000.00,3.8,0.00,False,False,False,2.0,mid,0,0,1
+49,Compact Single Room - Nallur,Nallur,Both,Single,9000.00,3.6,0.00,False,False,False,1.0,budget,0,0,1
+50,Main Road Twin Room - Nallur,Nallur,Boys,Shared,8000.00,4.1,0.00,False,False,False,2.0,budget,0,0,1
+51,Lake Breeze Room - Nallur,Nallur,Girls,Shared,10000.00,4.2,0.00,False,False,False,2.0,mid,0,0,1

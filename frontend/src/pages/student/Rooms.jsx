@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Heart,
   Search,
+  Sparkles,
 } from "lucide-react";
 import api from "../../services/api";
 import "./Rooms.css";
@@ -62,6 +63,7 @@ export default function Rooms() {
   const [filters, setFilters] = useState({ ...INITIAL_FILTERS, owner_contact: ownerContactFromQuery });
   const [sortBy, setSortBy] = useState("price_asc");
   const [rooms, setRooms] = useState([]);
+  const [recommendedRooms, setRecommendedRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState("");
@@ -70,8 +72,29 @@ export default function Rooms() {
     const nextFilters = { ...INITIAL_FILTERS, owner_contact: ownerContactFromQuery };
     setFilters(nextFilters);
     fetchRooms(nextFilters, true);
+    fetchRecommended();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerContactFromQuery]);
+
+  const fetchRecommended = async () => {
+    try {
+      const [recRes, favRes] = await Promise.all([
+        api.get("/rooms/recommended/?top_k=6"),
+        api.get("/rooms/favorites/"),
+      ]);
+      const favList = Array.isArray(favRes.data)
+        ? favRes.data
+        : Array.isArray(favRes.data?.results)
+        ? favRes.data.results
+        : [];
+      const favIds = new Set(favList.map((f) => f.room?.id || f.room));
+      const recs = Array.isArray(recRes.data) ? recRes.data : [];
+      setRecommendedRooms(recs.map((r) => ({ ...r, is_favorited: favIds.has(r.id) })));
+    } catch (err) {
+      console.error('fetchRecommended error:', err);
+      setRecommendedRooms([]);
+    }
+  };
 
   const fetchRooms = async (overrideFilters = filters, initialLoad = false) => {
     if (!initialLoad) {
@@ -169,7 +192,21 @@ export default function Rooms() {
 
   const handleSearch = async (event) => {
     event.preventDefault();
+    // Log the search for the recommender
+    api.post("/rooms/log-search/", {
+      min_price: filters.min_price || null,
+      max_price: filters.max_price || null,
+      max_distance: filters.max_distance || null,
+      gender_allowed: filters.gender_allowed || "",
+      location: filters.location || "",
+      facility: filters.facility || "",
+    }).catch(() => {});
     await fetchRooms(filters);
+  };
+
+  const handleViewDetails = (roomId) => {
+    api.post('/rooms/log-click/', { room_id: roomId }).catch(() => {});
+    navigate(`/rooms/${roomId}`);
   };
 
   const handleClear = async () => {
@@ -196,6 +233,13 @@ export default function Rooms() {
           room.id === roomId ? { ...room, is_favorited: !room.is_favorited } : room
         )
       );
+      setRecommendedRooms((current) =>
+        current.map((room) =>
+          room.id === roomId ? { ...room, is_favorited: !room.is_favorited } : room
+        )
+      );
+      // Re-fetch recommendations so scoring updates with new favorite
+      setTimeout(() => fetchRecommended(), 300);
     } catch (favoriteError) {
       console.error("Failed to update favorite:", favoriteError);
     }
@@ -339,9 +383,66 @@ export default function Rooms() {
               </div>
             </section>
 
+            {recommendedRooms.length > 0 && (
+              <section className="rooms-list-card">
+                <div className="rooms-list-card__head">
+                  <h2><Sparkles size={18} style={{ marginRight: 6, color: "#f59e0b" }} />Recommended For You</h2>
+                  <span className="rooms-link-btn">Based on your activity</span>
+                </div>
+                <div className="rooms-grid">
+                  {recommendedRooms.map((room) => {
+                    const title = room.hostel_name || room.title || "Hostel";
+                    const subtitle =
+                      room.hostel_name && room.title
+                        ? room.title
+                        : room.address || room.hostel_address || "Address unavailable";
+                    const facilities = Array.isArray(room.facilities) ? room.facilities.slice(0, 3) : [];
+                    const roomImage = room.images?.[0]?.image || room.hostel_image || "";
+                    return (
+                      <article key={`rec-${room.id}`} className="room-card room-card--recommended">
+                        <div className="room-card__media">
+                          {roomImage ? (
+                            <img src={roomImage} alt={title} />
+                          ) : (
+                            <div className="room-card__placeholder">No Image</div>
+                          )}
+                          <button
+                            type="button"
+                            className={`room-card__save ${room.is_favorited ? "is-active" : ""}`}
+                            onClick={() => toggleFavorite(room.id)}
+                            aria-label={room.is_favorited ? "Remove from favorites" : "Save room"}
+                          >
+                            <Heart size={16} fill={room.is_favorited ? "currentColor" : "none"} />
+                          </button>
+                        </div>
+                        <div className="room-card__body">
+                          {room.hostel_id && <span className="room-card__hostel-id">{room.hostel_id}</span>}
+                          <h3>{title}</h3>
+                          <p className="room-card__price">{formatCurrency(room.price)} / month</p>
+                          <p className="room-card__meta">{subtitle}</p>
+                          <div className="room-card__tags">
+                            {facilities.length > 0
+                              ? facilities.map((item) => <span key={`rec-${room.id}-${item}`}>{item}</span>)
+                              : <span>{room.gender_allowed || "Any"}</span>}
+                          </div>
+                          <button
+                            type="button"
+                            className="rooms-btn rooms-btn--primary"
+                            onClick={() => handleViewDetails(room.id)}
+                          >
+                            View Details
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
             <section className="rooms-list-card">
               <div className="rooms-list-card__head">
-                <h2>Recommended Rooms</h2>
+                <h2>All Rooms</h2>
                 <Link to="/rooms" className="rooms-link-btn">
                   View All <ChevronRight size={14} />
                 </Link>
@@ -399,7 +500,7 @@ export default function Rooms() {
                           <button
                             type="button"
                             className="rooms-btn rooms-btn--primary"
-                            onClick={() => navigate(`/rooms/${room.id}`)}
+                            onClick={() => handleViewDetails(room.id)}
                           >
                             View Details
                           </button>
