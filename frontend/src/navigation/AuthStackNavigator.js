@@ -7,6 +7,7 @@ import StudentRegisterScreen from "../screens/student/StudentRegisterScreen";
 import OwnerRegisterScreen from "../screens/owner/OwnerRegisterScreen";
 import RestaurantRegisterScreen from "../screens/restaurant/RestaurantRegisterScreen";
 import DeliveryPartnerRegisterScreen from "../screens/delivery/DeliveryPartnerRegisterScreen";
+import LocationPickerScreen from "../screens/location/LocationPickerScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -19,6 +20,11 @@ export default function AuthStackNavigator() {
       <Stack.Screen name="StudentRegister" component={StudentRegisterScreen} />
       <Stack.Screen name="OwnerRegister" component={OwnerRegisterScreen} />
       <Stack.Screen name="RestaurantRegister" component={RestaurantRegisterScreen} />
+      <Stack.Screen
+        name="LocationPicker"
+        component={LocationPickerScreen}
+        options={{ title: "Select Location", headerShown: true }}
+      />
       <Stack.Screen
         name="DeliveryPartnerRegister"
         component={DeliveryPartnerRegisterScreen}

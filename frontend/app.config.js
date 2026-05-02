@@ -24,7 +24,7 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        backgroundColor: "#0B5D7A",
+        backgroundColor: "#0B5D7A",  
       },
       permissions: ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
       config: {

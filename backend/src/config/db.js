@@ -9,6 +9,15 @@ async function dropLegacyRestaurantOwnerIndex() {
     return;
   }
 
+  const collectionExists =
+    (await mongoose.connection.db
+      .listCollections({ name: Restaurant.collection.collectionName })
+      .toArray()).length > 0;
+
+  if (!collectionExists) {
+    return;
+  }
+
   const indexes = await Restaurant.collection.indexes();
   const legacyOwnerIndex = indexes.find((index) => index.name === "owner_1");
 

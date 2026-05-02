@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { Animated, Platform, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { appTheme } from "../../theme";
 
@@ -28,21 +28,22 @@ export default function AppToast({ visible, message, type = "success" }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-12)).current;
   const meta = TOAST_META[type] || TOAST_META.success;
+  const shouldUseNativeDriver = Platform.OS !== "web";
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(opacity, {
         toValue: visible ? 1 : 0,
         duration: visible ? 220 : 180,
-        useNativeDriver: true,
+        useNativeDriver: shouldUseNativeDriver,
       }),
       Animated.timing(translateY, {
         toValue: visible ? 0 : -12,
         duration: visible ? 220 : 180,
-        useNativeDriver: true,
+        useNativeDriver: shouldUseNativeDriver,
       }),
     ]).start();
-  }, [opacity, translateY, visible]);
+  }, [opacity, shouldUseNativeDriver, translateY, visible]);
 
   if (!visible && !message) {
     return null;

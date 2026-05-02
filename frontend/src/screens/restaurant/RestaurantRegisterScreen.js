@@ -27,6 +27,13 @@ export default function RestaurantRegisterScreen(props) {
           multiline: true,
         },
         {
+          name: "location",
+          label: "Restaurant map location",
+          type: "location",
+          title: "Select Restaurant Location",
+          placeholder: "Pin your restaurant on the map for delivery distance calculations.",
+        },
+        {
           name: "cuisineType",
           label: "Cuisine Type",
           type: "select",

@@ -4,6 +4,10 @@ import { deleteSecureItem, getSecureItem, setSecureItem } from "../../../utils/s
 import { ROLES, STORAGE_KEYS as AUTH_STORAGE_KEYS } from "../../../constants/auth";
 import { OWNER_STORAGE_KEYS } from "../utils/constants";
 import { loginOwner, registerOwner } from "../services/ownerAuthService";
+import {
+  hydrateOwnerProfile,
+  saveOwnerProfile,
+} from "../services/ownerProfileStorage";
 
 const OwnerAuthContext = createContext(null);
 
@@ -28,8 +32,9 @@ export function OwnerAuthProvider({ children }) {
       const storedOwner = await getSecureItem(OWNER_STORAGE_KEYS.profile);
 
       if (storedToken && storedOwner) {
+        const hydratedOwner = await hydrateOwnerProfile(JSON.parse(storedOwner));
         setToken(storedToken);
-        setOwner(JSON.parse(storedOwner));
+        setOwner(hydratedOwner);
         return;
       }
 
@@ -39,8 +44,9 @@ export function OwnerAuthProvider({ children }) {
       if (sharedToken && sharedUser) {
         const parsedUser = JSON.parse(sharedUser);
         if (parsedUser.role === ROLES.OWNER) {
+          const hydratedOwner = await hydrateOwnerProfile(parsedUser);
           setToken(sharedToken);
-          setOwner(parsedUser);
+          setOwner(hydratedOwner);
         }
       }
     } finally {
@@ -50,10 +56,11 @@ export function OwnerAuthProvider({ children }) {
 
   async function syncSharedOwnerSession() {
     if (sharedUser?.role === ROLES.OWNER && sharedToken) {
+      const hydratedOwner = await hydrateOwnerProfile(sharedUser);
       await setSecureItem(OWNER_STORAGE_KEYS.token, sharedToken);
-      await setSecureItem(OWNER_STORAGE_KEYS.profile, JSON.stringify(sharedUser));
+      await setSecureItem(OWNER_STORAGE_KEYS.profile, JSON.stringify(hydratedOwner));
       setToken(sharedToken);
-      setOwner(sharedUser);
+      setOwner(hydratedOwner);
       return;
     }
 
@@ -66,10 +73,11 @@ export function OwnerAuthProvider({ children }) {
   }
 
   async function persistSession(nextToken, nextOwner) {
+    const hydratedOwner = await hydrateOwnerProfile(nextOwner);
     await setSecureItem(OWNER_STORAGE_KEYS.token, nextToken);
-    await setSecureItem(OWNER_STORAGE_KEYS.profile, JSON.stringify(nextOwner));
+    await setSecureItem(OWNER_STORAGE_KEYS.profile, JSON.stringify(hydratedOwner));
     setToken(nextToken);
-    setOwner(nextOwner);
+    setOwner(hydratedOwner);
   }
 
   async function signIn(values) {
@@ -106,8 +114,9 @@ export function OwnerAuthProvider({ children }) {
   }
 
   async function updateCurrentOwner(nextOwner) {
-    setOwner(nextOwner);
-    await setSecureItem(OWNER_STORAGE_KEYS.profile, JSON.stringify(nextOwner));
+    const savedOwner = await saveOwnerProfile(nextOwner);
+    setOwner(savedOwner);
+    await setSecureItem(OWNER_STORAGE_KEYS.profile, JSON.stringify(savedOwner));
   }
 
   const value = useMemo(

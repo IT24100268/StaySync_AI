@@ -40,10 +40,13 @@ export default function OwnerProfileScreen({ navigation }) {
 
       <View style={styles.card}>
         <SectionHeader title="Owner profile" subtitle="Business identity and verification details." />
-        <ProfileRow label="Phone" value={owner?.phone} />
-        <ProfileRow label="Hostel name" value={owner?.hostelName} />
-        <ProfileRow label="Verification" value={owner?.verificationStatus} />
-        <ProfileRow label="Role" value={owner?.role} />
+        <ProfileRow label="Phone" value={owner?.phone || "-"} />
+        <ProfileRow label="Hostel name" value={owner?.hostelName || owner?.businessName || "-"} />
+        <ProfileRow
+          label="Verification"
+          value={owner?.verificationStatus || owner?.approvalStatus || "-"}
+        />
+        <ProfileRow label="Role" value={owner?.role || "-"} />
       </View>
 
       <AppButton title="Edit Profile" onPress={() => navigation.navigate("EditOwnerProfile")} />

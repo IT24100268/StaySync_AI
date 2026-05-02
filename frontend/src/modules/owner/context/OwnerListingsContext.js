@@ -23,19 +23,25 @@ export function OwnerListingsProvider({ children }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  useEffect(() => {
     if (sharedToken && sharedUser?.role === "owner") {
       loadDashboardData();
+      return;
     }
-  }, [sharedToken, sharedUser?.id]);
+
+    setListings([]);
+    setBookingRequests([]);
+    setLoading(false);
+  }, [sharedToken, sharedUser?.id, sharedUser?.role]);
 
   async function loadDashboardData() {
+    if (!sharedToken || sharedUser?.role !== "owner") {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const ownerId = sharedUser?.role === "owner" ? sharedUser.id : undefined;
+      const ownerId = sharedUser.id;
       const [listingResponse, bookingResponse] = await Promise.all([
         fetchOwnerListings(),
         fetchBookingRequests(ownerId),

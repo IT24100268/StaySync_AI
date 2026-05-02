@@ -1,15 +1,17 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppButton from "../../components/common/AppButton";
 import AppInput from "../../components/common/AppInput";
@@ -25,6 +27,7 @@ import { validateEmail, validateName, validateRequired } from "../../utils/valid
 const NAME_INPUT_PATTERN = /^[A-Za-z\s]*$/;
 export default function RegisterFormScreen({
   navigation,
+  route,
   role,
   title,
   description,
@@ -37,6 +40,9 @@ export default function RegisterFormScreen({
       password: "",
       confirmPassword: "",
       role,
+      latitude: null,
+      longitude: null,
+      locationAddress: "",
     })
   );
   const [errors, setErrors] = useState({});
@@ -47,6 +53,23 @@ export default function RegisterFormScreen({
   const [otpError, setOtpError] = useState("");
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+
+  useEffect(() => {
+    const selectedLocation = route?.params?.selectedLocation;
+
+    if (!selectedLocation) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      latitude: selectedLocation.latitude,
+      longitude: selectedLocation.longitude,
+      locationAddress: selectedLocation.address || current.locationAddress,
+      address: current.address || selectedLocation.address || "",
+    }));
+    navigation.setParams({ selectedLocation: undefined });
+  }, [navigation, route?.params?.selectedLocation]);
 
   function updateField(key, value) {
     if (key === "name") {
@@ -190,7 +213,14 @@ export default function RegisterFormScreen({
       name: form.name,
       email: form.email,
       password: form.password,
+      latitude: form.latitude,
+      longitude: form.longitude,
+      locationAddress: form.locationAddress,
       ...fields.reduce((accumulator, field) => {
+        if (field.type === "location") {
+          return accumulator;
+        }
+
         accumulator[field.name] = form[field.name];
         return accumulator;
       }, {}),
@@ -248,6 +278,41 @@ export default function RegisterFormScreen({
                         placeholder={field.placeholder}
                         error={errors[field.name]}
                       />
+                    ) : field.type === "location" ? (
+                      <View style={styles.locationBlock}>
+                        <Text style={styles.locationLabel}>{field.label}</Text>
+                        <Pressable
+                          style={styles.locationPicker}
+                          onPress={() =>
+                            navigation.navigate("LocationPicker", {
+                              sourceRoute: "RestaurantRegister",
+                              title: field.title || "Select Location",
+                              initialLatitude: form.latitude,
+                              initialLongitude: form.longitude,
+                              initialAddress: form.locationAddress || form.address,
+                            })
+                          }
+                        >
+                          <View style={styles.locationIcon}>
+                            <Ionicons name="location" size={18} color="#FFFFFF" />
+                          </View>
+                          <View style={styles.locationTextGroup}>
+                            <Text style={styles.locationTitle}>
+                              {form.latitude != null && form.longitude != null
+                                ? "Restaurant location selected"
+                                : field.title || "Select Restaurant Location"}
+                            </Text>
+                            <Text style={styles.locationText}>
+                              {form.locationAddress ||
+                                (form.latitude != null && form.longitude != null
+                                  ? `${Number(form.latitude).toFixed(6)}, ${Number(
+                                      form.longitude
+                                    ).toFixed(6)}`
+                                  : field.placeholder)}
+                            </Text>
+                          </View>
+                        </Pressable>
+                      </View>
                     ) : (
                       <AppInput
                         label={field.label}
@@ -413,6 +478,45 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: appTheme.spacing.sm,
+  },
+  locationBlock: {
+    gap: appTheme.spacing.xs,
+  },
+  locationLabel: {
+    color: appTheme.colors.text,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  locationPicker: {
+    borderRadius: appTheme.radius.md,
+    borderWidth: 1,
+    borderColor: appTheme.colors.border,
+    backgroundColor: appTheme.colors.surface,
+    paddingHorizontal: appTheme.spacing.md,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: appTheme.spacing.sm,
+  },
+  locationIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: appTheme.colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  locationTextGroup: {
+    flex: 1,
+    gap: 2,
+  },
+  locationTitle: {
+    color: appTheme.colors.text,
+    fontWeight: "700",
+  },
+  locationText: {
+    color: appTheme.colors.textMuted,
+    lineHeight: 19,
   },
   actions: {
     marginTop: appTheme.spacing.xs,
