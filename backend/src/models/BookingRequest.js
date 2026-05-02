@@ -23,6 +23,11 @@ const bookingRequestSchema = new mongoose.Schema(
       required: true,
     },
     message: String,
+    paymentStatus: String,
+    paymentMethod: String,
+    advanceAmount: Number,
+    transactionId: String,
+    paidAt: Date,
     status: {
       type: String,
       enum: Object.values(BOOKING_STATUSES),

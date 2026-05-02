@@ -10,6 +10,11 @@ async function getStudentProfile(user) {
 async function updateStudentProfile(user, payload) {
   const profile = await requireProfile(user);
 
+  if (typeof payload.phone === "string") {
+    profile.user.phone = payload.phone.trim();
+    await profile.user.save();
+  }
+
   Object.assign(
     profile,
     pick(payload, ["fullName", "institutionName", "course", "yearOfStudy", "bio", "emergencyContact", "preferences"])

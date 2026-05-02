@@ -136,15 +136,21 @@ export function OwnerListingsProvider({ children }) {
       (sum, listing) => sum + Number(listing.enquiriesCount || 0),
       0
     );
-    const totalViews = listings.reduce((sum, listing) => sum + Number(listing.viewsCount || 0), 0);
     const totalBookingRequests = bookingRequests.length;
+    const totalEarnings = bookingRequests.reduce((sum, request) => {
+      if (request.status !== "Approved") {
+        return sum;
+      }
+
+      return sum + Number(request.advanceAmount || 0);
+    }, 0);
 
     return {
       totalListings,
       availableRooms,
       unavailableRooms,
       totalEnquiries,
-      totalViews,
+      totalEarnings,
       totalBookingRequests,
     };
   }, [bookingRequests, listings]);

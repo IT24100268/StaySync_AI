@@ -50,6 +50,7 @@ export function BookingPaymentProvider({ children }) {
     setPaymentStatus("processing");
 
     try {
+      const isCashOnArrival = paymentMethod === "cash";
       const paymentResult = await processMockPayment({
         amount: advanceAmount,
         paymentMethod,
@@ -68,10 +69,12 @@ export function BookingPaymentProvider({ children }) {
         studentId: user.id,
         studentName: user.name,
         studentContact: user.email,
-        message: `Advance payment completed for ${selectedRoom.title}. Please review and confirm the booking.`,
+        message: isCashOnArrival
+          ? `Booking request sent for ${selectedRoom.title}. Student selected cash on arrival.`
+          : `Advance payment completed for ${selectedRoom.title}. Please review and confirm the booking.`,
         status: "Pending",
         bookingStatusLabel: "Pending Approval",
-        paymentStatus: "Paid",
+        paymentStatus: isCashOnArrival ? "Cash on Arrival" : "Paid",
         paymentMethod,
         advanceAmount,
         transactionId: paymentResult.transactionId,

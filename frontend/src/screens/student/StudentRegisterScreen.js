@@ -19,6 +19,13 @@ export default function StudentRegisterScreen(props) {
           keyboardType: "email-address",
           autoCapitalize: "none",
         },
+        {
+          name: "phone",
+          label: "Phone Number",
+          placeholder: "Enter your phone number",
+          keyboardType: "phone-pad",
+          autoCapitalize: "none",
+        },
         { name: "university", label: "University", placeholder: "Enter your university" },
         {
           name: "genderPreference",

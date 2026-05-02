@@ -350,14 +350,6 @@ export default function StudentDashboardView({ navigation }) {
       icon: "bicycle-outline",
       tint: "#E8F7EE",
     },
-    {
-      id: "activity-3",
-      title: "Saved room reminder",
-      subtitle: "Bright Studio Near Campus still has availability this week.",
-      time: "1d",
-      icon: "bookmark-outline",
-      tint: "#FFF1DD",
-    },
   ];
 
   return (

@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { deleteSecureItem, setSecureItem } from "../utils/storage";
+import { Platform } from "react-native";
+import { deleteSecureItem, getSecureItem, setSecureItem } from "../utils/storage";
 import { loginWithRole, registerWithRole } from "../services/roleAuthService";
-import { STORAGE_KEYS } from "../constants/auth";
+import { ROLES, STORAGE_KEYS } from "../constants/auth";
 import { STORAGE_KEYS as STUDENT_STORAGE_KEYS } from "../utils/constants";
 import { blurActiveElement } from "../utils/webFocus";
 import { OWNER_STORAGE_KEYS } from "../modules/owner/utils/constants";
 import { RESTAURANT_STORAGE_KEYS } from "../modules/restaurant/utils/constants";
 import { DELIVERY_STORAGE_KEYS } from "../modules/delivery/utils/constants";
+import { hydrateStudentProfile, saveStudentProfile } from "../services/studentProfileStorage";
 
 const RoleAuthContext = createContext(null);
 
@@ -21,14 +23,53 @@ export function RoleAuthProvider({ children }) {
   }, []);
 
   async function bootstrapAuth() {
-    setLoading(false);
+    try {
+      if (Platform.OS === "web") {
+        await deleteSecureItem(STORAGE_KEYS.authToken);
+        await deleteSecureItem(STORAGE_KEYS.authUser);
+        await deleteSecureItem(STUDENT_STORAGE_KEYS.token);
+        await deleteSecureItem(STUDENT_STORAGE_KEYS.user);
+        await deleteSecureItem(OWNER_STORAGE_KEYS.token);
+        await deleteSecureItem(OWNER_STORAGE_KEYS.profile);
+        await deleteSecureItem(RESTAURANT_STORAGE_KEYS.token);
+        await deleteSecureItem(RESTAURANT_STORAGE_KEYS.profile);
+        await deleteSecureItem(DELIVERY_STORAGE_KEYS.token);
+        await deleteSecureItem(DELIVERY_STORAGE_KEYS.profile);
+        setToken(null);
+        setUser(null);
+        return;
+      }
+
+      const storedToken = await getSecureItem(STORAGE_KEYS.authToken);
+      const storedUser = await getSecureItem(STORAGE_KEYS.authUser);
+
+      if (storedToken && storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        const hydratedUser = await hydrateStudentProfile(parsedUser);
+        setToken(storedToken);
+        setUser(hydratedUser);
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function persistSession(nextToken, nextUser) {
+    const hydratedUser = await hydrateStudentProfile(nextUser);
     await setSecureItem(STORAGE_KEYS.authToken, nextToken);
-    await setSecureItem(STORAGE_KEYS.authUser, JSON.stringify(nextUser));
+    await setSecureItem(STORAGE_KEYS.authUser, JSON.stringify(hydratedUser));
     setToken(nextToken);
-    setUser(nextUser);
+    setUser(hydratedUser);
+  }
+
+  async function updateCurrentUser(nextUser) {
+    const hydratedUser =
+      nextUser?.role === ROLES.STUDENT
+        ? await saveStudentProfile(nextUser)
+        : nextUser;
+
+    await setSecureItem(STORAGE_KEYS.authUser, JSON.stringify(hydratedUser));
+    setUser(hydratedUser);
   }
 
   async function login(values) {
@@ -83,6 +124,7 @@ export function RoleAuthProvider({ children }) {
       login,
       register,
       logout,
+      updateCurrentUser,
     }),
     [authenticating, loading, token, user]
   );

@@ -50,6 +50,12 @@ export function validateRegisterForm(role, form) {
   }
 
   if (role === ROLES.STUDENT) {
+    if (!validateRequired(form.phone)) {
+      errors.phone = "Phone number is required.";
+    } else if (!validatePhone(form.phone)) {
+      errors.phone = "Enter a valid phone number.";
+    }
+
     if (!validateRequired(form.university)) {
       errors.university = "University is required.";
     } else if (!validateMinLength(form.university, 3) || !validateUniversityName(form.university)) {

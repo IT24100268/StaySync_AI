@@ -28,6 +28,11 @@ async function createBookingRequest(user, payload) {
     owner: room.owner,
     moveInDate: payload.moveInDate,
     message: payload.message,
+    paymentStatus: payload.paymentStatus,
+    paymentMethod: payload.paymentMethod,
+    advanceAmount: payload.advanceAmount,
+    transactionId: payload.transactionId,
+    paidAt: payload.paidAt,
   });
 }
 
@@ -77,6 +82,15 @@ async function updateBookingStatus(user, bookingId, status, ownerNotes) {
   booking.status = status;
   booking.ownerNotes = ownerNotes || booking.ownerNotes;
   await booking.save();
+  await booking.populate("room");
+  await booking.populate({
+    path: "owner",
+    populate: { path: "user", select: "name email phone" },
+  });
+  await booking.populate({
+    path: "student",
+    populate: { path: "user", select: "name email phone" },
+  });
   return booking;
 }
 

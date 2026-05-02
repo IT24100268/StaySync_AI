@@ -23,8 +23,6 @@ import { validateRegisterForm } from "../../utils/authValidation";
 import { validateEmail, validateName, validateRequired } from "../../utils/validation";
 
 const NAME_INPUT_PATTERN = /^[A-Za-z\s]*$/;
-const PHONE_INPUT_PATTERN = /^\d*$/;
-
 export default function RegisterFormScreen({
   navigation,
   role,
@@ -67,18 +65,15 @@ export default function RegisterFormScreen({
     }
 
     if (key === "phone") {
-      if (!PHONE_INPUT_PATTERN.test(value)) {
-        setErrors((current) => ({
-          ...current,
-          phone: "Please enter numbers only.",
-        }));
-        return;
-      }
+      const normalizedPhone = value.replace(/\D/g, "").slice(0, 15);
 
       setErrors((current) => ({
         ...current,
         phone: "",
       }));
+
+      setForm((current) => ({ ...current, [key]: normalizedPhone }));
+      return;
     }
 
     setForm((current) => ({ ...current, [key]: value }));

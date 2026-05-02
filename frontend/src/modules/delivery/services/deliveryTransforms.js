@@ -33,6 +33,7 @@ export function toBackendDeliveryStatus(status) {
 export function normalizeDeliveryJob(payload) {
   const delivery = payload?.deliverySummary || payload || {};
   const order = payload?.orderSummary || payload?.order || {};
+  const restaurant = order.restaurant || payload?.restaurant || {};
   const items = delivery.items || order.items || [];
   const pickupLatitude =
     delivery.pickupLat ||
@@ -68,11 +69,23 @@ export function normalizeDeliveryJob(payload) {
   return {
     id: delivery.id || delivery._id || payload.id || payload._id,
     orderId: delivery.orderId || order.id || order._id || payload.orderId || payload.order?._id,
-    restaurantName: delivery.restaurantName || order.restaurantName || "",
-    restaurantPhone: delivery.restaurantPhone || "",
-    pickupAddress: delivery.pickupAddress || order.pickupAddress || "",
+    restaurantName:
+      delivery.restaurantName || order.restaurantName || restaurant.name || "",
+    restaurantPhone:
+      delivery.restaurantPhone || order.restaurantPhone || restaurant.phone || "",
+    pickupAddress:
+      delivery.pickupAddress ||
+      order.pickupAddress ||
+      restaurant.address ||
+      order.pickupLocation?.address ||
+      "",
     customerName: delivery.customerName || order.customerName || "Student",
-    customerPhone: delivery.customerPhone || order.customerPhone || "",
+    customerPhone:
+      delivery.customerPhone ||
+      payload.customerPhone ||
+      order.customerPhone ||
+      order.student?.user?.phone ||
+      "",
     deliveryAddress: delivery.deliveryAddress || order.deliveryAddress || "",
     orderSummary: delivery.orderSummary || `${items.length} item${items.length === 1 ? "" : "s"}`,
     status: formatDeliveryStatus(delivery.status || payload.status),

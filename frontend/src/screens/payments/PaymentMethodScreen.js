@@ -20,12 +20,6 @@ const paymentOptions = [
     icon: "card-outline",
   },
   {
-    id: "bank",
-    title: "Bank Transfer",
-    subtitle: "Mock direct transfer for advance room payment",
-    icon: "business-outline",
-  },
-  {
     id: "cash",
     title: "Cash on Arrival",
     subtitle: "Reserve first and pay your advance during check-in",
@@ -218,7 +212,7 @@ export default function PaymentMethodScreen({ navigation }) {
           <Ionicons name="information-circle-outline" size={20} color={appTheme.colors.primary} />
           <Text style={styles.infoText}>
             {selectedPaymentMethod === "bank"
-              ? "This is a mock bank transfer flow. Tapping the button will simulate payment confirmation after 2 seconds."
+              ? ""
               : "This mock cash-on-arrival option still reserves the booking flow and sends a request to the owner with payment intent."}
           </Text>
         </View>

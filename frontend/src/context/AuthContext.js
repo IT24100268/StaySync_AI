@@ -7,11 +7,16 @@ import {
   ROLES,
   STORAGE_KEYS as AUTH_STORAGE_KEYS,
 } from "../constants/auth";
+import { hydrateStudentProfile, saveStudentProfile } from "../services/studentProfileStorage";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const { user: sharedUser, token: sharedToken } = useRoleAuth();
+  const {
+    user: sharedUser,
+    token: sharedToken,
+    updateCurrentUser: updateSharedCurrentUser,
+  } = useRoleAuth();
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -31,8 +36,9 @@ export function AuthProvider({ children }) {
       const storedUser = await getSecureItem(STORAGE_KEYS.user);
 
       if (storedToken && storedUser) {
+        const hydratedUser = await hydrateStudentProfile(JSON.parse(storedUser));
         setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        setUser(hydratedUser);
         return;
       }
 
@@ -42,8 +48,9 @@ export function AuthProvider({ children }) {
       if (sharedToken && sharedUser) {
         const parsedUser = JSON.parse(sharedUser);
         if (parsedUser.role === ROLES.STUDENT) {
+          const hydratedUser = await hydrateStudentProfile(parsedUser);
           setToken(sharedToken);
-          setUser(parsedUser);
+          setUser(hydratedUser);
         }
       }
     } finally {
@@ -53,10 +60,11 @@ export function AuthProvider({ children }) {
 
   async function syncSharedStudentSession() {
     if (sharedUser?.role === ROLES.STUDENT && sharedToken) {
+      const hydratedUser = await hydrateStudentProfile(sharedUser);
       await setSecureItem(STORAGE_KEYS.token, sharedToken);
-      await setSecureItem(STORAGE_KEYS.user, JSON.stringify(sharedUser));
+      await setSecureItem(STORAGE_KEYS.user, JSON.stringify(hydratedUser));
       setToken(sharedToken);
-      setUser(sharedUser);
+      setUser(hydratedUser);
       return;
     }
 
@@ -69,10 +77,11 @@ export function AuthProvider({ children }) {
   }
 
   async function persistSession(nextToken, nextUser) {
+    const hydratedUser = await hydrateStudentProfile(nextUser);
     await setSecureItem(STORAGE_KEYS.token, nextToken);
-    await setSecureItem(STORAGE_KEYS.user, JSON.stringify(nextUser));
+    await setSecureItem(STORAGE_KEYS.user, JSON.stringify(hydratedUser));
     setToken(nextToken);
-    setUser(nextUser);
+    setUser(hydratedUser);
   }
 
   async function signIn(values) {
@@ -109,8 +118,10 @@ export function AuthProvider({ children }) {
   }
 
   async function updateCurrentUser(nextUser) {
-    setUser(nextUser);
-    await setSecureItem(STORAGE_KEYS.user, JSON.stringify(nextUser));
+    const savedUser = await saveStudentProfile(nextUser);
+    setUser(savedUser);
+    await setSecureItem(STORAGE_KEYS.user, JSON.stringify(savedUser));
+    await updateSharedCurrentUser(savedUser);
   }
 
   const value = useMemo(

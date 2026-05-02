@@ -1,111 +1,97 @@
-import { bookingRequests as seededBookingRequests } from "../modules/owner/data/dummyData";
-import { STORAGE_KEYS } from "../utils/constants";
-import { getSecureItem, setSecureItem } from "../utils/storage";
+import apiClient from "./apiClient";
 
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
+function toTitleCaseStatus(status = "") {
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+
+  switch (normalizedStatus) {
+    case "approved":
+      return "Approved";
+    case "rejected":
+      return "Rejected";
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return "Pending";
+  }
 }
 
-async function getStoredBookingRequests() {
-  const storedRequests = await getSecureItem(STORAGE_KEYS.bookingRequests);
+function toApiStatus(status = "") {
+  const normalizedStatus = String(status || "").trim().toLowerCase();
 
-  if (!storedRequests) {
-    await setSecureItem(
-      STORAGE_KEYS.bookingRequests,
-      JSON.stringify(seededBookingRequests)
-    );
-    return clone(seededBookingRequests);
+  if (["approved", "rejected", "cancelled", "pending"].includes(normalizedStatus)) {
+    return normalizedStatus;
   }
 
-  const parsedRequests = JSON.parse(storedRequests);
-  const migratedRequests = parsedRequests.map((request) => ({
-    ownerId: request.ownerId || "owner-1",
-    roomTitle: request.roomTitle || "Room Booking Request",
-    ...request,
-  }));
-
-  await saveStoredBookingRequests(migratedRequests);
-  return migratedRequests;
+  return "pending";
 }
 
-async function saveStoredBookingRequests(requests) {
-  await setSecureItem(STORAGE_KEYS.bookingRequests, JSON.stringify(requests));
+function normalizeBookingRequest(request = {}) {
+  const room = request.room || {};
+  const owner = request.owner || {};
+  const student = request.student || {};
+  const ownerUser = owner.user || {};
+  const studentUser = student.user || {};
+  const normalizedStatus = toTitleCaseStatus(request.status);
+
+  return {
+    id: request._id || request.id,
+    roomId: room._id || room.id || request.roomId || "",
+    roomTitle: room.title || request.roomTitle || "Room Booking Request",
+    ownerId: owner._id || owner.id || request.ownerId || "",
+    ownerName: ownerUser.name || request.ownerName || "",
+    ownerContact: ownerUser.phone || ownerUser.email || request.ownerContact || "",
+    studentId: student._id || student.id || request.studentId || "",
+    studentName: studentUser.name || request.studentName || "Student",
+    studentContact: studentUser.email || studentUser.phone || request.studentContact || "",
+    moveInDate: request.moveInDate || null,
+    requestedAt: request.createdAt || request.requestedAt || new Date().toISOString(),
+    reviewedAt: request.updatedAt || request.reviewedAt || null,
+    message: request.message || "",
+    status: normalizedStatus,
+    bookingStatusLabel: request.bookingStatusLabel || normalizedStatus,
+    paymentStatus: request.paymentStatus || "",
+    paymentMethod: request.paymentMethod || "",
+    advanceAmount: Number(request.advanceAmount || 0),
+    transactionId: request.transactionId || "",
+    paidAt: request.paidAt || null,
+    ownerNotes: request.ownerNotes || "",
+  };
 }
 
-function simulateNetwork(payload) {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(payload), 350);
-  });
+function buildDefaultMoveInDate() {
+  return new Date().toISOString();
 }
 
-export async function fetchBookingRequestsByOwner(ownerId) {
-  const requests = await getStoredBookingRequests();
-
-  if (!ownerId) {
-    return simulateNetwork(clone(requests));
-  }
-
-  return simulateNetwork(
-    clone(requests).filter((request) => request.ownerId === ownerId)
-  );
+export async function fetchBookingRequestsByOwner() {
+  const response = await apiClient.get("/owners/bookings");
+  return (response.data.data || []).map(normalizeBookingRequest);
 }
 
-export async function fetchBookingRequestsByStudent(studentId) {
-  const requests = await getStoredBookingRequests();
-
-  if (!studentId) {
-    return simulateNetwork([]);
-  }
-
-  return simulateNetwork(
-    clone(requests).filter((request) => request.studentId === studentId)
-  );
+export async function fetchBookingRequestsByStudent() {
+  const response = await apiClient.get("/bookings/my");
+  return (response.data.data || []).map(normalizeBookingRequest);
 }
 
 export async function createBookingRequest(payload) {
-  const requests = await getStoredBookingRequests();
-  const existingRequest = requests.find(
-    (request) =>
-      request.studentId === payload.studentId &&
-      request.roomId === payload.roomId &&
-      request.status !== "Rejected"
-  );
+  const response = await apiClient.post("/bookings", {
+    roomId: payload.roomId,
+    moveInDate: payload.moveInDate || buildDefaultMoveInDate(),
+    message: payload.message || "",
+    paymentStatus: payload.paymentStatus || "",
+    paymentMethod: payload.paymentMethod || "",
+    advanceAmount: payload.advanceAmount || 0,
+    transactionId: payload.transactionId || "",
+    paidAt: payload.paidAt || null,
+  });
 
-  if (existingRequest) {
-    throw new Error(
-      existingRequest.status === "Approved"
-        ? "Your booking for this room is already approved."
-        : "Your booking request for this room is already pending."
-    );
-  }
-
-  const createdRequest = {
-    id: `request-${Date.now()}`,
-    requestedAt: new Date().toISOString(),
-    status: "Pending",
-    ...payload,
-  };
-
-  const nextRequests = [createdRequest, ...requests];
-  await saveStoredBookingRequests(nextRequests);
-
-  return simulateNetwork(clone(createdRequest));
+  return normalizeBookingRequest(response.data.data);
 }
 
-export async function updateBookingRequestStatus(requestId, status) {
-  const requests = await getStoredBookingRequests();
-  const nextRequests = requests.map((request) =>
-    request.id === requestId
-      ? {
-          ...request,
-          status,
-          reviewedAt: new Date().toISOString(),
-        }
-      : request
-  );
+export async function updateBookingRequestStatus(requestId, status, ownerNotes = "") {
+  const response = await apiClient.patch(`/bookings/${requestId}/status`, {
+    status: toApiStatus(status),
+    ownerNotes,
+  });
 
-  const updatedRequest = nextRequests.find((request) => request.id === requestId);
-
-  await saveStoredBookingRequests(nextRequests);
-  return simulateNetwork(clone(updatedRequest));
+  return normalizeBookingRequest(response.data.data);
 }

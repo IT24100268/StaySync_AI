@@ -5,6 +5,7 @@ import SectionHeader from "../../../../components/common/SectionHeader";
 import { appTheme } from "../../../../theme";
 import { useOwnerListings } from "../../context/OwnerListingsContext";
 import DashboardStatCard from "../../components/cards/DashboardStatCard";
+import { formatCurrency } from "../../../../utils/format";
 
 export default function AnalyticsScreen() {
   const { analytics, listings } = useOwnerListings();
@@ -21,7 +22,7 @@ export default function AnalyticsScreen() {
       />
 
       <View style={styles.grid}>
-        <DashboardStatCard label="Views Count" value={analytics.totalViews} icon="eye-outline" accentColor={appTheme.colors.info} />
+        <DashboardStatCard label="Earnings" value={formatCurrency(analytics.totalEarnings)} icon="cash-outline" accentColor={appTheme.colors.info} />
         <DashboardStatCard label="Enquiries Count" value={analytics.totalEnquiries} icon="mail-open-outline" accentColor={appTheme.colors.warning} />
         <DashboardStatCard label="Booking Request Count" value={analytics.totalBookingRequests} icon="document-text-outline" accentColor={appTheme.colors.success} />
         <DashboardStatCard label="Unavailable Rooms" value={analytics.unavailableRooms} icon="ban-outline" accentColor={appTheme.colors.danger} />

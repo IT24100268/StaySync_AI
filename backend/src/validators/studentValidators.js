@@ -1,6 +1,7 @@
 const { body, param } = require("express-validator");
 
 const updateProfileValidator = [
+  body("phone").optional().isString().trim(),
   body("fullName").optional().isString().trim(),
   body("institutionName").optional().isString().trim(),
   body("course").optional().isString().trim(),

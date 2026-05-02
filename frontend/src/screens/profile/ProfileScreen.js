@@ -1,5 +1,5 @@
 import React from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, StyleSheet, Text, View } from "react-native";
 import ScreenContainer from "../../components/common/ScreenContainer";
 import AppButton from "../../components/common/AppButton";
 import SectionHeader from "../../components/common/SectionHeader";
@@ -31,15 +31,20 @@ export default function ProfileScreen({ navigation }) {
   return (
     <ScreenContainer>
       <View style={styles.headerCard}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{user?.name?.slice(0, 1)}</Text>
-        </View>
+        {user?.profileImage ? (
+          <Image source={{ uri: user.profileImage }} style={styles.avatarImage} />
+        ) : (
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{user?.name?.slice(0, 1)}</Text>
+          </View>
+        )}
         <Text style={styles.name}>{user?.name}</Text>
         <Text style={styles.email}>{user?.email}</Text>
       </View>
 
       <View style={styles.card}>
         <SectionHeader title="Student profile" subtitle="Keep your living preferences updated." />
+        <ProfileRow label="Phone" value={user?.phone || "-"} />
         <ProfileRow label="University" value={user?.university} />
         <ProfileRow label="Gender preference" value={user?.genderPreference} />
       </View>
@@ -76,6 +81,12 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.18)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  avatarImage: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: "rgba(255,255,255,0.18)",
   },
   avatarText: {
     fontSize: 30,

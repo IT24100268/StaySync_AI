@@ -20,10 +20,12 @@ export default function PaymentSuccessScreen({ navigation }) {
   const {
     selectedRoom,
     advanceAmount,
+    selectedPaymentMethod,
     paymentReceipt,
     latestBookingRequest,
     resetBookingFlow,
   } = useBookingPayment();
+  const isCashOnArrival = selectedPaymentMethod === "cash";
 
   function navigateToDashboard() {
     navigation.getParent()?.navigate("HomeTab", { screen: "StudentHome" });
@@ -53,9 +55,13 @@ export default function PaymentSuccessScreen({ navigation }) {
         <View style={styles.successIcon}>
           <Ionicons name="checkmark" size={34} color="#FFFFFF" />
         </View>
-        <Text style={styles.heroTitle}>Payment Successful</Text>
+        <Text style={styles.heroTitle}>
+          {isCashOnArrival ? "Booking Request Sent" : "Payment Successful"}
+        </Text>
         <Text style={styles.heroSubtitle}>
-          Your advance payment has been recorded and your booking request is now pending owner approval.
+          {isCashOnArrival
+            ? "Your booking request has been sent to the room owner and is now pending approval."
+            : "Your advance payment has been recorded and your booking request is now pending owner approval."}
         </Text>
       </View>
 
@@ -65,17 +71,26 @@ export default function PaymentSuccessScreen({ navigation }) {
           <Text style={styles.value}>{selectedRoom.title}</Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={styles.label}>Amount paid</Text>
+          <Text style={styles.label}>{isCashOnArrival ? "Advance amount" : "Amount paid"}</Text>
           <Text style={styles.value}>{formatCurrency(advanceAmount)}</Text>
         </View>
-        <View style={styles.summaryRow}>
-          <Text style={styles.label}>Transaction ID</Text>
-          <Text style={styles.value}>{paymentReceipt.transactionId}</Text>
-        </View>
-        <View style={styles.summaryRow}>
-          <Text style={styles.label}>Date</Text>
-          <Text style={styles.value}>{formatPaymentDate(paymentReceipt.paidAt)}</Text>
-        </View>
+        {isCashOnArrival ? (
+          <View style={styles.summaryRow}>
+            <Text style={styles.label}>Payment method</Text>
+            <Text style={styles.value}>Cash on Arrival</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.summaryRow}>
+              <Text style={styles.label}>Transaction ID</Text>
+              <Text style={styles.value}>{paymentReceipt.transactionId}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.label}>Date</Text>
+              <Text style={styles.value}>{formatPaymentDate(paymentReceipt.paidAt)}</Text>
+            </View>
+          </>
+        )}
         <View style={styles.summaryRow}>
           <Text style={styles.label}>Booking status</Text>
           <Text style={styles.value}>{latestBookingRequest?.bookingStatusLabel || "Pending Approval"}</Text>
@@ -83,9 +98,13 @@ export default function PaymentSuccessScreen({ navigation }) {
       </View>
 
       <View style={styles.messageCard}>
-        <Text style={styles.messageTitle}>Booking confirmed in the app</Text>
+        <Text style={styles.messageTitle}>
+          {isCashOnArrival ? "Owner review is pending" : "Booking confirmed in the app"}
+        </Text>
         <Text style={styles.messageText}>
-          We saved your booking request with payment details, and the room owner can now review it from their dashboard.
+          {isCashOnArrival
+            ? "We saved your booking request, and the room owner can now review it from their dashboard."
+            : "We saved your booking request with payment details, and the room owner can now review it from their dashboard."}
         </Text>
       </View>
 
