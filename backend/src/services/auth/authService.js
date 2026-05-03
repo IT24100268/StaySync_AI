@@ -33,10 +33,7 @@ async function sendOtpEmail({ mailer, from, to, subject, text, html, contextLabe
       responseCode: error.responseCode,
     });
 
-    throw new ApiError(
-      StatusCodes.INTERNAL_SERVER_ERROR,
-      "Failed to send OTP email. Please check the email service configuration and try again."
-    );
+    throw error;
   }
 }
 
@@ -73,22 +70,41 @@ async function sendRegistrationOtp({ email, name }) {
   });
 
   const mailer = getMailer();
+  let delivery = "logged";
 
   if (mailer) {
-    await sendOtpEmail({
-      mailer,
-      from: env.mail.user || env.mail.from,
-      to: normalizedEmail,
-      subject: template.subject,
-      text: template.text,
-      html: template.html,
-      contextLabel: "Registration OTP",
-    });
+    try {
+      await sendOtpEmail({
+        mailer,
+        from: env.mail.user || env.mail.from,
+        to: normalizedEmail,
+        subject: template.subject,
+        text: template.text,
+        html: template.html,
+        contextLabel: "Registration OTP",
+      });
+      delivery = "email";
+    } catch (error) {
+      if (!env.allowOtpFallback) {
+        throw new ApiError(
+          StatusCodes.INTERNAL_SERVER_ERROR,
+          "Failed to send OTP email. Please check the email service configuration and try again."
+        );
+      }
+
+      console.warn(`Registration OTP fallback enabled for ${normalizedEmail}. Returning OTP in API response.`);
+      delivery = "fallback";
+    }
   } else {
     console.log(`OTP for ${normalizedEmail}: ${otp}`);
   }
 
-  return { email: normalizedEmail, expiresAt };
+  return {
+    email: normalizedEmail,
+    expiresAt,
+    delivery,
+    otp: delivery === "fallback" ? otp : undefined,
+  };
 }
 
 async function verifyRegistrationOtp({ email, otp }) {
@@ -156,22 +172,41 @@ async function requestPasswordResetOtp({ email }) {
   });
 
   const mailer = getMailer();
+  let delivery = "logged";
 
   if (mailer) {
-    await sendOtpEmail({
-      mailer,
-      from: env.mail.user || env.mail.from,
-      to: normalizedEmail,
-      subject: template.subject,
-      text: template.text,
-      html: template.html,
-      contextLabel: "Password reset OTP",
-    });
+    try {
+      await sendOtpEmail({
+        mailer,
+        from: env.mail.user || env.mail.from,
+        to: normalizedEmail,
+        subject: template.subject,
+        text: template.text,
+        html: template.html,
+        contextLabel: "Password reset OTP",
+      });
+      delivery = "email";
+    } catch (error) {
+      if (!env.allowOtpFallback) {
+        throw new ApiError(
+          StatusCodes.INTERNAL_SERVER_ERROR,
+          "Failed to send reset email. Please check the email service configuration and try again."
+        );
+      }
+
+      console.warn(`Password reset OTP fallback enabled for ${normalizedEmail}. Returning OTP in API response.`);
+      delivery = "fallback";
+    }
   } else {
     console.log(`Password reset OTP for ${normalizedEmail}: ${otp}`);
   }
 
-  return { email: normalizedEmail, expiresAt };
+  return {
+    email: normalizedEmail,
+    expiresAt,
+    delivery,
+    otp: delivery === "fallback" ? otp : undefined,
+  };
 }
 
 async function resetPasswordWithOtp({ email, otp, password }) {
