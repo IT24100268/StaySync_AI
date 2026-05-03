@@ -42,85 +42,29 @@ async function sendOtpEmail({ mailer, from, to, subject, text, html, contextLabe
 
 async function sendRegistrationOtp({ email, name }) {
   const normalizedEmail = email.toLowerCase();
-  await EmailOtpVerification.deleteMany({
-    email: normalizedEmail,
-    purpose: "registration",
-    expiresAt: { $lte: new Date() },
-  });
-
   const existingUser = await User.findOne({ email: normalizedEmail });
 
   if (existingUser) {
     throw new ApiError(StatusCodes.CONFLICT, "An account with this email already exists.");
   }
 
-  const otp = generateOtpCode();
-  const otpHash = hashOtp(otp);
-  const expiresAt = getOtpExpiryDate();
-
-  await EmailOtpVerification.deleteMany({ email: normalizedEmail, purpose: "registration" });
-  await EmailOtpVerification.create({
+  return {
     email: normalizedEmail,
-    purpose: "registration",
-    otpHash,
-    expiresAt,
-  });
-
-  const template = registrationOtpTemplate({
-    name,
-    otp,
-    expiryMinutes: env.otpExpiryMinutes,
-  });
-
-  const mailer = getMailer();
-
-  if (mailer) {
-    await sendOtpEmail({
-      mailer,
-      from: env.mail.user || env.mail.from,
-      to: normalizedEmail,
-      subject: template.subject,
-      text: template.text,
-      html: template.html,
-      contextLabel: "Registration OTP",
-    });
-  } else {
-    console.log(`OTP for ${normalizedEmail}: ${otp}`);
-  }
-
-  return { email: normalizedEmail, expiresAt };
+    verificationRequired: false,
+    message: "Registration OTP is temporarily disabled.",
+  };
 }
 
 async function verifyRegistrationOtp({ email, otp }) {
   const normalizedEmail = email.toLowerCase();
-  await EmailOtpVerification.deleteMany({
+  void otp;
+
+  return {
     email: normalizedEmail,
-    purpose: "registration",
-    expiresAt: { $lte: new Date() },
-  });
-
-  const verification = await EmailOtpVerification.findOne({
-    email: normalizedEmail,
-    purpose: "registration",
-  }).sort({ createdAt: -1 });
-
-  if (!verification) {
-    throw new ApiError(StatusCodes.NOT_FOUND, "No OTP request found for this email.");
-  }
-
-  if (verification.expiresAt < new Date()) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "OTP has expired. Please request a new one.");
-  }
-
-  if (verification.otpHash !== hashOtp(otp)) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "OTP is invalid.");
-  }
-
-  verification.verified = true;
-  verification.verifiedAt = new Date();
-  await verification.save();
-
-  return { email: normalizedEmail, verifiedAt: verification.verifiedAt };
+    verifiedAt: new Date(),
+    verificationRequired: false,
+    message: "Registration OTP is temporarily disabled.",
+  };
 }
 
 async function requestPasswordResetOtp({ email }) {
