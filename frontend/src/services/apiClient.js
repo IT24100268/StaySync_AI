@@ -44,7 +44,7 @@ export const SOCKET_BASE_URL = API_BASE_URL.replace(/\/api$/, "");
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 8000,
+  timeout: 20000,
   headers: {
     "Content-Type": "application/json",
   },

@@ -14,6 +14,32 @@ const RestaurantProfile = require("../../models/RestaurantProfile");
 const OwnerProfile = require("../../models/OwnerProfile");
 const DeliveryPartnerProfile = require("../../models/DeliveryPartnerProfile");
 
+async function sendOtpEmail({ mailer, from, to, subject, text, html, contextLabel }) {
+  try {
+    await mailer.sendMail({
+      from,
+      to,
+      subject,
+      text,
+      html,
+    });
+  } catch (error) {
+    console.error(`${contextLabel} email send failed.`, {
+      to,
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode,
+    });
+
+    throw new ApiError(
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      "Failed to send OTP email. Please check the email service configuration and try again."
+    );
+  }
+}
+
 async function sendRegistrationOtp({ email, name }) {
   const normalizedEmail = email.toLowerCase();
   await EmailOtpVerification.deleteMany({
@@ -49,12 +75,14 @@ async function sendRegistrationOtp({ email, name }) {
   const mailer = getMailer();
 
   if (mailer) {
-    await mailer.sendMail({
+    await sendOtpEmail({
+      mailer,
       from: env.mail.user || env.mail.from,
       to: normalizedEmail,
       subject: template.subject,
       text: template.text,
       html: template.html,
+      contextLabel: "Registration OTP",
     });
   } else {
     console.log(`OTP for ${normalizedEmail}: ${otp}`);
@@ -130,12 +158,14 @@ async function requestPasswordResetOtp({ email }) {
   const mailer = getMailer();
 
   if (mailer) {
-    await mailer.sendMail({
+    await sendOtpEmail({
+      mailer,
       from: env.mail.user || env.mail.from,
       to: normalizedEmail,
       subject: template.subject,
       text: template.text,
       html: template.html,
+      contextLabel: "Password reset OTP",
     });
   } else {
     console.log(`Password reset OTP for ${normalizedEmail}: ${otp}`);

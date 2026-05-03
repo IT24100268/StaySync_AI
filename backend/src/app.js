@@ -12,6 +12,10 @@ const { errorHandler, notFoundHandler } = require("./middlewares/errorHandler");
 
 const app = express();
 
+// Railway sits behind a proxy, so Express needs to trust it for
+// rate limiting and client IP detection to work correctly.
+app.set("trust proxy", 1);
+
 app.use(helmet());
 app.use(
   cors({
