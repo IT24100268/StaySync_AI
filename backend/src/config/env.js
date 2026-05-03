@@ -13,7 +13,6 @@ const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
   otpExpiryMinutes: Number(process.env.OTP_EXPIRY_MINUTES) || 5,
   otpLength: 6,
-  allowOtpFallback: String(process.env.ALLOW_OTP_FALLBACK || "false") === "true",
   mail: {
     host: process.env.MAIL_HOST || "smtp.gmail.com",
     port: Number(process.env.MAIL_PORT) || 465,

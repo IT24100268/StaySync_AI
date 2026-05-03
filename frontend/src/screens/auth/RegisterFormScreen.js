@@ -144,20 +144,14 @@ export default function RegisterFormScreen({
     setOtpError("");
 
     try {
-      const result = await sendRegistrationOtp({
+      await sendRegistrationOtp({
         name: form.name,
         email: form.email,
       });
       setOtp("");
       setOtpSent(true);
       setOtpVerified(false);
-      if (result?.delivery === "fallback" && result?.otp) {
-        setOtp(result.otp);
-        setOtpMessage(`Email delivery is unavailable right now. Use this test OTP: ${result.otp}`);
-        Alert.alert("Test OTP", `Use this OTP to continue registration: ${result.otp}`);
-      } else {
-        setOtpMessage("OTP sent to your email. It expires in 5 minutes.");
-      }
+      setOtpMessage("OTP sent to your email. It expires in 5 minutes.");
       setErrors((current) => ({ ...current, otp: "" }));
       showToast("OTP sent successfully.", "success");
     } catch (error) {
