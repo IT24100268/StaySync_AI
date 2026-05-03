@@ -36,10 +36,26 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(mongoSanitize());
 
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "StaySync AI Backend is running successfully.",
+    status: "Active",
+    version: "1.0.0",
+  });
+});
+
 app.get("/health", (req, res) => {
   res.status(200).json({
     success: true,
     message: `${env.appName} is running.`,
+  });
+});
+
+app.get("/api", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "StaySync API is active.",
   });
 });
 

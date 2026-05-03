@@ -24,18 +24,3 @@ startServer().catch((error) => {
   console.error("Failed to start server:", error);
   process.exit(1);
 });
-
-app.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message: "🚀 StaySync AI Backend is Running Successfully",
-    status: "Active",
-    version: "1.0.0"
-  });
-});
-app.get("/api", (req, res) => {
-  res.json({
-    success: true,
-    message: "StaySync API is active"
-  });
-});
