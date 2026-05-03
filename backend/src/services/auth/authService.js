@@ -224,17 +224,6 @@ async function registerUser(role, payload) {
     throw new ApiError(StatusCodes.CONFLICT, "An account with this email already exists.");
   }
 
-  const verification = await EmailOtpVerification.findOne({
-    email: normalizedEmail,
-    purpose: "registration",
-    verified: true,
-    expiresAt: { $gt: new Date() },
-  }).sort({ verifiedAt: -1 });
-
-  if (!verification) {
-    throw new ApiError(StatusCodes.FORBIDDEN, "Email verification is required before registration.");
-  }
-
   const user = await User.create({
     name: payload.name,
     email: normalizedEmail,
