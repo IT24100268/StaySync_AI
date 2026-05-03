@@ -4,6 +4,8 @@ import { Platform } from "react-native";
 import { STORAGE_KEYS } from "../constants/auth";
 import { getSecureItem } from "../utils/storage";
 
+const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+
 function getExpoHost() {
   const hostUri =
     Constants.expoConfig?.hostUri ||
@@ -15,6 +17,10 @@ function getExpoHost() {
 }
 
 function getApiBaseUrl() {
+  if (apiUrl) {
+    return apiUrl;
+  }
+
   if (Platform.OS === "web") {
     return "http://127.0.0.1:5000/api";
   }
