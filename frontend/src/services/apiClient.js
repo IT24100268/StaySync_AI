@@ -43,7 +43,7 @@ export const API_BASE_URL = getApiBaseUrl();
 export const SOCKET_BASE_URL = API_BASE_URL.replace(/\/api$/, "");
 
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL:"https://wmtmobileappproject-production.up.railway.app/api",
   timeout: 20000,
   headers: {
     "Content-Type": "application/json",
