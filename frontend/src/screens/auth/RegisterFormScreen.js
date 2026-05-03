@@ -19,7 +19,6 @@ import AppSelect from "../../components/common/AppSelect";
 import { ROLE_LABELS } from "../../constants/auth";
 import { useRoleAuth } from "../../context/RoleAuthContext";
 import { useToast } from "../../context/ToastContext";
-import { sendRegistrationOtp, verifyRegistrationOtp } from "../../services/roleAuthService";
 import { appTheme } from "../../theme";
 import { validateRegisterForm } from "../../utils/authValidation";
 import { validateEmail, validateName, validateRequired } from "../../utils/validation";
@@ -46,13 +45,6 @@ export default function RegisterFormScreen({
     })
   );
   const [errors, setErrors] = useState({});
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpVerified, setOtpVerified] = useState(false);
-  const [otpMessage, setOtpMessage] = useState("");
-  const [otpError, setOtpError] = useState("");
-  const [sendingOtp, setSendingOtp] = useState(false);
-  const [verifyingOtp, setVerifyingOtp] = useState(false);
 
   useEffect(() => {
     const selectedLocation = route?.params?.selectedLocation;
@@ -102,106 +94,12 @@ export default function RegisterFormScreen({
     setForm((current) => ({ ...current, [key]: value }));
 
     if (key === "email") {
-      setErrors((current) => ({ ...current, email: "", otp: "" }));
-      setOtp("");
-      setOtpSent(false);
-      setOtpVerified(false);
-      setOtpMessage("");
-      setOtpError("");
-    }
-  }
-
-  function handleOtpChange(value) {
-    setOtp(value.replace(/\D/g, "").slice(0, 6));
-    setOtpError("");
-    setErrors((current) => ({ ...current, otp: "" }));
-  }
-
-  async function handleSendOtp() {
-    const nextErrors = { ...errors };
-
-    if (!validateRequired(form.name)) {
-      nextErrors.name = "This field is required.";
-    } else if (!validateName(form.name)) {
-      nextErrors.name = "Enter a valid name using letters only.";
-    } else {
-      delete nextErrors.name;
-    }
-
-    if (!validateEmail(form.email)) {
-      nextErrors.email = "Please enter a valid email.";
-    } else {
-      delete nextErrors.email;
-    }
-
-    setErrors(nextErrors);
-
-    if (!validateRequired(form.name) || !validateName(form.name) || !validateEmail(form.email)) {
-      return;
-    }
-
-    setSendingOtp(true);
-    setOtpError("");
-
-    try {
-      await sendRegistrationOtp({
-        name: form.name,
-        email: form.email,
-      });
-      setOtp("");
-      setOtpSent(true);
-      setOtpVerified(false);
-      setOtpMessage("OTP sent to your email. It expires in 5 minutes.");
-      setErrors((current) => ({ ...current, otp: "" }));
-      showToast("OTP sent successfully.", "success");
-    } catch (error) {
-      setOtpError(error.message || "Unable to send OTP right now.");
-      setOtpMessage("");
-      setErrors((current) => ({
-        ...current,
-        email: error.message || "Unable to send OTP right now.",
-      }));
-    } finally {
-      setSendingOtp(false);
-    }
-  }
-
-  async function handleVerifyOtp() {
-    if (!otpSent) {
-      setOtpError("Send the OTP first.");
-      return;
-    }
-
-    if (!/^\d{6}$/.test(otp)) {
-      setOtpError("Enter the 6-digit OTP.");
-      return;
-    }
-
-    setVerifyingOtp(true);
-    setOtpError("");
-
-    try {
-      await verifyRegistrationOtp({
-        email: form.email,
-        otp,
-      });
-      setOtpVerified(true);
-      setOtpMessage("Email verified successfully.");
-      setErrors((current) => ({ ...current, otp: "" }));
-      showToast("Email verified successfully.", "success");
-    } catch (error) {
-      setOtpVerified(false);
-      setOtpError(error.message || "OTP verification failed.");
-    } finally {
-      setVerifyingOtp(false);
+      setErrors((current) => ({ ...current, email: "" }));
     }
   }
 
   async function handleSubmit() {
     const nextErrors = validateRegisterForm(role, form);
-    if (!otpVerified) {
-      nextErrors.otp = "Verify your email OTP before registering.";
-    }
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
@@ -326,51 +224,6 @@ export default function RegisterFormScreen({
                         error={errors[field.name]}
                       />
                     )}
-
-                    {field.name === "email" ? (
-                      <View style={styles.otpCard}>
-                        <View style={styles.otpHeader}>
-                          <Text style={styles.otpTitle}>Email verification</Text>
-                          <Text style={styles.otpSubtitle}>
-                            Send a 6-digit OTP to verify your email before registration.
-                          </Text>
-                        </View>
-
-                        <AppButton
-                          title={sendingOtp ? "Sending OTP..." : otpSent ? "Resend OTP" : "Send OTP"}
-                          onPress={handleSendOtp}
-                          loading={sendingOtp}
-                          disabled={verifyingOtp}
-                        />
-
-                        {otpMessage ? (
-                          <Text style={[styles.otpStatusText, otpVerified ? styles.successText : styles.infoText]}>
-                            {otpMessage}
-                          </Text>
-                        ) : null}
-
-                        {otpSent && !otpVerified ? (
-                          <>
-                            <AppInput
-                              label="Enter OTP"
-                              value={otp}
-                              onChangeText={handleOtpChange}
-                              placeholder="Enter 6-digit OTP"
-                              keyboardType="number-pad"
-                              autoCapitalize="none"
-                              error={otpError || errors.otp}
-                            />
-                            <AppButton
-                              title={otpVerified ? "OTP Verified" : "Verify OTP"}
-                              onPress={handleVerifyOtp}
-                              loading={verifyingOtp}
-                              disabled={otpVerified || sendingOtp}
-                              variant={otpVerified ? "secondary" : "primary"}
-                            />
-                          </>
-                        ) : null}
-                      </View>
-                    ) : null}
                   </React.Fragment>
                 ))}
 
@@ -404,7 +257,6 @@ export default function RegisterFormScreen({
                     title="Register"
                     onPress={handleSubmit}
                     loading={authenticating}
-                    disabled={!otpVerified}
                   />
                   <AppButton
                     title="Back to Login"
@@ -521,37 +373,5 @@ const styles = StyleSheet.create({
   actions: {
     marginTop: appTheme.spacing.xs,
     gap: appTheme.spacing.sm,
-  },
-  otpCard: {
-    marginTop: appTheme.spacing.xs,
-    padding: appTheme.spacing.md,
-    borderWidth: 1,
-    borderColor: "#D5E5F3",
-    borderRadius: appTheme.radius.lg,
-    backgroundColor: "#F7FBFF",
-    gap: appTheme.spacing.sm,
-  },
-  otpHeader: {
-    gap: 4,
-  },
-  otpTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: appTheme.colors.text,
-  },
-  otpSubtitle: {
-    color: appTheme.colors.textMuted,
-    lineHeight: 20,
-  },
-  otpStatusText: {
-    fontSize: 13,
-    fontWeight: "700",
-    lineHeight: 18,
-  },
-  successText: {
-    color: appTheme.colors.success,
-  },
-  infoText: {
-    color: appTheme.colors.primary,
   },
 });
