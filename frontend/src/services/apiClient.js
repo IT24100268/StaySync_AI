@@ -42,8 +42,17 @@ export const API_BASE_URL = getApiBaseUrl();
 
 export const SOCKET_BASE_URL = API_BASE_URL.replace(/\/api$/, "");
 
+const PUBLIC_AUTH_PATHS = new Set([
+  "/auth/login",
+  "/auth/register",
+  "/auth/send-otp",
+  "/auth/verify-otp",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+]);
+
 const apiClient = axios.create({
-  baseURL:"https://wmtmobileappproject-production.up.railway.app/api",
+  baseURL: API_BASE_URL.replace(/\/$/, ""),
   timeout: 20000,
   headers: {
     "Content-Type": "application/json",
@@ -52,8 +61,9 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(async (config) => {
   const token = await getSecureItem(STORAGE_KEYS.authToken);
+  const requestPath = config.url || "";
 
-  if (token) {
+  if (token && !PUBLIC_AUTH_PATHS.has(requestPath)) {
     config.headers = {
       ...config.headers,
       Authorization: `Bearer ${token}`,

@@ -21,7 +21,7 @@ import { useRoleAuth } from "../../context/RoleAuthContext";
 import { useToast } from "../../context/ToastContext";
 import { appTheme } from "../../theme";
 import { validateRegisterForm } from "../../utils/authValidation";
-import { validateEmail, validateName, validateRequired } from "../../utils/validation";
+import { blurActiveElement } from "../../utils/webFocus";
 
 const NAME_INPUT_PATTERN = /^[A-Za-z\s]*$/;
 export default function RegisterFormScreen({
@@ -126,14 +126,26 @@ export default function RegisterFormScreen({
 
     const result = await register(payload);
     if (!result.success) {
-      Alert.alert("Registration Failed", result.message);
+      blurActiveElement();
+
+      if (Platform.OS === "web") {
+        showToast(result.message || "Registration failed.", "error");
+      } else {
+        Alert.alert("Registration Failed", result.message);
+      }
       return;
     }
 
-    Alert.alert(
-      "Registration Successful",
-      `${ROLE_LABELS[role]} account created successfully. Please log in.`
-    );
+    blurActiveElement();
+
+    if (Platform.OS === "web") {
+      showToast(`${ROLE_LABELS[role]} account created successfully. Please log in.`, "success");
+    } else {
+      Alert.alert(
+        "Registration Successful",
+        `${ROLE_LABELS[role]} account created successfully. Please log in.`
+      );
+    }
     navigation.navigate("Login");
   }
 
