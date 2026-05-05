@@ -1,10 +1,31 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, Platform, StyleSheet, Text, View } from "react-native";
 import * as Location from "expo-location";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
 import AppButton from "../../../../components/common/AppButton";
 import { useDeliveryJobs } from "../../context/DeliveryJobsContext";
 import { appTheme } from "../../../../theme";
+
+const MAX_ACCEPTABLE_LOCATION_ACCURACY_METERS = 1000;
+
+function getWebCurrentPosition() {
+  return new Promise((resolve, reject) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      reject(new Error("Browser geolocation is not available on this device."));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve(position),
+      (error) => reject(new Error(error.message || "Unable to read browser location.")),
+      {
+        enableHighAccuracy: true,
+        timeout: 20000,
+        maximumAge: 0,
+      }
+    );
+  });
+}
 
 export default function NavigationScreen() {
   const { activeDelivery, liveLocation, pushLiveLocation } = useDeliveryJobs();
@@ -26,10 +47,26 @@ export default function NavigationScreen() {
     };
   }, []);
 
+  function validateLocationAccuracy(location) {
+    const accuracy = Number(location?.coords?.accuracy);
+
+    if (!Number.isFinite(accuracy) || accuracy <= 0) {
+      return;
+    }
+
+    if (accuracy > MAX_ACCEPTABLE_LOCATION_ACCURACY_METERS) {
+      throw new Error(
+        "Current device location is too inaccurate. Turn on precise location or try from the delivery phone."
+      );
+    }
+  }
+
   async function shareCurrentLocation(location) {
     if (!delivery?.id) {
       return;
     }
+
+    validateLocationAccuracy(location);
 
     const now = Date.now();
     if (now - lastSharedAtRef.current < 5000) {
@@ -59,35 +96,41 @@ export default function NavigationScreen() {
     setSharingLocation(true);
 
     try {
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (permission.status !== "granted") {
-        Alert.alert("Location Permission Needed", "Allow location access to share your live delivery position.");
-        return;
-      }
+      const currentLocation =
+        Platform.OS === "web"
+          ? await getWebCurrentPosition()
+          : await (async () => {
+              const permission = await Location.requestForegroundPermissionsAsync();
+              if (permission.status !== "granted") {
+                throw new Error("Allow location access to share your live delivery position.");
+              }
 
-      const currentLocation = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
+              return Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.High,
+              });
+            })();
       await shareCurrentLocation(currentLocation);
 
       if (locationSubscriptionRef.current) {
         locationSubscriptionRef.current.remove();
       }
 
-      locationSubscriptionRef.current = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 5000,
-          distanceInterval: 10,
-        },
-        async (nextLocation) => {
-          try {
-            await shareCurrentLocation(nextLocation);
-          } catch (_error) {
-            // Keep the watcher alive even if one update fails.
+      if (Platform.OS !== "web") {
+        locationSubscriptionRef.current = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 5000,
+            distanceInterval: 10,
+          },
+          async (nextLocation) => {
+            try {
+              await shareCurrentLocation(nextLocation);
+            } catch (_error) {
+              // Keep the watcher alive even if one update fails.
+            }
           }
-        }
-      );
+        );
+      }
 
       Alert.alert("Live Location Shared", "Real-time delivery tracking is now being shared.");
     } catch (error) {

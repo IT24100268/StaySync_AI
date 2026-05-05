@@ -68,6 +68,10 @@ async function sendRegistrationOtp({ email, name }) {
     expiryMinutes: env.otpExpiryMinutes,
   });
 
+  if (env.nodeEnv !== "production") {
+    console.log(`Registration OTP for ${normalizedEmail}: ${otp}`);
+  }
+
   if (!mailer) {
     throw new ApiError(
       StatusCodes.INTERNAL_SERVER_ERROR,
@@ -77,7 +81,7 @@ async function sendRegistrationOtp({ email, name }) {
 
   await sendOtpEmail({
     mailer,
-    from: env.mail.user || env.mail.from,
+    from: env.mail.from,
     to: normalizedEmail,
     subject: template.subject,
     text: template.text,
@@ -160,12 +164,16 @@ async function requestPasswordResetOtp({ email }) {
     expiryMinutes: env.otpExpiryMinutes,
   });
 
+  if (env.nodeEnv !== "production") {
+    console.log(`Password reset OTP for ${normalizedEmail}: ${otp}`);
+  }
+
   const mailer = getMailer();
 
   if (mailer) {
     await sendOtpEmail({
       mailer,
-      from: env.mail.user || env.mail.from,
+      from: env.mail.from,
       to: normalizedEmail,
       subject: template.subject,
       text: template.text,

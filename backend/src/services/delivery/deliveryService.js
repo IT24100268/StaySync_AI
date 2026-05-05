@@ -4,7 +4,10 @@ const Delivery = require("../../models/Delivery");
 const LiveLocation = require("../../models/LiveLocation");
 const ApiError = require("../../utils/apiError");
 const pick = require("../../utils/pick");
+const { calculateDistanceKm } = require("../shared/locationService");
 const { requireProfile } = require("../shared/profileService");
+
+const MAX_DELIVERY_LOCATION_DISTANCE_KM = 200;
 
 function getDeliveryBaseQuery(filter = {}) {
   return Delivery.findOne(filter)
@@ -139,10 +142,42 @@ async function updateDeliveryStatus(user, deliveryId, status) {
 
 async function updateLiveLocation(user, deliveryId, payload) {
   const profile = await requireProfile(user);
-  const delivery = await Delivery.findOne({ _id: deliveryId, deliveryPartner: profile._id });
+  const delivery = await Delivery.findOne({ _id: deliveryId, deliveryPartner: profile._id }).populate({
+    path: "order",
+    populate: { path: "restaurant", select: "latitude longitude name address" },
+  });
 
   if (!delivery) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Delivery record not found.");
+  }
+
+  const nextCoordinates = {
+    latitude: Number(payload.coordinates?.latitude),
+    longitude: Number(payload.coordinates?.longitude),
+  };
+  const pickupCoordinates = {
+    latitude: Number(delivery.order?.restaurant?.latitude),
+    longitude: Number(delivery.order?.restaurant?.longitude),
+  };
+  const dropCoordinates = {
+    latitude: Number(delivery.order?.deliveryLocation?.latitude),
+    longitude: Number(delivery.order?.deliveryLocation?.longitude),
+  };
+  const pickupDistanceKm = calculateDistanceKm(nextCoordinates, pickupCoordinates);
+  const dropDistanceKm = calculateDistanceKm(nextCoordinates, dropCoordinates);
+  const nearestRouteDistanceKm = Math.min(
+    Number.isFinite(pickupDistanceKm) ? pickupDistanceKm : Number.POSITIVE_INFINITY,
+    Number.isFinite(dropDistanceKm) ? dropDistanceKm : Number.POSITIVE_INFINITY
+  );
+
+  if (
+    Number.isFinite(nearestRouteDistanceKm) &&
+    nearestRouteDistanceKm > MAX_DELIVERY_LOCATION_DISTANCE_KM
+  ) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Shared live location appears too far from this delivery route. Please check device location settings and try again."
+    );
   }
 
   return LiveLocation.create({
