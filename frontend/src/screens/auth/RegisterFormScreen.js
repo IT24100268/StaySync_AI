@@ -97,7 +97,7 @@ export default function RegisterFormScreen({
     }
 
     if (key === "phone") {
-      const normalizedPhone = value.replace(/\D/g, "").slice(0, 15);
+      const normalizedPhone = value.replace(/\D/g, "").slice(0, 10);
 
       setErrors((current) => ({
         ...current,

@@ -33,7 +33,7 @@ const restaurantOrderStatusValidator = [
     .isString()
     .trim()
     .isLength({ min: 3, max: 300 })
-    .withMessage("Rejection reason must be between 3 and 300 characters."),
+    .withMessage("Rejection reason must be between 3 and 100 characters."),
   body("rejectionReason").custom((value, { req }) => {
     if (req.body.status === "cancelled" && !String(value || "").trim()) {
       throw new Error("Rejection reason is required when rejecting an order.");

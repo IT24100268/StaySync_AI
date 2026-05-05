@@ -8,7 +8,9 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "lint": "eslint .",
-    "seed:admin": "node src/utils/seedAdmin.js"
+    "seed:admin": "node src/utils/seedAdmin.js",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch"
   },
   "keywords": [
     "staysync-ai",
@@ -39,6 +41,9 @@
   },
   "devDependencies": {
     "eslint": "^9.23.0",
-    "nodemon": "^3.1.9"
+    "jest": "^30.3.0",
+    "mongodb-memory-server-core": "^11.1.0",
+    "nodemon": "^3.1.9",
+    "supertest": "^7.2.2"
   }
 }

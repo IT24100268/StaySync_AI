@@ -8,6 +8,10 @@ export function validateNumber(value) {
   return !Number.isNaN(Number(value)) && String(value).trim() !== "";
 }
 
+function validateDigitsOnly(value) {
+  return /^\d+$/.test(String(value || "").trim());
+}
+
 export function validateOwnerProfile(form) {
   const errors = {};
 
@@ -24,8 +28,27 @@ export function validateOwnerRoom(form) {
 
   if (!validateRequired(form.title)) errors.title = "Room title is required.";
   if (!validateRequired(form.description)) errors.description = "Description is required.";
-  if (!validateNumber(form.rent)) errors.rent = "Rent must be a valid number.";
-  if (!validateNumber(form.deposit)) errors.deposit = "Deposit must be a valid number.";
+  if (!validateRequired(form.rent)) {
+    errors.rent = "Rent is required.";
+  } else if (String(form.rent).trim().startsWith("-")) {
+    errors.rent = "Rent cannot be negative.";
+  } else if (!validateDigitsOnly(form.rent)) {
+    errors.rent = "Rent must contain numbers only.";
+  } else if (!validateNumber(form.rent)) {
+    errors.rent = "Rent must be a valid number.";
+  } else if (Number(form.rent) > 20000) {
+    errors.rent = "Rent cannot be more than 20000.";
+  }
+
+  if (!validateRequired(form.deposit)) {
+    errors.deposit = "Deposit is required.";
+  } else if (String(form.deposit).trim().startsWith("-")) {
+    errors.deposit = "Deposit cannot be negative.";
+  } else if (!validateDigitsOnly(form.deposit)) {
+    errors.deposit = "Deposit must contain numbers only.";
+  } else if (!validateNumber(form.deposit)) {
+    errors.deposit = "Deposit must be a valid number.";
+  }
   if (!validateRequired(form.roomType)) errors.roomType = "Select a room type.";
   if (form.facilities.length === 0) errors.facilities = "Select at least one facility.";
   if (!validateRequired(form.genderAllowed)) errors.genderAllowed = "Select gender allowed.";

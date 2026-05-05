@@ -48,7 +48,7 @@ export function validateAdminCode(value) {
 
 export function validatePhone(value) {
   const digits = String(value || "").replace(/\D/g, "");
-  return digits.length >= 10 && digits.length <= 15;
+  return digits.length == 10;
 }
 
 export function validateMinLength(value, minLength) {

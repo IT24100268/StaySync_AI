@@ -8,10 +8,23 @@ import DashboardStatCard from "../../components/cards/DashboardStatCard";
 import { formatCurrency } from "../../../../utils/format";
 
 export default function AnalyticsScreen() {
-  const { analytics, listings } = useOwnerListings();
+  const { analytics, listings, bookingRequests } = useOwnerListings();
+
+  const bookingCountsByRoomId = bookingRequests.reduce((summary, request) => {
+    if (request.status !== "Approved") {
+      return summary;
+    }
+
+    summary[request.roomId] = (summary[request.roomId] || 0) + 1;
+    return summary;
+  }, {});
 
   const topPerformers = [...listings]
-    .sort((first, second) => second.viewsCount - first.viewsCount)
+    .map((listing) => ({
+      ...listing,
+      bookingCount: bookingCountsByRoomId[listing.id] || 0,
+    }))
+    .sort((first, second) => second.bookingCount - first.bookingCount)
     .slice(0, 3);
 
   return (
@@ -35,7 +48,7 @@ export default function AnalyticsScreen() {
             <View style={styles.copy}>
               <Text style={styles.title}>{listing.title}</Text>
               <Text style={styles.meta}>
-                Views {listing.viewsCount} • Enquiries {listing.enquiriesCount}
+                Booked {listing.bookingCount} time{listing.bookingCount === 1 ? "" : "s"}
               </Text>
             </View>
             <Text style={styles.status}>{listing.status}</Text>
