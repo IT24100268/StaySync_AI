@@ -8,6 +8,34 @@ export function validateNumber(value) {
   return !Number.isNaN(Number(value)) && String(value).trim() !== "";
 }
 
+export function validateFoodPrice(value) {
+  const rawValue = String(value ?? "").trim();
+
+  if (!rawValue) {
+    return "Price is required.";
+  }
+
+  if (!/^-?\d+(\.\d+)?$/.test(rawValue)) {
+    return "Price must contain numbers only.";
+  }
+
+  const numericValue = Number(rawValue);
+
+  if (Number.isNaN(numericValue)) {
+    return "Price must be a valid number.";
+  }
+
+  if (numericValue < 0) {
+    return "Price cannot be negative.";
+  }
+
+  if (numericValue > 2000) {
+    return "Price cannot be more than 2000.";
+  }
+
+  return "";
+}
+
 export function validateRestaurantProfile(form) {
   const errors = {};
 
@@ -30,7 +58,8 @@ export function validateFoodItem(form) {
   if (!validateRequired(form.name)) errors.name = "Food name is required.";
   if (!validateRequired(form.description)) errors.description = "Description is required.";
   if (!validateRequired(form.category)) errors.category = "Select a category.";
-  if (!validateNumber(form.price)) errors.price = "Price must be a valid number.";
+  const priceError = validateFoodPrice(form.price);
+  if (priceError) errors.price = priceError;
   if (!validateRequired(form.image)) errors.image = "Food image is required.";
   if (!validateRequired(form.availability)) errors.availability = "Select availability.";
 

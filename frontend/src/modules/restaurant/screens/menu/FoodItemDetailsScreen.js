@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
 import EmptyState from "../../../../components/common/EmptyState";
 import AppButton from "../../../../components/common/AppButton";
@@ -25,6 +26,10 @@ export default function FoodItemDetailsScreen({ route, navigation }) {
 
   return (
     <ScreenContainer>
+      <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Ionicons name="arrow-back" size={20} color={appTheme.colors.text} />
+        <Text style={styles.backButtonText}>Back</Text>
+      </Pressable>
       <Image source={{ uri: item.image }} style={styles.image} />
       <View style={styles.card}>
         <View style={styles.topRow}>
@@ -56,6 +61,18 @@ export default function FoodItemDetailsScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  backButton: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 4,
+  },
+  backButtonText: {
+    color: appTheme.colors.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
   image: {
     width: "100%",
     height: 220,

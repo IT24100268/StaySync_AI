@@ -4,7 +4,7 @@ import ScreenContainer from "../../../../components/common/ScreenContainer";
 import EmptyState from "../../../../components/common/EmptyState";
 import FoodItemForm from "../../components/form/FoodItemForm";
 import { useMenu } from "../../context/MenuContext";
-import { validateFoodItem } from "../../utils/validation";
+import { validateFoodItem, validateFoodPrice } from "../../utils/validation";
 
 export default function EditFoodItemScreen({ route, navigation }) {
   const { foodId } = route.params || {};
@@ -23,6 +23,22 @@ export default function EditFoodItemScreen({ route, navigation }) {
     availability: "in_stock",
   });
   const [errors, setErrors] = useState({});
+
+  function handleFormChange(nextForm) {
+    setForm(nextForm);
+    setErrors((current) => {
+      const nextErrors = { ...current };
+      const priceError = validateFoodPrice(nextForm.price);
+
+      if (priceError) {
+        nextErrors.price = priceError;
+      } else {
+        delete nextErrors.price;
+      }
+
+      return nextErrors;
+    });
+  }
 
   if (!selectedItem) {
     return (
@@ -52,7 +68,7 @@ export default function EditFoodItemScreen({ route, navigation }) {
 
   return (
     <ScreenContainer>
-      <FoodItemForm form={form} errors={errors} onChange={setForm} onSubmit={handleSubmit} submitLabel="Save Food Item Changes" loading={submitting} />
+      <FoodItemForm form={form} errors={errors} onChange={handleFormChange} onSubmit={handleSubmit} submitLabel="Save Food Item Changes" loading={submitting} />
     </ScreenContainer>
   );
 }
