@@ -39,6 +39,10 @@ export function validateRegisterForm(role, form) {
     errors.email = "Please enter a valid email.";
   }
 
+  if (!form.isEmailVerified) {
+    errors.emailOtp = "Please verify your email with OTP.";
+  }
+
   if (!validateStrongPassword(form.password)) {
     errors.password = "Password must be at least 8 characters and include uppercase, lowercase, number, and special character.";
   }

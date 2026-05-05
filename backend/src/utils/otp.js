@@ -4,7 +4,7 @@ const env = require("../config/env");
 function generateOtpCode() {
   const min = 10 ** (env.otpLength - 1);
   const max = 10 ** env.otpLength - 1;
-  return String(Math.floor(Math.random() * (max - min + 1)) + min);
+  return String(crypto.randomInt(min, max + 1));
 }
 
 function hashOtp(code) {

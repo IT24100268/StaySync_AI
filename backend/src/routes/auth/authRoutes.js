@@ -1,18 +1,15 @@
 const express = require("express");
 const authMiddleware = require("../../middlewares/auth");
+const otpRoutes = require("../otpRoutes");
 const validateRequest = require("../../middlewares/validateRequest");
 const {
   login,
   register,
-  sendOtp,
-  verifyOtp,
   forgotPassword,
   resetPassword,
   getMe,
 } = require("../../controllers/auth/authController");
 const {
-  sendOtpValidator,
-  verifyOtpValidator,
   forgotPasswordValidator,
   resetPasswordValidator,
   registerValidator,
@@ -22,8 +19,7 @@ const {
 
 const router = express.Router();
 
-router.post("/send-otp", validateRequest(sendOtpValidator), sendOtp);
-router.post("/verify-otp", validateRequest(verifyOtpValidator), verifyOtp);
+router.use("/", otpRoutes);
 router.post("/forgot-password", validateRequest(forgotPasswordValidator), forgotPassword);
 router.post("/reset-password", validateRequest(resetPasswordValidator), resetPassword);
 router.post("/register", validateRequest(registerBodyValidator), register);

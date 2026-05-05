@@ -17,11 +17,13 @@ const env = {
     host: process.env.MAIL_HOST || "smtp.gmail.com",
     port: Number(process.env.MAIL_PORT) || 465,
     secure: String(process.env.MAIL_SECURE || "false") === "true",
-    user: process.env.EMAIL_USER || process.env.MAIL_USER || "",
-    pass: process.env.EMAIL_PASS || process.env.MAIL_PASS || "",
+    user: process.env.MAIL_USER || process.env.EMAIL_USER || "",
+    pass: process.env.MAIL_PASS || process.env.EMAIL_PASS || "",
     from:
       process.env.MAIL_FROM ||
-      (process.env.EMAIL_USER ? `StaySync AI <${process.env.EMAIL_USER}>` : "StaySync AI <no-reply@staysync.ai>"),
+      (process.env.MAIL_USER || process.env.EMAIL_USER
+        ? `StaySync AI <${process.env.MAIL_USER || process.env.EMAIL_USER}>`
+        : "StaySync AI <no-reply@staysync.ai>"),
   },
   adminSeedEmail: process.env.ADMIN_SEED_EMAIL || "admin@staysync.ai",
   adminSeedPassword: process.env.ADMIN_SEED_PASSWORD || "Admin@12345",

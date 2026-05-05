@@ -5,6 +5,8 @@ import { STORAGE_KEYS } from "../constants/auth";
 import { getSecureItem } from "../utils/storage";
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+const forceRemoteApi = process.env.EXPO_PUBLIC_USE_REMOTE_API === "true";
+const isDevRuntime = typeof __DEV__ !== "undefined" && __DEV__;
 
 function getExpoHost() {
   const hostUri =
@@ -17,7 +19,7 @@ function getExpoHost() {
 }
 
 function getApiBaseUrl() {
-  if (apiUrl) {
+  if (apiUrl && (!isDevRuntime || forceRemoteApi)) {
     return apiUrl;
   }
 

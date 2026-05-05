@@ -3,7 +3,7 @@ const env = require("../../config/env");
 const { getMailer } = require("../../config/mailer");
 const { ROLES, USER_STATUSES } = require("../../constants/appConstants");
 const User = require("../../models/User");
-const EmailOtpVerification = require("../../models/EmailOtpVerification");
+const OtpVerification = require("../../models/otpModel");
 const ApiError = require("../../utils/apiError");
 const { registrationOtpTemplate, passwordResetOtpTemplate } = require("../../utils/emailTemplates");
 const { generateOtpCode, getOtpExpiryDate, hashOtp } = require("../../utils/otp");
@@ -48,28 +48,89 @@ async function sendRegistrationOtp({ email, name }) {
     throw new ApiError(StatusCodes.CONFLICT, "An account with this email already exists.");
   }
 
+  const otp = generateOtpCode();
+  const expiresAt = getOtpExpiryDate();
+  const otpHash = hashOtp(otp);
+  const mailer = getMailer();
+
+  await OtpVerification.deleteMany({ email: normalizedEmail, purpose: "registration" });
+  await OtpVerification.create({
+    email: normalizedEmail,
+    otp: otpHash,
+    expiresAt,
+    verified: false,
+    purpose: "registration",
+  });
+
+  const template = registrationOtpTemplate({
+    name,
+    otp,
+    expiryMinutes: env.otpExpiryMinutes,
+  });
+
+  if (!mailer) {
+    throw new ApiError(
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      "OTP email service is not configured. Please set MAIL_USER and MAIL_PASS."
+    );
+  }
+
+  await sendOtpEmail({
+    mailer,
+    from: env.mail.user || env.mail.from,
+    to: normalizedEmail,
+    subject: template.subject,
+    text: template.text,
+    html: template.html,
+    contextLabel: "Registration OTP",
+  });
+
   return {
     email: normalizedEmail,
-    verificationRequired: false,
-    message: "Registration OTP is temporarily disabled.",
+    expiresAt,
+    verified: false,
   };
 }
 
 async function verifyRegistrationOtp({ email, otp }) {
   const normalizedEmail = email.toLowerCase();
-  void otp;
+  await OtpVerification.deleteMany({
+    email: normalizedEmail,
+    purpose: "registration",
+    expiresAt: { $lte: new Date() },
+  });
+
+  const verification = await OtpVerification.findOne({
+    email: normalizedEmail,
+    purpose: "registration",
+  }).sort({ createdAt: -1 });
+
+  if (!verification) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "No OTP request found for this email.");
+  }
+
+  if (verification.expiresAt < new Date()) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "OTP has expired. Please request a new code.");
+  }
+
+  if (verification.otp !== hashOtp(otp)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid OTP.");
+  }
+
+  verification.verified = true;
+  verification.verifiedAt = new Date();
+  await verification.save();
 
   return {
     email: normalizedEmail,
-    verifiedAt: new Date(),
-    verificationRequired: false,
-    message: "Registration OTP is temporarily disabled.",
+    verified: true,
+    verifiedAt: verification.verifiedAt,
   };
 }
 
 async function requestPasswordResetOtp({ email }) {
   const normalizedEmail = email.toLowerCase();
-  await EmailOtpVerification.deleteMany({
+  await OtpVerification.deleteMany({
     email: normalizedEmail,
     purpose: "password-reset",
     expiresAt: { $lte: new Date() },
@@ -85,11 +146,11 @@ async function requestPasswordResetOtp({ email }) {
   const otpHash = hashOtp(otp);
   const expiresAt = getOtpExpiryDate();
 
-  await EmailOtpVerification.deleteMany({ email: normalizedEmail, purpose: "password-reset" });
-  await EmailOtpVerification.create({
+  await OtpVerification.deleteMany({ email: normalizedEmail, purpose: "password-reset" });
+  await OtpVerification.create({
     email: normalizedEmail,
     purpose: "password-reset",
-    otpHash,
+    otp: otpHash,
     expiresAt,
   });
 
@@ -120,13 +181,13 @@ async function requestPasswordResetOtp({ email }) {
 
 async function resetPasswordWithOtp({ email, otp, password }) {
   const normalizedEmail = email.toLowerCase();
-  await EmailOtpVerification.deleteMany({
+  await OtpVerification.deleteMany({
     email: normalizedEmail,
     purpose: "password-reset",
     expiresAt: { $lte: new Date() },
   });
 
-  const verification = await EmailOtpVerification.findOne({
+  const verification = await OtpVerification.findOne({
     email: normalizedEmail,
     purpose: "password-reset",
   }).sort({ createdAt: -1 });
@@ -139,7 +200,7 @@ async function resetPasswordWithOtp({ email, otp, password }) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Reset code has expired. Please request a new one.");
   }
 
-  if (verification.otpHash !== hashOtp(otp)) {
+  if (verification.otp !== hashOtp(otp)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Reset code is invalid.");
   }
 
@@ -151,7 +212,7 @@ async function resetPasswordWithOtp({ email, otp, password }) {
 
   user.password = password;
   await user.save();
-  await EmailOtpVerification.deleteMany({ email: normalizedEmail, purpose: "password-reset" });
+  await OtpVerification.deleteMany({ email: normalizedEmail, purpose: "password-reset" });
 
   return { email: normalizedEmail, resetAt: new Date() };
 }
@@ -168,6 +229,23 @@ async function registerUser(role, payload) {
     throw new ApiError(StatusCodes.CONFLICT, "An account with this email already exists.");
   }
 
+  await OtpVerification.deleteMany({
+    email: normalizedEmail,
+    purpose: "registration",
+    expiresAt: { $lte: new Date() },
+  });
+
+  const verification = await OtpVerification.findOne({
+    email: normalizedEmail,
+    purpose: "registration",
+    verified: true,
+    expiresAt: { $gt: new Date() },
+  }).sort({ createdAt: -1 });
+
+  if (!verification) {
+    throw new ApiError(StatusCodes.FORBIDDEN, "Please verify your email with OTP before registering.");
+  }
+
   const user = await User.create({
     name: payload.name,
     email: normalizedEmail,
@@ -179,7 +257,7 @@ async function registerUser(role, payload) {
   });
 
   await createRoleProfile(user, payload);
-  await EmailOtpVerification.deleteMany({ email: normalizedEmail, purpose: "registration" });
+  await OtpVerification.deleteMany({ email: normalizedEmail, purpose: "registration" });
 
   const token = signToken({ sub: user._id.toString(), role: user.role });
 

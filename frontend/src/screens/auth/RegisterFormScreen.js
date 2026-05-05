@@ -19,7 +19,9 @@ import AppSelect from "../../components/common/AppSelect";
 import { ROLE_LABELS } from "../../constants/auth";
 import { useRoleAuth } from "../../context/RoleAuthContext";
 import { useToast } from "../../context/ToastContext";
+import { sendRegistrationOtp, verifyRegistrationOtp } from "../../services/roleAuthService";
 import { appTheme } from "../../theme";
+import { validateEmail } from "../../utils/validation";
 import { validateRegisterForm } from "../../utils/authValidation";
 import { blurActiveElement } from "../../utils/webFocus";
 
@@ -39,12 +41,16 @@ export default function RegisterFormScreen({
       password: "",
       confirmPassword: "",
       role,
+      otp: "",
+      isEmailVerified: false,
       latitude: null,
       longitude: null,
       locationAddress: "",
     })
   );
   const [errors, setErrors] = useState({});
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
 
   useEffect(() => {
     const selectedLocation = route?.params?.selectedLocation;
@@ -64,6 +70,17 @@ export default function RegisterFormScreen({
   }, [navigation, route?.params?.selectedLocation]);
 
   function updateField(key, value) {
+    if (key === "email") {
+      setForm((current) => ({
+        ...current,
+        email: value,
+        otp: "",
+        isEmailVerified: false,
+      }));
+      setErrors((current) => ({ ...current, email: "", emailOtp: "", otp: "" }));
+      return;
+    }
+
     if (key === "name") {
       if (!NAME_INPUT_PATTERN.test(value)) {
         setErrors((current) => ({
@@ -92,9 +109,99 @@ export default function RegisterFormScreen({
     }
 
     setForm((current) => ({ ...current, [key]: value }));
+    setErrors((current) => ({ ...current, [key]: "" }));
+  }
 
-    if (key === "email") {
-      setErrors((current) => ({ ...current, email: "" }));
+  async function handleSendOtp() {
+    if (sendingOtp) {
+      return;
+    }
+
+    if (!form.email || !form.name) {
+      setErrors((current) => ({
+        ...current,
+        email: !form.email ? "Please enter your email first." : current.email,
+        name: !form.name ? "Please enter your name first." : current.name,
+      }));
+      return;
+    }
+
+    if (!validateEmail(form.email)) {
+      setErrors((current) => ({
+        ...current,
+        email: "Please enter a valid email address.",
+      }));
+      return;
+    }
+
+    setSendingOtp(true);
+
+    try {
+      await sendRegistrationOtp({
+        email: form.email,
+        name: form.name,
+      });
+
+      if (Platform.OS === "web") {
+        showToast("OTP sent to your email.", "success");
+      } else {
+        Alert.alert("OTP Sent", "A verification code has been sent to your email.");
+      }
+
+      setErrors((current) => ({ ...current, emailOtp: "", otp: "" }));
+      setForm((current) => ({ ...current, otp: "", isEmailVerified: false }));
+    } catch (error) {
+      if (Platform.OS === "web") {
+        showToast(error.message || "Unable to send OTP.", "error");
+      } else {
+        Alert.alert("OTP Failed", error.message || "Unable to send OTP.");
+      }
+    } finally {
+      setSendingOtp(false);
+    }
+  }
+
+  async function handleVerifyOtp() {
+    if (verifyingOtp) {
+      return;
+    }
+
+    if (!form.email) {
+      setErrors((current) => ({ ...current, email: "Please enter your email first." }));
+      return;
+    }
+
+    if (!validateEmail(form.email)) {
+      setErrors((current) => ({ ...current, email: "Please enter a valid email address." }));
+      return;
+    }
+
+    if (!form.otp || !/^\d{6}$/.test(form.otp)) {
+      setErrors((current) => ({ ...current, otp: "Enter the 6-digit OTP." }));
+      return;
+    }
+
+    setVerifyingOtp(true);
+
+    try {
+      await verifyRegistrationOtp({
+        email: form.email,
+        otp: form.otp,
+      });
+
+      setForm((current) => ({ ...current, isEmailVerified: true }));
+      setErrors((current) => ({ ...current, emailOtp: "", otp: "" }));
+
+      if (Platform.OS === "web") {
+        showToast("Email verified successfully.", "success");
+      } else {
+        Alert.alert("Verified", "Your email has been verified successfully.");
+      }
+    } catch (error) {
+      setForm((current) => ({ ...current, isEmailVerified: false }));
+      setErrors((current) => ({ ...current, otp: error.message || "Unable to verify OTP." }));
+    } finally {
+      setVerifyingOtp(false);
     }
   }
 
@@ -236,6 +343,41 @@ export default function RegisterFormScreen({
                         error={errors[field.name]}
                       />
                     )}
+
+                    {field.name === "email" ? (
+                      <View style={styles.otpSection}>
+                        <View style={styles.otpHeader}>
+                          <Text style={styles.otpTitle}>Email Verification</Text>
+                          {form.isEmailVerified ? (
+                            <View style={styles.verifiedBadge}>
+                              <Ionicons name="checkmark-circle" size={14} color="#0F9D58" />
+                              <Text style={styles.verifiedText}>Verified</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                        <AppButton
+                          title={sendingOtp ? "Sending OTP..." : "Send OTP"}
+                          onPress={handleSendOtp}
+                          loading={sendingOtp}
+                          disabled={!form.email || !form.name || form.isEmailVerified}
+                        />
+                        <AppInput
+                          label="OTP Code"
+                          value={form.otp}
+                          onChangeText={(value) => updateField("otp", value.replace(/\D/g, "").slice(0, 6))}
+                          placeholder="Enter 6-digit OTP"
+                          keyboardType="number-pad"
+                          autoCapitalize="none"
+                          error={errors.otp || errors.emailOtp}
+                        />
+                        <AppButton
+                          title={verifyingOtp ? "Verifying OTP..." : "Verify OTP"}
+                          onPress={handleVerifyOtp}
+                          loading={verifyingOtp}
+                          disabled={!form.email || form.otp.length !== 6 || form.isEmailVerified}
+                        />
+                      </View>
+                    ) : null}
                   </React.Fragment>
                 ))}
 
@@ -269,6 +411,7 @@ export default function RegisterFormScreen({
                     title="Register"
                     onPress={handleSubmit}
                     loading={authenticating}
+                    disabled={!form.isEmailVerified}
                   />
                   <AppButton
                     title="Back to Login"
@@ -342,6 +485,40 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: appTheme.spacing.sm,
+  },
+  otpSection: {
+    marginTop: appTheme.spacing.xs,
+    padding: appTheme.spacing.md,
+    borderRadius: appTheme.radius.lg,
+    backgroundColor: "rgba(11, 93, 122, 0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(11, 93, 122, 0.12)",
+    gap: appTheme.spacing.sm,
+  },
+  otpHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: appTheme.spacing.sm,
+  },
+  otpTitle: {
+    color: appTheme.colors.text,
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  verifiedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(15, 157, 88, 0.12)",
+  },
+  verifiedText: {
+    color: "#0F9D58",
+    fontWeight: "700",
+    fontSize: 12,
   },
   locationBlock: {
     gap: appTheme.spacing.xs,

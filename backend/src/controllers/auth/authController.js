@@ -2,31 +2,11 @@ const { StatusCodes } = require("http-status-codes");
 const catchAsync = require("../../utils/catchAsync");
 const { successResponse } = require("../../utils/apiResponse");
 const {
-  sendRegistrationOtp,
-  verifyRegistrationOtp,
   requestPasswordResetOtp,
   registerUser,
   loginUser,
   resetPasswordWithOtp,
 } = require("../../services/auth/authService");
-
-const sendOtp = catchAsync(async (req, res) => {
-  const result = await sendRegistrationOtp(req.body);
-  return successResponse(res, {
-    statusCode: StatusCodes.OK,
-    message: "OTP sent successfully.",
-    data: result,
-  });
-});
-
-const verifyOtp = catchAsync(async (req, res) => {
-  const result = await verifyRegistrationOtp(req.body);
-  return successResponse(res, {
-    statusCode: StatusCodes.OK,
-    message: "Email verified successfully.",
-    data: result,
-  });
-});
 
 const forgotPassword = catchAsync(async (req, res) => {
   const result = await requestPasswordResetOtp(req.body);
@@ -73,8 +53,6 @@ const getMe = catchAsync(async (req, res) => {
 });
 
 module.exports = {
-  sendOtp,
-  verifyOtp,
   forgotPassword,
   register,
   login,
