@@ -381,7 +381,11 @@ export default function StudentDashboardView({ navigation }) {
           </View>
 
           <View style={styles.headerCopy}>
-            <Text style={styles.headerTitle}>Welcome back, {firstName}</Text>
+            <Text style={styles.headerEyebrow}>Everything in one place</Text>
+            <View style={styles.headerGreetingRow}>
+              <Text style={styles.headerTitle}>Welcome back, </Text>
+              <Text style={styles.headerNameAccent}>{firstName}</Text>
+            </View>
             <Text style={styles.headerSubtitle}>
               Manage your stay, meals, and bookings from one calm, mobile-first dashboard.
             </Text>
@@ -569,6 +573,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: appTheme.spacing.sm,
     flexShrink: 0,
+    padding: 4,
+    borderRadius: appTheme.radius.pill,
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
   headerBadge: {
     flexDirection: "row",
@@ -633,8 +640,26 @@ const styles = StyleSheet.create({
     gap: appTheme.spacing.sm,
     maxWidth: "92%",
   },
+  headerEyebrow: {
+    color: "rgba(255,255,255,0.72)",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+  },
+  headerGreetingRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "baseline",
+  },
   headerTitle: {
     color: "#FFFFFF",
+    fontSize: 30,
+    fontWeight: "900",
+    lineHeight: 36,
+  },
+  headerNameAccent: {
+    color: "#D8F7FF",
     fontSize: 30,
     fontWeight: "900",
     lineHeight: 36,
