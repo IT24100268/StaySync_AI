@@ -14,6 +14,7 @@ export function MenuProvider({ children }) {
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const loadMenu = useCallback(async () => {
     if (role !== "restaurant" || !token) {
@@ -26,6 +27,9 @@ export function MenuProvider({ children }) {
       setLoading(true);
       const response = await fetchMenuItems();
       setMenuItems(response);
+      setError("");
+    } catch (loadError) {
+      setError(loadError.message || "Unable to load menu items.");
     } finally {
       setLoading(false);
     }
@@ -99,13 +103,14 @@ export function MenuProvider({ children }) {
       analytics,
       loading,
       submitting,
+      error,
       loadMenu,
       addFoodItem,
       editFoodItem,
       removeFoodItem,
       toggleAvailability,
     }),
-    [analytics, loadMenu, loading, menuItems, submitting]
+    [analytics, error, loadMenu, loading, menuItems, submitting]
   );
 
   return <MenuContext.Provider value={value}>{children}</MenuContext.Provider>;

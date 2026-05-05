@@ -21,7 +21,7 @@ export default function RestaurantHomeScreen({ navigation }) {
   const { restaurant } = useRestaurantAuth();
   const { logout } = useRoleAuth();
   const { menuItems, analytics: menuAnalytics, toggleAvailability, removeFoodItem, loadMenu } = useMenu();
-  const { analytics: orderAnalytics, latestNewOrderAlert, dismissNewOrderAlert } = useOrders();
+  const { analytics: orderAnalytics, latestNewOrderAlert, dismissNewOrderAlert, error: orderError } = useOrders();
 
   useFocusEffect(
     React.useCallback(() => {
@@ -78,6 +78,10 @@ export default function RestaurantHomeScreen({ navigation }) {
     ]);
   }
 
+  function openAddFoodItem() {
+    navigation.getParent()?.navigate("MenuTab", { screen: "AddFoodItem" });
+  }
+
   return (
     <ScreenContainer>
       <View style={styles.banner}>
@@ -107,6 +111,13 @@ export default function RestaurantHomeScreen({ navigation }) {
               <Text style={styles.logoutText}>Logout</Text>
             </Pressable>
           </View>
+        </View>
+        <View style={styles.bannerFooter}>
+          <Pressable style={styles.addFoodButton} onPress={openAddFoodItem}>
+            <Ionicons name="add-circle-outline" size={18} color="#B9481B" />
+            <Text style={styles.addFoodButtonText}>Add Food Item</Text>
+          </Pressable>
+          {orderError ? <Text style={styles.bannerNotice}>Orders are temporarily unavailable: {orderError}</Text> : null}
         </View>
       </View>
 
@@ -187,16 +198,24 @@ export default function RestaurantHomeScreen({ navigation }) {
       </Modal>
 
       <SectionHeader title="Featured menu items" subtitle="Quick access to your current active menu" />
-      {menuItems.slice(0, 2).map((item) => (
-        <FoodItemCard
-          key={item.id}
-          item={item}
-          onPress={() => navigation.navigate("FoodItemDetails", { foodId: item.id })}
-          onEdit={() => navigation.getParent()?.navigate("MenuTab", { screen: "EditFoodItem", params: { foodId: item.id } })}
-          onToggle={() => toggleAvailability(item.id)}
-          onDelete={() => confirmDelete(item.id)}
-        />
-      ))}
+      {menuItems.length === 0 ? (
+        <Pressable style={styles.emptyMenuCard} onPress={openAddFoodItem}>
+          <Ionicons name="restaurant-outline" size={24} color="#B9481B" />
+          <Text style={styles.emptyMenuTitle}>No food items yet</Text>
+          <Text style={styles.emptyMenuText}>Add your first menu item to start receiving restaurant orders.</Text>
+        </Pressable>
+      ) : (
+        menuItems.slice(0, 2).map((item) => (
+          <FoodItemCard
+            key={item.id}
+            item={item}
+            onPress={() => navigation.navigate("FoodItemDetails", { foodId: item.id })}
+            onEdit={() => navigation.getParent()?.navigate("MenuTab", { screen: "EditFoodItem", params: { foodId: item.id } })}
+            onToggle={() => toggleAvailability(item.id)}
+            onDelete={() => confirmDelete(item.id)}
+          />
+        ))
+      )}
 
       <View style={styles.reviewsCard}>
         <SectionHeader
@@ -244,6 +263,10 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     alignItems: "flex-end",
+    gap: appTheme.spacing.sm,
+  },
+  bannerFooter: {
+    marginTop: appTheme.spacing.lg,
     gap: appTheme.spacing.sm,
   },
   bannerCopy: {
@@ -306,10 +329,47 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "700",
   },
+  addFoodButton: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: appTheme.spacing.md,
+    paddingVertical: appTheme.spacing.sm,
+    borderRadius: 999,
+    backgroundColor: "#FFFFFF",
+  },
+  addFoodButtonText: {
+    color: "#B9481B",
+    fontWeight: "800",
+  },
+  bannerNotice: {
+    color: "rgba(255,255,255,0.88)",
+    lineHeight: 20,
+  },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: appTheme.spacing.md,
+  },
+  emptyMenuCard: {
+    backgroundColor: "#FFF3EC",
+    borderRadius: appTheme.radius.lg,
+    padding: appTheme.spacing.xl,
+    alignItems: "center",
+    gap: appTheme.spacing.sm,
+    borderWidth: 1,
+    borderColor: "rgba(185,72,27,0.18)",
+  },
+  emptyMenuTitle: {
+    color: appTheme.colors.text,
+    fontWeight: "800",
+    fontSize: 18,
+  },
+  emptyMenuText: {
+    color: appTheme.colors.textMuted,
+    textAlign: "center",
+    lineHeight: 20,
   },
   reviewsCard: {
     backgroundColor: appTheme.colors.surface,

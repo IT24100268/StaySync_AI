@@ -150,15 +150,23 @@ async function listRestaurantOrders(user) {
     })
     .sort({ createdAt: -1 });
 
-  const ordersWithItems = await Promise.all(
-    orders.map(async (order) => {
-      const items = await OrderItem.find({ order: order._id }).sort({ createdAt: 1 });
-      return {
-        ...order.toObject(),
-        items,
-      };
-    })
-  );
+  const orderIds = orders.map((order) => order._id);
+  const orderItems = await OrderItem.find({ order: { $in: orderIds } }).sort({ createdAt: 1 });
+  const itemsByOrderId = orderItems.reduce((map, item) => {
+    const key = String(item.order);
+
+    if (!map.has(key)) {
+      map.set(key, []);
+    }
+
+    map.get(key).push(item);
+    return map;
+  }, new Map());
+
+  const ordersWithItems = orders.map((order) => ({
+    ...order.toObject(),
+    items: itemsByOrderId.get(String(order._id)) || [],
+  }));
 
   return ordersWithItems;
 }

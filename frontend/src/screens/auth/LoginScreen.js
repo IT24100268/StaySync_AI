@@ -43,6 +43,10 @@ export default function LoginScreen({ navigation }) {
   }
 
   async function handleLogin() {
+    if (authenticating) {
+      return;
+    }
+
     const nextErrors = validateLoginForm(form);
     setErrors(nextErrors);
 

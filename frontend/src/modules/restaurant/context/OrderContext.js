@@ -12,6 +12,7 @@ export function OrderProvider({ children }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newOrderAlerts, setNewOrderAlerts] = useState([]);
+  const [error, setError] = useState("");
   const knownOrderIdsRef = useRef(new Set());
   const hasBootstrappedRef = useRef(false);
 
@@ -31,6 +32,7 @@ export function OrderProvider({ children }) {
       }
 
       const response = await fetchRestaurantOrders();
+      setError("");
       const nextOrderIds = new Set(response.map((order) => order.id));
 
       if (hasBootstrappedRef.current) {
@@ -55,6 +57,8 @@ export function OrderProvider({ children }) {
 
       knownOrderIdsRef.current = nextOrderIds;
       setOrders(response);
+    } catch (loadError) {
+      setError(loadError.message || "Unable to load restaurant orders.");
     } finally {
       setLoading(false);
     }
@@ -171,12 +175,13 @@ export function OrderProvider({ children }) {
       newOrderAlerts,
       latestNewOrderAlert: newOrderAlerts[0] || null,
       analytics,
+      error,
       setOrderStatus,
       loadOrders,
       clearNewOrderAlerts,
       dismissNewOrderAlert,
     }),
-    [analytics, loadOrders, loading, newOrderAlerts, orders]
+    [analytics, error, loadOrders, loading, newOrderAlerts, orders]
   );
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>;

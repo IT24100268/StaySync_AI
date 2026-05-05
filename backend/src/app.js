@@ -16,6 +16,25 @@ const app = express();
 // rate limiting and client IP detection to work correctly.
 app.set("trust proxy", 1);
 
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: {
+    success: false,
+    message: "Too many login attempts. Please wait a few minutes and try again.",
+  },
+});
+
 app.use(helmet());
 app.use(
   cors({
@@ -24,14 +43,8 @@ app.use(
   })
 );
 if (env.nodeEnv === "production") {
-  app.use(
-    rateLimit({
-      windowMs: 15 * 60 * 1000,
-      limit: 300,
-      standardHeaders: true,
-      legacyHeaders: false,
-    })
-  );
+  app.use(`${env.apiPrefix}/auth/login`, authLimiter);
+  app.use(generalLimiter);
 }
 app.use(compression());
 app.use(morgan(env.nodeEnv === "production" ? "combined" : "dev"));

@@ -1,9 +1,10 @@
-import React, { useState } from "react";
-import { StyleSheet, Text } from "react-native";
+import React, { useMemo, useState } from "react";
+import { StyleSheet, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
 import EmptyState from "../../../../components/common/EmptyState";
 import LoadingOverlay from "../../../../components/common/LoadingOverlay";
+import SectionHeader from "../../../../components/common/SectionHeader";
 import FoodItemCard from "../../components/cards/FoodItemCard";
 import ConfirmationModal from "../../components/form/ConfirmationModal";
 import { useMenu } from "../../context/MenuContext";
@@ -12,6 +13,20 @@ import { appTheme } from "../../../../theme";
 export default function MenuListScreen({ navigation }) {
   const { menuItems, loading, removeFoodItem, toggleAvailability, loadMenu } = useMenu();
   const [deletingId, setDeletingId] = useState("");
+  const groupedMenuItems = useMemo(() => {
+    const groups = menuItems.reduce((accumulator, item) => {
+      const category = item.category?.trim() || "Uncategorized";
+
+      if (!accumulator[category]) {
+        accumulator[category] = [];
+      }
+
+      accumulator[category].push(item);
+      return accumulator;
+    }, {});
+
+    return Object.entries(groups).sort(([left], [right]) => left.localeCompare(right));
+  }, [menuItems]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -23,21 +38,26 @@ export default function MenuListScreen({ navigation }) {
 
   return (
     <ScreenContainer>
-      <Text style={styles.addButton} onPress={() => navigation.navigate("AddFoodItem")}>
-        + Add Food Item
-      </Text>
       {menuItems.length === 0 ? (
         <EmptyState title="No menu items yet" description="Add your first food item to start receiving orders." icon="restaurant-outline" />
       ) : (
-        menuItems.map((item) => (
-          <FoodItemCard
-            key={item.id}
-            item={item}
-            onPress={() => navigation.navigate("FoodItemDetails", { foodId: item.id })}
-            onEdit={() => navigation.navigate("EditFoodItem", { foodId: item.id })}
-            onToggle={() => toggleAvailability(item.id)}
-            onDelete={() => setDeletingId(item.id)}
-          />
+        groupedMenuItems.map(([category, items]) => (
+          <View key={category} style={styles.categorySection}>
+            <SectionHeader
+              title={category}
+              subtitle={`${items.length} item${items.length === 1 ? "" : "s"}`}
+            />
+            {items.map((item) => (
+              <FoodItemCard
+                key={item.id}
+                item={item}
+                onPress={() => navigation.navigate("FoodItemDetails", { foodId: item.id })}
+                onEdit={() => navigation.navigate("EditFoodItem", { foodId: item.id })}
+                onToggle={() => toggleAvailability(item.id)}
+                onDelete={() => setDeletingId(item.id)}
+              />
+            ))}
+          </View>
         ))
       )}
 
@@ -57,13 +77,7 @@ export default function MenuListScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  addButton: {
-    textAlign: "center",
-    backgroundColor: "#B9481B",
-    color: "#FFFFFF",
-    paddingVertical: appTheme.spacing.md,
-    borderRadius: appTheme.radius.md,
-    fontWeight: "700",
-    overflow: "hidden",
+  categorySection: {
+    gap: appTheme.spacing.md,
   },
 });
