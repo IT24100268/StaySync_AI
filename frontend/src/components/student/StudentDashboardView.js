@@ -357,9 +357,11 @@ export default function StudentDashboardView({ navigation }) {
       <ScreenContainer style={styles.screen} contentContainerStyle={styles.content}>
         <LinearGradient colors={["#08354B", "#0B5D7A", "#13829E"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerCard}>
           <View style={styles.headerTopRow}>
-            <View style={styles.headerBadge}>
-              <Ionicons name="sparkles-outline" size={14} color="#FFFFFF" />
-              <Text style={styles.headerBadgeText}>Student dashboard</Text>
+            <View style={styles.headerIntro}>
+              <View style={styles.headerBadge}>
+                <Ionicons name="sparkles-outline" size={14} color="#FFFFFF" />
+                <Text style={styles.headerBadgeText}>Student dashboard</Text>
+              </View>
             </View>
             <View style={styles.headerActions}>
               <Pressable style={styles.notificationButton} onPress={() => setShowNotifications(true)}>
@@ -549,17 +551,24 @@ const styles = StyleSheet.create({
     borderRadius: appTheme.radius.lg,
     padding: appTheme.spacing.lg,
     gap: appTheme.spacing.lg,
+    overflow: "hidden",
   },
   headerTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: appTheme.spacing.md,
+  },
+  headerIntro: {
+    flex: 1,
+    justifyContent: "flex-start",
+    paddingTop: 2,
   },
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
     gap: appTheme.spacing.sm,
+    flexShrink: 0,
   },
   headerBadge: {
     flexDirection: "row",
@@ -568,7 +577,8 @@ const styles = StyleSheet.create({
     borderRadius: appTheme.radius.pill,
     backgroundColor: "rgba(255,255,255,0.18)",
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 8,
+    alignSelf: "flex-start",
   },
   headerBadgeText: {
     color: "#FFFFFF",
@@ -577,11 +587,14 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     borderRadius: appTheme.radius.pill,
-    paddingHorizontal: 14,
+    minHeight: 42,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     backgroundColor: "rgba(255,255,255,0.14)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.16)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   logoutText: {
     color: "#FFFFFF",
@@ -618,16 +631,19 @@ const styles = StyleSheet.create({
   },
   headerCopy: {
     gap: appTheme.spacing.sm,
+    maxWidth: "92%",
   },
   headerTitle: {
     color: "#FFFFFF",
     fontSize: 30,
     fontWeight: "900",
+    lineHeight: 36,
   },
   headerSubtitle: {
     color: "rgba(255,255,255,0.92)",
     fontSize: 14,
     lineHeight: 21,
+    maxWidth: 420,
   },
   headerStats: {
     flexDirection: "row",
