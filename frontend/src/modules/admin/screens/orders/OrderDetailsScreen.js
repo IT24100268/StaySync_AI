@@ -6,6 +6,7 @@ import LoadingOverlay from "../../../../components/common/LoadingOverlay";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
 import SectionHeader from "../../../../components/common/SectionHeader";
 import { appTheme } from "../../../../theme";
+import { formatCurrency } from "../../../../utils/format";
 import { fetchAdminOrderById } from "../../services/adminOrderService";
 
 const orderStatusToneMap = {
@@ -80,6 +81,7 @@ export default function OrderDetailsScreen({ route }) {
 
   const orderTone = orderStatusToneMap[order.status] || orderStatusToneMap.ongoing;
   const disputeTone = disputeStatusToneMap[order.disputeStatus] || disputeStatusToneMap.none;
+  const formatRupee = (value) => formatCurrency(value).replace("Rs. ", "Rs ");
 
   return (
     <ScreenContainer>
@@ -116,8 +118,8 @@ export default function OrderDetailsScreen({ route }) {
           value={order.delivery?.partner?.name || order.deliveryPartnerName}
         />
         <DetailRow label="Delivery Address" value={order.deliveryAddress} />
-        <DetailRow label="Total Amount" value={`$${order.totalAmount.toFixed(2)}`} />
-        <DetailRow label="Delivery Fee" value={`$${order.deliveryFee.toFixed(2)}`} />
+        <DetailRow label="Total Amount" value={formatRupee(order.totalAmount)} />
+        <DetailRow label="Delivery Fee" value={formatRupee(order.deliveryFee)} />
         {order.failureReason ? (
           <View style={styles.copyBlock}>
             <Text style={styles.blockLabel}>Failure Reason</Text>
@@ -158,10 +160,10 @@ export default function OrderDetailsScreen({ route }) {
             <View style={styles.itemCopy}>
               <Text style={styles.itemName}>{item.name}</Text>
               <Text style={styles.itemMeta}>
-                Qty {item.quantity} - ${item.unitPrice.toFixed(2)} each
+                Qty {item.quantity} - {formatRupee(item.unitPrice)} each
               </Text>
             </View>
-            <Text style={styles.itemPrice}>${item.subtotal.toFixed(2)}</Text>
+            <Text style={styles.itemPrice}>{formatRupee(item.subtotal)}</Text>
           </View>
         ))}
       </View>

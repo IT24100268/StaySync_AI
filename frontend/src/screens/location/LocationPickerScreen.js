@@ -12,6 +12,7 @@ import {
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
 import AppButton from "../../components/common/AppButton";
+import AppInput from "../../components/common/AppInput";
 import { MapView, Marker, PROVIDER_GOOGLE } from "../../components/maps/MapPrimitives";
 import { appTheme } from "../../theme";
 
@@ -74,6 +75,9 @@ export default function LocationPickerScreen({ navigation, route }) {
   const [permissionStatus, setPermissionStatus] = useState("idle");
   const [deviceLocation, setDeviceLocation] = useState(null);
   const [loadingAddress, setLoadingAddress] = useState(false);
+  const [webLatitude, setWebLatitude] = useState(initialLocation ? String(initialLocation.latitude) : "");
+  const [webLongitude, setWebLongitude] = useState(initialLocation ? String(initialLocation.longitude) : "");
+  const [webAddress, setWebAddress] = useState(initialLocation?.address || "");
 
   useEffect(() => {
     let isMounted = true;
@@ -201,9 +205,39 @@ export default function LocationPickerScreen({ navigation, route }) {
     setRegion(buildRegion(deviceLocation.latitude, deviceLocation.longitude));
   }
 
+  function applyWebCoordinates() {
+    const latitude = Number(webLatitude);
+    const longitude = Number(webLongitude);
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      Alert.alert("Invalid Coordinates", "Enter valid latitude and longitude values.");
+      return;
+    }
+
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      Alert.alert(
+        "Invalid Coordinates",
+        "Latitude must be between -90 and 90, and longitude must be between -180 and 180."
+      );
+      return;
+    }
+
+    setSelectedLocation({
+      latitude,
+      longitude,
+      address: webAddress.trim(),
+    });
+    setRegion(buildRegion(latitude, longitude));
+  }
+
   function confirmSelection() {
     if (!selectedLocation || !sourceRoute) {
-      Alert.alert("Location Missing", "Please tap on the map to choose a location.");
+      Alert.alert(
+        "Location Missing",
+        Platform.OS === "web"
+          ? "Please enter the coordinates and apply them before confirming."
+          : "Please tap on the map to choose a location."
+      );
       return;
     }
 
@@ -232,10 +266,33 @@ export default function LocationPickerScreen({ navigation, route }) {
       <View style={styles.mapCard}>
         {Platform.OS === "web" || !MapView ? (
           <View style={styles.placeholder}>
-            <Text style={styles.placeholderTitle}>Map selection is available on Android and iOS.</Text>
+            <Text style={styles.placeholderTitle}>Web fallback: enter the coordinates manually.</Text>
             <Text style={styles.placeholderText}>
-              Open this screen on a mobile device to pin the location.
+              The interactive map is available on Android and iOS. On web, enter the
+              coordinates manually and save them below.
             </Text>
+            <AppInput
+              label="Latitude"
+              value={webLatitude}
+              onChangeText={setWebLatitude}
+              keyboardType="numeric"
+              placeholder="6.9271"
+            />
+            <AppInput
+              label="Longitude"
+              value={webLongitude}
+              onChangeText={setWebLongitude}
+              keyboardType="numeric"
+              placeholder="79.8612"
+            />
+            <AppInput
+              label="Address Label"
+              value={webAddress}
+              onChangeText={setWebAddress}
+              placeholder="Hostel block, room, landmark"
+              multiline
+            />
+            <AppButton title="Apply Coordinates" onPress={applyWebCoordinates} />
           </View>
         ) : (
           <MapView

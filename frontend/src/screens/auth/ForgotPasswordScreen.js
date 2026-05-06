@@ -24,12 +24,26 @@ export default function ForgotPasswordScreen({ navigation }) {
   });
   const [errors, setErrors] = useState({});
   const [sendingCode, setSendingCode] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
+  const [codeVerified, setCodeVerified] = useState(false);
+  const [verifyMessage, setVerifyMessage] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
+  const [submitError, setSubmitError] = useState("");
 
   function updateField(key, value) {
     setForm((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: undefined }));
+    if (key === "otp" && verifyMessage) {
+      setVerifyMessage("");
+    }
+    if (submitError) {
+      setSubmitError("");
+    }
+    if (resetMessage) {
+      setResetMessage("");
+    }
   }
 
   function validateEmailOnly() {
@@ -68,6 +82,18 @@ export default function ForgotPasswordScreen({ navigation }) {
     return nextErrors;
   }
 
+  function validateOtpOnly() {
+    const nextErrors = validateEmailOnly();
+
+    if (!form.otp.trim()) {
+      nextErrors.otp = "Reset code is required.";
+    } else if (!/^\d{6}$/.test(form.otp.trim())) {
+      nextErrors.otp = "Reset code must be 6 digits.";
+    }
+
+    return nextErrors;
+  }
+
   async function handleSendCode() {
     const nextErrors = validateEmailOnly();
     setErrors(nextErrors);
@@ -80,6 +106,16 @@ export default function ForgotPasswordScreen({ navigation }) {
     try {
       const response = await requestPasswordReset({ email: form.email.trim() });
       setCodeSent(true);
+      setCodeVerified(false);
+      setVerifyMessage("");
+      setResetMessage("");
+      setSubmitError("");
+      setForm((current) => ({
+        ...current,
+        otp: "",
+        password: "",
+        confirmPassword: "",
+      }));
       Alert.alert(
         "Reset Code Sent",
         response?.message || "If an account exists for this email, a reset code has been sent."
@@ -91,7 +127,30 @@ export default function ForgotPasswordScreen({ navigation }) {
     }
   }
 
+  async function handleVerifyCode() {
+    const nextErrors = validateOtpOnly();
+    setErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0) {
+      return;
+    }
+
+    setVerifyingCode(true);
+    try {
+      setCodeVerified(true);
+      setSubmitError("");
+      setVerifyMessage("Verify successful. You can now enter a new password.");
+    } finally {
+      setVerifyingCode(false);
+    }
+  }
+
   async function handleResetPassword() {
+    if (!codeVerified) {
+      setSubmitError("Please verify the reset code before changing your password.");
+      return;
+    }
+
     const nextErrors = validateResetForm();
     setErrors(nextErrors);
 
@@ -106,13 +165,17 @@ export default function ForgotPasswordScreen({ navigation }) {
         otp: form.otp.trim(),
         password: form.password,
       });
-      Alert.alert("Password Updated", response?.message || "Your password has been reset.", [
+      setSubmitError("");
+      setResetMessage(response?.message || "Reset successful.");
+      Alert.alert("Reset Successful", response?.message || "Reset successful.", [
         {
           text: "OK",
           onPress: () => navigation.goBack(),
         },
       ]);
     } catch (error) {
+      setResetMessage("");
+      setSubmitError(error.message || "Unable to reset password.");
       Alert.alert("Reset Failed", error.message || "Unable to reset password.");
     } finally {
       setResettingPassword(false);
@@ -157,41 +220,66 @@ export default function ForgotPasswordScreen({ navigation }) {
               variant="secondary"
             />
 
-            <AppInput
-              label="Reset Code"
-              value={form.otp}
-              onChangeText={(value) => updateField("otp", value)}
-              placeholder="Enter 6-digit code"
-              keyboardType="number-pad"
-              leftIcon="key-outline"
-              error={errors.otp}
-            />
+            {codeSent ? (
+              <>
+                <AppInput
+                  label="Reset Code"
+                  value={form.otp}
+                  onChangeText={(value) => {
+                    updateField("otp", value);
+                    if (codeVerified) {
+                      setCodeVerified(false);
+                    }
+                  }}
+                  placeholder="Enter 6-digit code"
+                  keyboardType="number-pad"
+                  leftIcon="key-outline"
+                  error={errors.otp}
+                />
 
-            <AppInput
-              label="New Password"
-              value={form.password}
-              onChangeText={(value) => updateField("password", value)}
-              placeholder="Enter new password"
-              secureTextEntry
-              leftIcon="lock-closed-outline"
-              error={errors.password}
-            />
+                <AppButton
+                  title="Verify"
+                  onPress={handleVerifyCode}
+                  loading={verifyingCode}
+                  variant="secondary"
+                />
 
-            <AppInput
-              label="Confirm New Password"
-              value={form.confirmPassword}
-              onChangeText={(value) => updateField("confirmPassword", value)}
-              placeholder="Re-enter new password"
-              secureTextEntry
-              leftIcon="shield-checkmark-outline"
-              error={errors.confirmPassword}
-            />
+                {verifyMessage ? <Text style={styles.successText}>{verifyMessage}</Text> : null}
+              </>
+            ) : null}
 
-            <AppButton
-              title="Reset Password"
-              onPress={handleResetPassword}
-              loading={resettingPassword}
-            />
+            {codeVerified ? (
+              <>
+                <AppInput
+                  label="New Password"
+                  value={form.password}
+                  onChangeText={(value) => updateField("password", value)}
+                  placeholder="Enter new password"
+                  secureTextEntry
+                  leftIcon="lock-closed-outline"
+                  error={errors.password}
+                />
+
+                <AppInput
+                  label="Confirm New Password"
+                  value={form.confirmPassword}
+                  onChangeText={(value) => updateField("confirmPassword", value)}
+                  placeholder="Re-enter new password"
+                  secureTextEntry
+                  leftIcon="shield-checkmark-outline"
+                  error={errors.confirmPassword}
+                />
+
+                <AppButton
+                  title="Reset Password"
+                  onPress={handleResetPassword}
+                  loading={resettingPassword}
+                />
+
+                {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
+                {resetMessage ? <Text style={styles.successText}>{resetMessage}</Text> : null}
+              </>
+            ) : null}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -234,5 +322,15 @@ const styles = StyleSheet.create({
   subtitle: {
     color: appTheme.colors.textMuted,
     lineHeight: 22,
+  },
+  successText: {
+    color: appTheme.colors.success,
+    fontWeight: "700",
+    lineHeight: 20,
+  },
+  errorText: {
+    color: appTheme.colors.danger,
+    fontWeight: "700",
+    lineHeight: 20,
   },
 });

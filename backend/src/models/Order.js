@@ -134,6 +134,10 @@ const orderSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    studentStatusUpdateSeen: {
+      type: Boolean,
+      default: true,
+    },
     notes: String,
   },
   {

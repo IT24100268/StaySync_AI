@@ -11,6 +11,33 @@ const pick = require("../../utils/pick");
 const { requireProfile } = require("../shared/profileService");
 const { emitToUser } = require("../../socket/socketServer");
 
+async function emitStudentOrderStatusUpdate(order, restaurant, eventName) {
+  const studentProfile = await StudentProfile.findById(order.student).select("user");
+
+  if (!studentProfile?.user) {
+    return;
+  }
+
+  const items = await OrderItem.find({ order: order._id }).sort({ createdAt: 1 });
+  const tracking = {
+    order: {
+      ...order.toObject(),
+      restaurant,
+    },
+    items,
+  };
+
+  emitToUser(studentProfile.user, "student:order-status-updated", {
+    tracking,
+  });
+
+  if (eventName) {
+    emitToUser(studentProfile.user, eventName, {
+      tracking,
+    });
+  }
+}
+
 async function getRestaurantProfile(user) {
   const profile = await requireProfile(user);
   const restaurant = await Restaurant.findOne({ profile: profile._id });
@@ -188,6 +215,7 @@ async function updateRestaurantOrderStatus(user, orderId, payload) {
     order.failedAt = new Date();
     order.rejectionSeenByStudent = false;
     order.acceptanceSeenByStudent = true;
+    order.studentStatusUpdateSeen = false;
   } else if (payload.status === "confirmed") {
     order.acceptedAt = order.acceptedAt || new Date();
     order.completedAt = null;
@@ -196,6 +224,7 @@ async function updateRestaurantOrderStatus(user, orderId, payload) {
     order.failureReason = "";
     order.rejectionSeenByStudent = true;
     order.acceptanceSeenByStudent = false;
+    order.studentStatusUpdateSeen = false;
   } else {
     if (
       [
@@ -214,27 +243,20 @@ async function updateRestaurantOrderStatus(user, orderId, payload) {
     }
     order.rejectionSeenByStudent = true;
     order.acceptanceSeenByStudent = true;
+    order.studentStatusUpdateSeen = false;
   }
 
   await order.save();
 
-  if (payload.status === "cancelled" || payload.status === "confirmed") {
-    const studentProfile = await StudentProfile.findById(order.student).select("user");
-
-    if (studentProfile?.user) {
-      const items = await OrderItem.find({ order: order._id }).sort({ createdAt: 1 });
-
-      emitToUser(studentProfile.user, payload.status === "confirmed" ? "student:order-accepted" : "student:order-rejected", {
-        tracking: {
-          order: {
-            ...order.toObject(),
-            restaurant,
-          },
-          items,
-        },
-      });
-    }
-  }
+  await emitStudentOrderStatusUpdate(
+    order,
+    restaurant,
+    payload.status === "confirmed"
+      ? "student:order-accepted"
+      : payload.status === "cancelled"
+        ? "student:order-rejected"
+        : null
+  );
 
   return order;
 }

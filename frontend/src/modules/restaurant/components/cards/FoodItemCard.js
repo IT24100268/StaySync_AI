@@ -33,7 +33,13 @@ export default function FoodItemCard({ item, onPress, onEdit, onToggle, onDelete
 
 function ActionButton({ icon, label, onPress, danger = false }) {
   return (
-    <Pressable style={styles.actionButton} onPress={onPress}>
+    <Pressable
+      style={styles.actionButton}
+      onPress={(event) => {
+        event.stopPropagation();
+        onPress?.();
+      }}
+    >
       <Ionicons
         name={icon}
         size={16}

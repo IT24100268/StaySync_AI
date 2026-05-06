@@ -124,7 +124,7 @@ export function OrderProvider({ children }) {
     };
   }, [role, token]);
 
-  async function setOrderStatus(orderId, status, options = {}) {
+  const setOrderStatus = useCallback(async (orderId, status, options = {}) => {
     try {
       const updatedOrder = await updateRestaurantOrderStatus(orderId, status, options);
       setOrders((current) =>
@@ -135,15 +135,15 @@ export function OrderProvider({ children }) {
     } catch (error) {
       return { success: false, message: error.message || "Unable to update order status." };
     }
-  }
+  }, []);
 
-  function clearNewOrderAlerts() {
+  const clearNewOrderAlerts = useCallback(() => {
     setNewOrderAlerts([]);
-  }
+  }, []);
 
-  function dismissNewOrderAlert(orderId) {
+  const dismissNewOrderAlert = useCallback((orderId) => {
     setNewOrderAlerts((current) => current.filter((order) => order.id !== orderId));
-  }
+  }, []);
 
   const analytics = useMemo(() => {
     const totalOrders = orders.length;
@@ -181,7 +181,17 @@ export function OrderProvider({ children }) {
       clearNewOrderAlerts,
       dismissNewOrderAlert,
     }),
-    [analytics, error, loadOrders, loading, newOrderAlerts, orders]
+    [
+      analytics,
+      clearNewOrderAlerts,
+      dismissNewOrderAlert,
+      error,
+      loadOrders,
+      loading,
+      newOrderAlerts,
+      orders,
+      setOrderStatus,
+    ]
   );
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>;

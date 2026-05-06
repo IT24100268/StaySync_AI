@@ -3,10 +3,12 @@ const { DELIVERY_STATUSES, ORDER_STATUSES } = require("../../constants/appConsta
 const Delivery = require("../../models/Delivery");
 const LiveLocation = require("../../models/LiveLocation");
 const OrderItem = require("../../models/OrderItem");
+const StudentProfile = require("../../models/StudentProfile");
 const ApiError = require("../../utils/apiError");
 const pick = require("../../utils/pick");
 const { calculateDistanceKm } = require("../shared/locationService");
 const { requireProfile } = require("../shared/profileService");
+const { emitToUser } = require("../../socket/socketServer");
 
 const MAX_DELIVERY_LOCATION_DISTANCE_KM = 200;
 
@@ -170,6 +172,7 @@ async function updateDeliveryStatus(user, deliveryId, status) {
     if (status === DELIVERY_STATUSES.PICKED_UP || status === DELIVERY_STATUSES.IN_TRANSIT) {
       delivery.order.status = ORDER_STATUSES.OUT_FOR_DELIVERY;
       delivery.order.acceptedAt = delivery.order.acceptedAt || delivery.acceptedAt || new Date();
+      delivery.order.studentStatusUpdateSeen = false;
     }
 
     if (status === DELIVERY_STATUSES.DELIVERED) {
@@ -177,9 +180,26 @@ async function updateDeliveryStatus(user, deliveryId, status) {
       delivery.order.completedAt = new Date();
       delivery.order.failedAt = null;
       delivery.order.failureReason = "";
+      delivery.order.studentStatusUpdateSeen = false;
     }
 
     await delivery.order.save();
+
+    const studentProfile = await StudentProfile.findById(delivery.order.student).select("user");
+
+    if (studentProfile?.user) {
+      const items = await OrderItem.find({ order: delivery.order._id }).sort({ createdAt: 1 });
+
+      emitToUser(studentProfile.user, "student:order-status-updated", {
+        tracking: {
+          order: delivery.order.toObject(),
+          items,
+          delivery: {
+            ...delivery.toObject(),
+          },
+        },
+      });
+    }
   }
 
   return attachOrderItems(delivery);

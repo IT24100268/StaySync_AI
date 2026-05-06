@@ -100,9 +100,11 @@ export function normalizeTrackingOrder(payload) {
     paymentMethod: order.paymentMethod || "Cash on Delivery",
     status: formatStatus(order.status),
     createdAt: order.createdAt,
+    updatedAt: order.updatedAt || order.createdAt,
     rejectionReason: order.rejectionReason || "",
     rejectionSeenByStudent: Boolean(order.rejectionSeenByStudent),
     acceptanceSeenByStudent: order.acceptanceSeenByStudent !== false,
+    studentStatusUpdateSeen: order.studentStatusUpdateSeen !== false,
     eta: order.eta || "25 mins",
     deliveryPartner:
       payload.delivery?.deliveryPartner?.user?.name ||

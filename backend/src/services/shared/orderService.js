@@ -172,6 +172,7 @@ async function markStudentOrderNotificationSeen(orderId, user) {
 
   order.rejectionSeenByStudent = true;
   order.acceptanceSeenByStudent = true;
+  order.studentStatusUpdateSeen = true;
   await order.save();
 
   return order;

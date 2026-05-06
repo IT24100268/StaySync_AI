@@ -61,6 +61,48 @@ const quickActions = [
 
 const STUDENT_NOTIFICATION_REFRESH_MS = 8000;
 
+function getOrderNotificationType(status) {
+  switch (status) {
+    case "Accepted":
+      return "accepted";
+    case "Preparing":
+      return "preparing";
+    case "Ready":
+      return "ready";
+    case "Out for Delivery":
+      return "out-for-delivery";
+    case "Delivered":
+      return "delivered";
+    case "Rejected":
+      return "rejected";
+    default:
+      return "";
+  }
+}
+
+function getOrderNotificationMessage(item) {
+  switch (item.type) {
+    case "accepted":
+      return "Your food order was accepted successfully.";
+    case "preparing":
+      return "Your food is now being prepared.";
+    case "ready":
+      return "Your order is ready for pickup or handoff.";
+    case "out-for-delivery":
+      return "Your delivery partner is on the way with your meal.";
+    case "delivered":
+      return "Your food order has been delivered.";
+    case "rejected":
+      return item.rejectionReason || "Your food order was declined.";
+    case "booking-approved":
+      return `${item.ownerName} approved the room booking request.`;
+    case "booking-rejected":
+      return item.ownerNotes || "Your room booking request was rejected.";
+    default:
+      return "You have a new update.";
+  }
+}
+
 function formatRelativeTime(value) {
   if (!value) {
     return "Now";
@@ -111,7 +153,7 @@ export default function StudentDashboardView({ navigation }) {
     loadRooms();
     loadRestaurants();
     if (token) {
-      loadRejectedOrderNotifications();
+      loadOrderNotifications();
       loadBookingNotifications();
     }
   }, []);
@@ -121,7 +163,7 @@ export default function StudentDashboardView({ navigation }) {
       loadRooms();
 
       if (token) {
-        loadRejectedOrderNotifications();
+        loadOrderNotifications();
         loadBookingNotifications();
       }
     }, [token])
@@ -129,7 +171,7 @@ export default function StudentDashboardView({ navigation }) {
 
   useEffect(() => {
     if (token) {
-      loadRejectedOrderNotifications();
+      loadOrderNotifications();
       loadBookingNotifications();
     } else {
       setOrderNotifications([]);
@@ -164,32 +206,45 @@ export default function StudentDashboardView({ navigation }) {
     };
 
     const handleRejectedOrder = ({ tracking }) => {
+      handleOrderStatusUpdated({ tracking });
+    };
+
+    const handleAcceptedOrder = ({ tracking }) => {
+      handleOrderStatusUpdated({ tracking });
+    };
+
+    const handleOrderStatusUpdated = ({ tracking }) => {
       if (!tracking?.order) {
+        return;
+      }
+
+      const normalizedStatus = getOrderNotificationType(
+        tracking.order.status === "confirmed"
+          ? "Accepted"
+          : tracking.order.status === "preparing"
+            ? "Preparing"
+            : tracking.order.status === "ready_for_pickup"
+              ? "Ready"
+              : tracking.order.status === "out_for_delivery"
+                ? "Out for Delivery"
+                : tracking.order.status === "delivered"
+                  ? "Delivered"
+                  : tracking.order.status === "cancelled"
+                    ? "Rejected"
+                    : ""
+      );
+
+      if (!normalizedStatus) {
         return;
       }
 
       upsertNotification({
         id: tracking.order._id || tracking.order.id,
-        type: "rejected",
+        type: normalizedStatus,
         restaurantName: tracking.order.restaurant?.name || "Restaurant",
         createdAt: tracking.order.updatedAt || tracking.order.createdAt,
         total: tracking.order.totalAmount || 0,
         rejectionReason: tracking.order.rejectionReason || "",
-      });
-    };
-
-    const handleAcceptedOrder = ({ tracking }) => {
-      if (!tracking?.order) {
-        return;
-      }
-
-      upsertNotification({
-        id: tracking.order._id || tracking.order.id,
-        type: "accepted",
-        restaurantName: tracking.order.restaurant?.name || "Restaurant",
-        createdAt: tracking.order.updatedAt || tracking.order.createdAt,
-        total: tracking.order.totalAmount || 0,
-        rejectionReason: "",
       });
     };
 
@@ -231,11 +286,13 @@ export default function StudentDashboardView({ navigation }) {
 
     socket.on("student:order-rejected", handleRejectedOrder);
     socket.on("student:order-accepted", handleAcceptedOrder);
+    socket.on("student:order-status-updated", handleOrderStatusUpdated);
     socket.on("student:booking-status-updated", handleBookingStatusUpdated);
 
     return () => {
       socket.off("student:order-rejected", handleRejectedOrder);
       socket.off("student:order-accepted", handleAcceptedOrder);
+      socket.off("student:order-status-updated", handleOrderStatusUpdated);
       socket.off("student:booking-status-updated", handleBookingStatusUpdated);
     };
   }, [token]);
@@ -246,7 +303,7 @@ export default function StudentDashboardView({ navigation }) {
     }
 
     const intervalId = setInterval(() => {
-      loadRejectedOrderNotifications();
+      loadOrderNotifications();
       loadBookingNotifications();
     }, STUDENT_NOTIFICATION_REFRESH_MS);
 
@@ -271,20 +328,36 @@ export default function StudentDashboardView({ navigation }) {
     }
   }
 
-  async function loadRejectedOrderNotifications() {
+  async function loadOrderNotifications() {
     try {
       const studentOrders = await fetchStudentOrders();
       const nextNotifications = studentOrders
         .filter(
-          (order) =>
-            (order.status === "Rejected" && order.rejectionReason && !order.rejectionSeenByStudent) ||
-            (order.status === "Accepted" && !order.acceptanceSeenByStudent)
+          (order) => {
+            if (order.status === "Pending" || !getOrderNotificationType(order.status)) {
+              return false;
+            }
+
+            if (order.studentStatusUpdateSeen === false) {
+              return true;
+            }
+
+            if (order.status === "Accepted" && order.acceptanceSeenByStudent === false) {
+              return true;
+            }
+
+            if (order.status === "Rejected" && order.rejectionSeenByStudent === false) {
+              return true;
+            }
+
+            return false;
+          }
         )
         .map((order) => ({
           id: order.id,
-          type: order.status === "Accepted" ? "accepted" : "rejected",
+          type: getOrderNotificationType(order.status),
           restaurantName: order.restaurantName,
-          createdAt: order.createdAt,
+          createdAt: order.updatedAt || order.createdAt,
           total: order.total,
           rejectionReason: order.rejectionReason,
         }));
@@ -624,13 +697,7 @@ export default function StudentDashboardView({ navigation }) {
                       <Text style={styles.notificationTime}>{new Date(item.createdAt).toLocaleString()}</Text>
                     </View>
                     <Text style={styles.notificationReason}>
-                      {item.type === "accepted"
-                        ? "Your food order was accepted successfully."
-                        : item.type === "rejected"
-                          ? item.rejectionReason
-                          : item.type === "booking-approved"
-                            ? `${item.ownerName} approved the room booking request.`
-                            : item.ownerNotes}
+                      {getOrderNotificationMessage(item)}
                     </Text>
                     <Text style={styles.notificationMeta}>
                       {item.type.startsWith("booking")
