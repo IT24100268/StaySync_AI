@@ -207,16 +207,7 @@ export default function PaymentMethodScreen({ navigation }) {
           errors={errors}
           onChange={handleCardChange}
         />
-      ) : (
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={20} color={appTheme.colors.primary} />
-          <Text style={styles.infoText}>
-            {selectedPaymentMethod === "bank"
-              ? ""
-              : "This mock cash-on-arrival option still reserves the booking flow and sends a request to the owner with payment intent."}
-          </Text>
-        </View>
-      )}
+      ) : null}
 
       <AppButton
         title={paymentStatus === "processing" ? "Processing payment..." : "Pay & Confirm Booking"}
@@ -311,21 +302,5 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "800",
     color: appTheme.colors.text,
-  },
-  infoCard: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: appTheme.spacing.sm,
-    backgroundColor: "#F3FAFC",
-    borderRadius: appTheme.radius.lg,
-    padding: appTheme.spacing.md,
-    borderWidth: 1,
-    borderColor: "#D3E8F0",
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 19,
-    color: appTheme.colors.textMuted,
   },
 });

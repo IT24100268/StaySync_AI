@@ -9,7 +9,7 @@ import { validateFoodItem, validateFoodPrice } from "../../utils/validation";
 
 export default function AddFoodItemScreen({ navigation }) {
   const { restaurant } = useRestaurantAuth();
-  const { addFoodItem, submitting } = useMenu();
+  const { addFoodItem, submitting, categoryOptions } = useMenu();
   const [form, setForm] = useState(createEmptyFoodForm(restaurant?.id));
   const [errors, setErrors] = useState({});
 
@@ -50,7 +50,7 @@ export default function AddFoodItemScreen({ navigation }) {
 
   return (
     <ScreenContainer>
-      <FoodItemForm form={form} errors={errors} onChange={handleFormChange} onSubmit={handleSubmit} submitLabel="Create Food Item" loading={submitting} />
+      <FoodItemForm form={form} errors={errors} onChange={handleFormChange} onSubmit={handleSubmit} submitLabel="Create Food Item" loading={submitting} categoryOptions={categoryOptions} />
     </ScreenContainer>
   );
 }

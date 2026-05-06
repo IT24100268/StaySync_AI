@@ -34,6 +34,10 @@ const bookingRequestSchema = new mongoose.Schema(
       default: BOOKING_STATUSES.PENDING,
     },
     ownerNotes: String,
+    decisionSeenByStudent: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,

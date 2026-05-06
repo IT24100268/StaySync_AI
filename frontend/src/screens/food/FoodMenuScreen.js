@@ -1,9 +1,10 @@
-import React, { useEffect, useLayoutEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Alert, ScrollView } from "react-native";
 import ScreenContainer from "../../components/common/ScreenContainer";
 import LoadingOverlay from "../../components/common/LoadingOverlay";
 import EmptyState from "../../components/common/EmptyState";
 import AppButton from "../../components/common/AppButton";
+import FilterChip from "../../components/common/FilterChip";
 import FoodItemCard from "../../components/food/FoodItemCard";
 import { StyleSheet, Text, View } from "react-native";
 import { fetchFoodMenu, fetchRestaurantReviews } from "../../services/restaurantService";
@@ -16,6 +17,7 @@ export default function FoodMenuScreen({ route, navigation }) {
   const [menu, setMenu] = useState([]);
   const [restaurantSummary, setRestaurantSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -25,6 +27,10 @@ export default function FoodMenuScreen({ route, navigation }) {
 
   useEffect(() => {
     loadMenu();
+  }, [restaurantId]);
+
+  useEffect(() => {
+    setSelectedCategory("All");
   }, [restaurantId]);
 
   async function loadMenu() {
@@ -41,6 +47,22 @@ export default function FoodMenuScreen({ route, navigation }) {
       setLoading(false);
     }
   }
+
+  const categoryOptions = useMemo(() => {
+    const categories = menu
+      .map((item) => item.category?.trim())
+      .filter(Boolean);
+
+    return ["All", ...Array.from(new Set(categories)).sort((left, right) => left.localeCompare(right))];
+  }, [menu]);
+
+  const filteredMenu = useMemo(() => {
+    if (selectedCategory === "All") {
+      return menu;
+    }
+
+    return menu.filter((item) => (item.category?.trim() || "") === selectedCategory);
+  }, [menu, selectedCategory]);
 
   if (loading) {
     return <LoadingOverlay />;
@@ -62,6 +84,19 @@ export default function FoodMenuScreen({ route, navigation }) {
                 ? `${restaurantSummary.rating.toFixed(1)} (${restaurantSummary.totalRatings} ratings)`
                 : "No ratings yet"}
             </Text>
+            <Text style={styles.summaryMeta}>Tap a category to view all menu items in that section.</Text>
+          </View>
+        ) : null}
+        {menu.length > 0 ? (
+          <View style={styles.categoryRow}>
+            {categoryOptions.map((category) => (
+              <FilterChip
+                key={category}
+                label={category}
+                selected={selectedCategory === category}
+                onPress={() => setSelectedCategory(category)}
+              />
+            ))}
           </View>
         ) : null}
         {menu.length === 0 ? (
@@ -69,8 +104,14 @@ export default function FoodMenuScreen({ route, navigation }) {
             title="Menu unavailable"
             description="Food items for this restaurant are not available yet."
           />
+        ) : filteredMenu.length === 0 ? (
+          <EmptyState
+            title="No items in this category"
+            description="Choose another category to view more menu items."
+            icon="restaurant-outline"
+          />
         ) : (
-          menu.map((item) => (
+          filteredMenu.map((item) => (
             <FoodItemCard key={item.id} item={item} onAdd={() => addToCart(item)} />
           ))
         )}
@@ -113,6 +154,10 @@ const styles = StyleSheet.create({
   },
   summaryMeta: {
     color: appTheme.colors.textMuted,
+  },
+  categoryRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
   },
   cartBar: {
     paddingHorizontal: appTheme.spacing.lg,

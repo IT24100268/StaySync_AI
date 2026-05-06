@@ -78,10 +78,6 @@ export default function RestaurantHomeScreen({ navigation }) {
     ]);
   }
 
-  function openAddFoodItem() {
-    navigation.getParent()?.navigate("MenuTab", { screen: "AddFoodItem" });
-  }
-
   return (
     <ScreenContainer>
       <View style={styles.banner}>
@@ -112,13 +108,11 @@ export default function RestaurantHomeScreen({ navigation }) {
             </Pressable>
           </View>
         </View>
-        <View style={styles.bannerFooter}>
-          <Pressable style={styles.addFoodButton} onPress={openAddFoodItem}>
-            <Ionicons name="add-circle-outline" size={18} color="#B9481B" />
-            <Text style={styles.addFoodButtonText}>Add Food Item</Text>
-          </Pressable>
-          {orderError ? <Text style={styles.bannerNotice}>Orders are temporarily unavailable: {orderError}</Text> : null}
-        </View>
+        {orderError ? (
+          <View style={styles.bannerFooter}>
+            <Text style={styles.bannerNotice}>Orders are temporarily unavailable: {orderError}</Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.grid}>
@@ -199,11 +193,11 @@ export default function RestaurantHomeScreen({ navigation }) {
 
       <SectionHeader title="Featured menu items" subtitle="Quick access to your current active menu" />
       {menuItems.length === 0 ? (
-        <Pressable style={styles.emptyMenuCard} onPress={openAddFoodItem}>
+        <View style={styles.emptyMenuCard}>
           <Ionicons name="restaurant-outline" size={24} color="#B9481B" />
           <Text style={styles.emptyMenuTitle}>No food items yet</Text>
           <Text style={styles.emptyMenuText}>Add your first menu item to start receiving restaurant orders.</Text>
-        </Pressable>
+        </View>
       ) : (
         menuItems.slice(0, 2).map((item) => (
           <FoodItemCard
@@ -328,20 +322,6 @@ const styles = StyleSheet.create({
   logoutText: {
     color: "#FFFFFF",
     fontWeight: "700",
-  },
-  addFoodButton: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: appTheme.spacing.md,
-    paddingVertical: appTheme.spacing.sm,
-    borderRadius: 999,
-    backgroundColor: "#FFFFFF",
-  },
-  addFoodButtonText: {
-    color: "#B9481B",
-    fontWeight: "800",
   },
   bannerNotice: {
     color: "rgba(255,255,255,0.88)",

@@ -6,6 +6,7 @@ import {
   fetchMenuItems,
   updateMenuItem,
 } from "../services/menuService";
+import { FOOD_CATEGORY_OPTIONS } from "../utils/constants";
 
 const MenuContext = createContext(null);
 
@@ -97,10 +98,25 @@ export function MenuProvider({ children }) {
     return { totalMenuItems, availableItems, outOfStockItems };
   }, [menuItems]);
 
+  const categoryOptions = useMemo(() => {
+    const categorySet = new Set(FOOD_CATEGORY_OPTIONS);
+
+    menuItems.forEach((item) => {
+      const category = item.category?.trim();
+
+      if (category) {
+        categorySet.add(category);
+      }
+    });
+
+    return Array.from(categorySet).sort((left, right) => left.localeCompare(right));
+  }, [menuItems]);
+
   const value = useMemo(
     () => ({
       menuItems,
       analytics,
+      categoryOptions,
       loading,
       submitting,
       error,
@@ -110,7 +126,7 @@ export function MenuProvider({ children }) {
       removeFoodItem,
       toggleAvailability,
     }),
-    [analytics, error, loadMenu, loading, menuItems, submitting]
+    [analytics, categoryOptions, error, loadMenu, loading, menuItems, submitting]
   );
 
   return <MenuContext.Provider value={value}>{children}</MenuContext.Provider>;

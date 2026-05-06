@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Image,
   Easing,
   StyleSheet,
   Text,
@@ -9,9 +10,13 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Asset } from "expo-asset";
 import StaySyncLogo from "../../components/common/StaySyncLogo";
 
 const SPLASH_DURATION_MS = 2400;
+const LOGO_IMAGE = require("../../../assets/Logo.png");
+const LOGIN_BACKGROUND_IMAGE =
+  "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80";
 
 export default function SplashScreen({ navigation, onFinish }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -19,6 +24,8 @@ export default function SplashScreen({ navigation, onFinish }) {
   const scale = useRef(new Animated.Value(0.94)).current;
 
   useEffect(() => {
+    let isMounted = true;
+
     Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
@@ -40,16 +47,32 @@ export default function SplashScreen({ navigation, onFinish }) {
       }),
     ]).start();
 
-    const timeoutId = setTimeout(() => {
+    async function prepareAssets() {
+      const splashDelay = new Promise((resolve) => setTimeout(resolve, SPLASH_DURATION_MS));
+
+      await Promise.allSettled([
+        splashDelay,
+        Asset.loadAsync(LOGO_IMAGE),
+        Image.prefetch(LOGIN_BACKGROUND_IMAGE),
+      ]);
+
+      if (!isMounted) {
+        return;
+      }
+
       if (typeof onFinish === "function") {
         onFinish();
         return;
       }
 
       navigation?.replace("Login");
-    }, SPLASH_DURATION_MS);
+    }
 
-    return () => clearTimeout(timeoutId);
+    prepareAssets();
+
+    return () => {
+      isMounted = false;
+    };
   }, [navigation, onFinish, opacity, scale, translateY]);
 
   return (

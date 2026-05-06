@@ -120,9 +120,9 @@ export function OwnerListingsProvider({ children }) {
     }
   }
 
-  async function setRequestStatus(requestId, status) {
+  async function setRequestStatus(requestId, status, ownerNotes = "") {
     try {
-      const updatedRequest = await updateBookingRequestStatus(requestId, status);
+      const updatedRequest = await updateBookingRequestStatus(requestId, status, ownerNotes);
       setBookingRequests((current) =>
         current.map((request) =>
           request.id === requestId ? updatedRequest : request

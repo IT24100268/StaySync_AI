@@ -3,6 +3,7 @@ const BookingRequest = require("../../models/BookingRequest");
 const Room = require("../../models/Room");
 const ApiError = require("../../utils/apiError");
 const { requireProfile } = require("./profileService");
+const { emitToUser } = require("../../socket/socketServer");
 
 async function createBookingRequest(user, payload) {
   const studentProfile = await requireProfile(user);
@@ -81,6 +82,9 @@ async function updateBookingStatus(user, bookingId, status, ownerNotes) {
 
   booking.status = status;
   booking.ownerNotes = ownerNotes || booking.ownerNotes;
+  if (user.role === "owner" && ["approved", "rejected"].includes(status)) {
+    booking.decisionSeenByStudent = false;
+  }
   await booking.save();
   await booking.populate("room");
   await booking.populate({
@@ -91,6 +95,46 @@ async function updateBookingStatus(user, bookingId, status, ownerNotes) {
     path: "student",
     populate: { path: "user", select: "name email phone" },
   });
+
+  if (user.role === "owner" && booking.student?.user) {
+    emitToUser(booking.student.user, "student:booking-status-updated", {
+      booking: {
+        _id: booking._id,
+        status: booking.status,
+        ownerNotes: booking.ownerNotes || "",
+        decisionSeenByStudent: booking.decisionSeenByStudent,
+        createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt,
+        room: {
+          _id: booking.room?._id,
+          title: booking.room?.title || "Room",
+        },
+        owner: {
+          _id: booking.owner?._id,
+          user: {
+            name: booking.owner?.user?.name || "Room Owner",
+          },
+        },
+      },
+    });
+  }
+
+  return booking;
+}
+
+async function markBookingDecisionSeen(user, bookingId) {
+  const studentProfile = await requireProfile(user);
+  const booking = await BookingRequest.findOne({
+    _id: bookingId,
+    student: studentProfile._id,
+  });
+
+  if (!booking) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Booking request not found.");
+  }
+
+  booking.decisionSeenByStudent = true;
+  await booking.save();
   return booking;
 }
 
@@ -98,4 +142,5 @@ module.exports = {
   createBookingRequest,
   listStudentBookings,
   updateBookingStatus,
+  markBookingDecisionSeen,
 };

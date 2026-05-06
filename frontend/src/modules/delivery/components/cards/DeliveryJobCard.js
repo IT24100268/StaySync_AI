@@ -19,7 +19,7 @@ export default function DeliveryJobCard({ job, onPress, onAccept }) {
       <Text style={styles.meta}>Customer: {job.customerName}</Text>
       <Text style={styles.meta}>Distance: {job.distance} km</Text>
       <Text style={styles.meta}>Summary: {job.orderSummary}</Text>
-      <Text style={styles.earning}>Estimated earnings: {formatCurrency(job.estimatedEarnings)}</Text>
+      <Text style={styles.earning}>Earnings: {formatCurrency(job.estimatedEarnings)}</Text>
       {onAccept ? <AppButton title="Accept Job" onPress={onAccept} /> : null}
     </Pressable>
   );

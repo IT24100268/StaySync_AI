@@ -23,6 +23,7 @@ export default {
       },
     },
     android: {
+      package: "com.paviththiran.staysyncai",
       adaptiveIcon: {
         backgroundColor: "#0B5D7A",  
       },
@@ -35,6 +36,11 @@ export default {
     },
     web: {
       bundler: "metro",
+    },
+    extra: {
+      eas: {
+        projectId: "2307313c-b3ac-40b2-9252-51c09d0c8549",
+      },
     },
   },
 };

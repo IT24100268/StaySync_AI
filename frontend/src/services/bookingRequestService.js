@@ -55,6 +55,7 @@ function normalizeBookingRequest(request = {}) {
     transactionId: request.transactionId || "",
     paidAt: request.paidAt || null,
     ownerNotes: request.ownerNotes || "",
+    decisionSeenByStudent: request.decisionSeenByStudent === true,
   };
 }
 
@@ -93,5 +94,10 @@ export async function updateBookingRequestStatus(requestId, status, ownerNotes =
     ownerNotes,
   });
 
+  return normalizeBookingRequest(response.data.data);
+}
+
+export async function markBookingNotificationSeen(requestId) {
+  const response = await apiClient.patch(`/bookings/${requestId}/notification-seen`);
   return normalizeBookingRequest(response.data.data);
 }

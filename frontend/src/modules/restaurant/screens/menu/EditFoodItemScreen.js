@@ -8,7 +8,7 @@ import { validateFoodItem, validateFoodPrice } from "../../utils/validation";
 
 export default function EditFoodItemScreen({ route, navigation }) {
   const { foodId } = route.params || {};
-  const { menuItems, editFoodItem, submitting } = useMenu();
+  const { menuItems, editFoodItem, submitting, categoryOptions } = useMenu();
   const selectedItem = useMemo(
     () => menuItems.find((item) => item.id === foodId),
     [foodId, menuItems]
@@ -68,7 +68,7 @@ export default function EditFoodItemScreen({ route, navigation }) {
 
   return (
     <ScreenContainer>
-      <FoodItemForm form={form} errors={errors} onChange={handleFormChange} onSubmit={handleSubmit} submitLabel="Save Food Item Changes" loading={submitting} />
+      <FoodItemForm form={form} errors={errors} onChange={handleFormChange} onSubmit={handleSubmit} submitLabel="Save Food Item Changes" loading={submitting} categoryOptions={categoryOptions} />
     </ScreenContainer>
   );
 }

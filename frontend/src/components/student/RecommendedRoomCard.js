@@ -2,7 +2,7 @@ import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { appTheme } from "../../theme";
-import { formatCurrency, formatDistance } from "../../utils/format";
+import { formatCurrency } from "../../utils/format";
 
 export default function RecommendedRoomCard({ room, onPress }) {
   return (
@@ -20,10 +20,6 @@ export default function RecommendedRoomCard({ room, onPress }) {
           <Text style={styles.meta} numberOfLines={1}>
             {room.location}
           </Text>
-        </View>
-        <View style={styles.metaRow}>
-          <Ionicons name="walk-outline" size={14} color={appTheme.colors.textMuted} />
-          <Text style={styles.meta}>{formatDistance(room.distance)} from campus</Text>
         </View>
         <View style={styles.badges}>
           {room.facilities.slice(0, 2).map((facility) => (

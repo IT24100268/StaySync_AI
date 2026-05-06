@@ -7,6 +7,6 @@ export async function fetchBookingRequests() {
   return fetchBookingRequestsByOwner();
 }
 
-export async function updateBookingRequestStatus(requestId, status) {
-  return updateSharedBookingRequestStatus(requestId, status);
+export async function updateBookingRequestStatus(requestId, status, ownerNotes = "") {
+  return updateSharedBookingRequestStatus(requestId, status, ownerNotes);
 }

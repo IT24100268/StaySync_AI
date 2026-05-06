@@ -2,6 +2,7 @@ const { StatusCodes } = require("http-status-codes");
 const { DELIVERY_STATUSES, ORDER_STATUSES } = require("../../constants/appConstants");
 const Delivery = require("../../models/Delivery");
 const LiveLocation = require("../../models/LiveLocation");
+const OrderItem = require("../../models/OrderItem");
 const ApiError = require("../../utils/apiError");
 const pick = require("../../utils/pick");
 const { calculateDistanceKm } = require("../shared/locationService");
@@ -66,6 +67,47 @@ function listDeliveryQuery(filter = {}) {
     });
 }
 
+async function attachOrderItems(deliveries) {
+  const deliveryList = Array.isArray(deliveries) ? deliveries : [deliveries].filter(Boolean);
+  const orderIds = deliveryList
+    .map((delivery) => delivery?.order?._id)
+    .filter(Boolean);
+
+  if (orderIds.length === 0) {
+    return Array.isArray(deliveries)
+      ? deliveryList.map((delivery) => (delivery?.toObject ? delivery.toObject() : delivery))
+      : deliveries?.toObject
+        ? deliveries.toObject()
+        : deliveries;
+  }
+
+  const orderItems = await OrderItem.find({ order: { $in: orderIds } }).sort({ createdAt: 1 });
+  const itemsByOrderId = orderItems.reduce((map, item) => {
+    const key = String(item.order);
+
+    if (!map.has(key)) {
+      map.set(key, []);
+    }
+
+    map.get(key).push(item);
+    return map;
+  }, new Map());
+
+  const normalizedDeliveries = deliveryList.map((delivery) =>
+    delivery?.toObject ? delivery.toObject() : delivery
+  );
+
+  normalizedDeliveries.forEach((delivery) => {
+    if (!delivery?.order?._id) {
+      return;
+    }
+
+    delivery.order.items = itemsByOrderId.get(String(delivery.order._id)) || [];
+  });
+
+  return Array.isArray(deliveries) ? normalizedDeliveries : normalizedDeliveries[0] || null;
+}
+
 async function getDeliveryProfile(user) {
   return requireProfile(user);
 }
@@ -79,10 +121,12 @@ async function updateDeliveryProfile(user, payload) {
 }
 
 async function listAvailableDeliveries() {
-  return listDeliveryQuery({
+  const deliveries = await listDeliveryQuery({
     status: DELIVERY_STATUSES.OPEN,
     deliveryPartner: null,
   }).sort({ createdAt: -1 });
+
+  return attachOrderItems(deliveries);
 }
 
 async function acceptDelivery(user, deliveryId) {
@@ -102,7 +146,8 @@ async function acceptDelivery(user, deliveryId) {
   delivery.acceptedAt = new Date();
   await delivery.save();
 
-  return getDeliveryBaseQuery({ _id: delivery._id });
+  const populatedDelivery = await getDeliveryBaseQuery({ _id: delivery._id });
+  return attachOrderItems(populatedDelivery);
 }
 
 async function updateDeliveryStatus(user, deliveryId, status) {
@@ -137,7 +182,7 @@ async function updateDeliveryStatus(user, deliveryId, status) {
     await delivery.order.save();
   }
 
-  return delivery;
+  return attachOrderItems(delivery);
 }
 
 async function updateLiveLocation(user, deliveryId, payload) {
@@ -189,7 +234,8 @@ async function updateLiveLocation(user, deliveryId, payload) {
 async function listAssignedDeliveries(user) {
   const profile = await requireProfile(user);
 
-  return listDeliveryQuery({ deliveryPartner: profile._id }).sort({ createdAt: -1 });
+  const deliveries = await listDeliveryQuery({ deliveryPartner: profile._id }).sort({ createdAt: -1 });
+  return attachOrderItems(deliveries);
 }
 
 module.exports = {

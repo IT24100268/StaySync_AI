@@ -16,6 +16,10 @@ const bookingDecisionValidator = [
   body("ownerNotes").optional().isString().trim(),
 ];
 
+const bookingNotificationSeenValidator = [
+  param("bookingId").isMongoId().withMessage("Valid bookingId is required."),
+];
+
 const createOrderValidator = [
   body("restaurantId").isMongoId().withMessage("Valid restaurantId is required."),
   body("items").isArray({ min: 1 }).withMessage("Order items are required."),
@@ -139,6 +143,7 @@ module.exports = {
   roomIdValidator,
   bookingRequestValidator,
   bookingDecisionValidator,
+  bookingNotificationSeenValidator,
   createOrderValidator,
   deliveryFeeEstimateValidator,
   orderIdValidator,

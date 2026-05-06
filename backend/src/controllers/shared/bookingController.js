@@ -1,7 +1,12 @@
 const { StatusCodes } = require("http-status-codes");
 const catchAsync = require("../../utils/catchAsync");
 const { successResponse } = require("../../utils/apiResponse");
-const { createBookingRequest, listStudentBookings, updateBookingStatus } = require("../../services/shared/bookingService");
+const {
+  createBookingRequest,
+  listStudentBookings,
+  updateBookingStatus,
+  markBookingDecisionSeen,
+} = require("../../services/shared/bookingService");
 
 const createBooking = catchAsync(async (req, res) => {
   const booking = await createBookingRequest(req.user, req.body);
@@ -18,8 +23,18 @@ const updateBooking = catchAsync(async (req, res) => {
   return successResponse(res, { statusCode: StatusCodes.OK, message: "Booking request updated.", data: booking });
 });
 
+const markBookingNotificationSeen = catchAsync(async (req, res) => {
+  const booking = await markBookingDecisionSeen(req.user, req.params.bookingId);
+  return successResponse(res, {
+    statusCode: StatusCodes.OK,
+    message: "Booking notification marked as seen.",
+    data: booking,
+  });
+});
+
 module.exports = {
   createBooking,
   getMyBookings,
   updateBooking,
+  markBookingNotificationSeen,
 };

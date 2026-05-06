@@ -18,6 +18,7 @@ export default function StaySyncLogo({ size = 58 }) {
           { width: size, height: size, borderRadius: size / 2 },
         ]}
         resizeMode="cover"
+        fadeDuration={0}
       />
     </View>
   );

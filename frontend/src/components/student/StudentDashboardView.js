@@ -9,6 +9,10 @@ import { useRoleAuth } from "../../context/RoleAuthContext";
 import { restaurants as seedRestaurants, orders } from "../../data/dummyData";
 import { connectSocket, disconnectSocket } from "../../services/socketService";
 import { fetchStudentOrders, markOrderNotificationSeen } from "../../services/orderService";
+import {
+  fetchBookingRequestsByStudent,
+  markBookingNotificationSeen,
+} from "../../services/bookingRequestService";
 import { fetchRooms } from "../../services/roomService";
 import { fetchRestaurants } from "../../services/restaurantService";
 import { appTheme } from "../../theme";
@@ -101,12 +105,14 @@ export default function StudentDashboardView({ navigation }) {
   const [restaurants, setRestaurants] = useState(seedRestaurants);
   const [showNotifications, setShowNotifications] = useState(false);
   const [orderNotifications, setOrderNotifications] = useState([]);
+  const [bookingNotifications, setBookingNotifications] = useState([]);
 
   useEffect(() => {
     loadRooms();
     loadRestaurants();
     if (token) {
       loadRejectedOrderNotifications();
+      loadBookingNotifications();
     }
   }, []);
 
@@ -116,6 +122,7 @@ export default function StudentDashboardView({ navigation }) {
 
       if (token) {
         loadRejectedOrderNotifications();
+        loadBookingNotifications();
       }
     }, [token])
   );
@@ -123,8 +130,10 @@ export default function StudentDashboardView({ navigation }) {
   useEffect(() => {
     if (token) {
       loadRejectedOrderNotifications();
+      loadBookingNotifications();
     } else {
       setOrderNotifications([]);
+      setBookingNotifications([]);
     }
   }, [token]);
 
@@ -184,12 +193,50 @@ export default function StudentDashboardView({ navigation }) {
       });
     };
 
+    const upsertBookingNotification = (incomingNotification) => {
+      setBookingNotifications((current) => {
+        const existingIndex = current.findIndex((item) => item.id === incomingNotification.id);
+
+        if (existingIndex >= 0) {
+          const next = [...current];
+          next[existingIndex] = incomingNotification;
+          return next;
+        }
+
+        return [incomingNotification, ...current];
+      });
+    };
+
+    const handleBookingStatusUpdated = ({ booking }) => {
+      if (!booking) {
+        return;
+      }
+
+      const normalizedStatus = String(booking.status || "").toLowerCase();
+
+      if (!["approved", "rejected"].includes(normalizedStatus)) {
+        return;
+      }
+
+      upsertBookingNotification({
+        id: booking._id || booking.id,
+        type: normalizedStatus === "approved" ? "booking-approved" : "booking-rejected",
+        roomId: booking.room?._id || booking.room?.id || "",
+        roomTitle: booking.room?.title || "Room",
+        ownerName: booking.owner?.user?.name || "Room Owner",
+        createdAt: booking.updatedAt || booking.createdAt,
+        ownerNotes: booking.ownerNotes || "",
+      });
+    };
+
     socket.on("student:order-rejected", handleRejectedOrder);
     socket.on("student:order-accepted", handleAcceptedOrder);
+    socket.on("student:booking-status-updated", handleBookingStatusUpdated);
 
     return () => {
       socket.off("student:order-rejected", handleRejectedOrder);
       socket.off("student:order-accepted", handleAcceptedOrder);
+      socket.off("student:booking-status-updated", handleBookingStatusUpdated);
     };
   }, [token]);
 
@@ -200,6 +247,7 @@ export default function StudentDashboardView({ navigation }) {
 
     const intervalId = setInterval(() => {
       loadRejectedOrderNotifications();
+      loadBookingNotifications();
     }, STUDENT_NOTIFICATION_REFRESH_MS);
 
     return () => clearInterval(intervalId);
@@ -267,10 +315,64 @@ export default function StudentDashboardView({ navigation }) {
     }
   }
 
+  async function loadBookingNotifications() {
+    try {
+      const studentBookings = await fetchBookingRequestsByStudent();
+      const nextNotifications = studentBookings
+        .filter(
+          (booking) =>
+            ["Approved", "Rejected"].includes(booking.status) &&
+            booking.decisionSeenByStudent === false
+        )
+        .map((booking) => ({
+          id: booking.id,
+          type: booking.status === "Approved" ? "booking-approved" : "booking-rejected",
+          roomId: booking.roomId,
+          roomTitle: booking.roomTitle,
+          ownerName: booking.ownerName || "Room Owner",
+          createdAt: booking.reviewedAt || booking.requestedAt,
+          ownerNotes: booking.ownerNotes || "",
+        }));
+
+      setBookingNotifications((current) => {
+        const currentIds = new Set(current.map((item) => item.id));
+        const mergedNotifications = [...current];
+
+        nextNotifications.forEach((item) => {
+          const existingIndex = mergedNotifications.findIndex((entry) => entry.id === item.id);
+
+          if (existingIndex >= 0) {
+            mergedNotifications[existingIndex] = item;
+            return;
+          }
+
+          if (!currentIds.has(item.id)) {
+            mergedNotifications.unshift(item);
+          }
+        });
+
+        return mergedNotifications.filter((item) =>
+          nextNotifications.some((nextItem) => nextItem.id === item.id)
+        );
+      });
+    } catch (error) {
+      void error;
+    }
+  }
+
   async function dismissRejectionNotification(orderId) {
     try {
       await markOrderNotificationSeen(orderId);
       setOrderNotifications((current) => current.filter((item) => item.id !== orderId));
+    } catch (error) {
+      Alert.alert("Unable to dismiss", error.message || "Please try again.");
+    }
+  }
+
+  async function dismissBookingNotification(bookingId) {
+    try {
+      await markBookingNotificationSeen(bookingId);
+      setBookingNotifications((current) => current.filter((item) => item.id !== bookingId));
     } catch (error) {
       Alert.alert("Unable to dismiss", error.message || "Please try again.");
     }
@@ -351,6 +453,7 @@ export default function StudentDashboardView({ navigation }) {
       tint: "#E8F7EE",
     },
   ];
+  const totalNotificationCount = orderNotifications.length + bookingNotifications.length;
 
   return (
     <View style={styles.screen}>
@@ -366,10 +469,10 @@ export default function StudentDashboardView({ navigation }) {
             <View style={styles.headerActions}>
               <Pressable style={styles.notificationButton} onPress={() => setShowNotifications(true)}>
                 <Ionicons name="notifications-outline" size={20} color="#FFFFFF" />
-                {orderNotifications.length > 0 ? (
+                {totalNotificationCount > 0 ? (
                   <View style={styles.notificationBadge}>
                     <Text style={styles.notificationBadgeText}>
-                      {orderNotifications.length > 9 ? "9+" : orderNotifications.length}
+                      {totalNotificationCount > 9 ? "9+" : totalNotificationCount}
                     </Text>
                   </View>
                 ) : null}
@@ -502,35 +605,65 @@ export default function StudentDashboardView({ navigation }) {
           <View style={styles.notificationOverlay}>
             <Pressable style={styles.overlayDismiss} onPress={() => setShowNotifications(false)} />
             <View style={styles.notificationModal}>
-              <Text style={styles.notificationTitle}>Order Notifications</Text>
+              <Text style={styles.notificationTitle}>Notifications</Text>
               <Text style={styles.notificationSubtitle}>
-                Accepted and rejected updates for your recent food orders appear here.
+                Room booking decisions and food order updates appear here.
               </Text>
 
-              {orderNotifications.length > 0 ? (
-                orderNotifications.map((item) => (
+              {[...bookingNotifications, ...orderNotifications]
+                .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+                .length > 0 ? (
+                [...bookingNotifications, ...orderNotifications]
+                  .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+                  .map((item) => (
                   <View key={item.id} style={styles.notificationCard}>
                     <View style={styles.notificationCardHeader}>
-                      <Text style={styles.notificationRestaurant}>{item.restaurantName}</Text>
+                      <Text style={styles.notificationRestaurant}>
+                        {item.type.startsWith("booking") ? item.roomTitle : item.restaurantName}
+                      </Text>
                       <Text style={styles.notificationTime}>{new Date(item.createdAt).toLocaleString()}</Text>
                     </View>
                     <Text style={styles.notificationReason}>
                       {item.type === "accepted"
                         ? "Your food order was accepted successfully."
-                        : item.rejectionReason}
+                        : item.type === "rejected"
+                          ? item.rejectionReason
+                          : item.type === "booking-approved"
+                            ? `${item.ownerName} approved the room booking request.`
+                            : item.ownerNotes}
                     </Text>
-                    <Text style={styles.notificationMeta}>Order total: Rs. {item.total}</Text>
+                    <Text style={styles.notificationMeta}>
+                      {item.type.startsWith("booking")
+                        ? `Owner: ${item.ownerName}`
+                        : `Order total: Rs. ${item.total}`}
+                    </Text>
                     <View style={styles.notificationCardActions}>
-                      <AppButton title="Track Order" variant="secondary" onPress={() => {
-                        setShowNotifications(false);
-                        navigation.navigate("OrderTracking", { orderId: item.id });
-                      }} />
-                      <AppButton title="Dismiss" onPress={() => dismissRejectionNotification(item.id)} />
+                      {item.type.startsWith("booking") ? (
+                        <>
+                          <AppButton
+                            title="View Room"
+                            variant="secondary"
+                            onPress={() => {
+                              setShowNotifications(false);
+                              navigation.navigate("RoomDetail", { roomId: item.roomId });
+                            }}
+                          />
+                          <AppButton title="Dismiss" onPress={() => dismissBookingNotification(item.id)} />
+                        </>
+                      ) : (
+                        <>
+                          <AppButton title="Track Order" variant="secondary" onPress={() => {
+                            setShowNotifications(false);
+                            navigation.navigate("OrderTracking", { orderId: item.id });
+                          }} />
+                          <AppButton title="Dismiss" onPress={() => dismissRejectionNotification(item.id)} />
+                        </>
+                      )}
                     </View>
                   </View>
                 ))
               ) : (
-                <Text style={styles.emptyNotificationText}>No order notifications right now.</Text>
+                <Text style={styles.emptyNotificationText}>No notifications right now.</Text>
               )}
 
               <AppButton title="Close" variant="secondary" onPress={() => setShowNotifications(false)} />

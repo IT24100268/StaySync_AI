@@ -34,7 +34,7 @@ router.get("/:restaurantId/reviews", validateRequest(restaurantIdValidator), get
 router.use(auth, authorize(ROLES.RESTAURANT));
 
 router.get("/me", getProfile);
-router.patch("/me", validateRequest(updateRestaurantProfileValidator), updateProfile);
+ router.patch("/me", validateRequest(updateRestaurantProfileValidator), updateProfile);
 router.get("/menu", getFoodItems);
 router.post("/menu", validateRequest(foodItemValidator), createMenuItem);
 router.patch("/menu/:foodItemId", validateRequest([...foodItemIdValidator, ...foodItemValidator]), updateMenuItem);

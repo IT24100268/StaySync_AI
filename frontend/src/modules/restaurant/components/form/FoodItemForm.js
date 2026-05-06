@@ -7,18 +7,18 @@ import { AVAILABILITY_OPTIONS, FOOD_CATEGORY_OPTIONS } from "../../utils/constan
 import SelectInput from "./SelectInput";
 import ImagePickerField from "./ImagePickerField";
 
-export default function FoodItemForm({ form, errors, onChange, onSubmit, submitLabel, loading }) {
+export default function FoodItemForm({ form, errors, onChange, onSubmit, submitLabel, loading, categoryOptions = FOOD_CATEGORY_OPTIONS }) {
   const hasPresetCategory = useMemo(
-    () => FOOD_CATEGORY_OPTIONS.includes(form.category),
-    [form.category]
+    () => categoryOptions.includes(form.category),
+    [categoryOptions, form.category]
   );
   const [isCustomCategory, setIsCustomCategory] = useState(
     Boolean(form.category) && !hasPresetCategory
   );
 
   useEffect(() => {
-    setIsCustomCategory(Boolean(form.category) && !FOOD_CATEGORY_OPTIONS.includes(form.category));
-  }, [form.category]);
+    setIsCustomCategory(Boolean(form.category) && !categoryOptions.includes(form.category));
+  }, [categoryOptions, form.category]);
 
   function updateField(key, value) {
     onChange({ ...form, [key]: value });
@@ -38,11 +38,16 @@ export default function FoodItemForm({ form, errors, onChange, onSubmit, submitL
     }
   }
 
+  function handlePriceChange(value) {
+    const sanitizedValue = String(value ?? "").replace(/[^0-9]/g, "");
+    updateField("price", sanitizedValue);
+  }
+
   return (
     <View style={styles.form}>
       <AppInput label="Food Name" value={form.name} onChangeText={(value) => updateField("name", value)} error={errors.name} />
       <AppInput label="Description" value={form.description} onChangeText={(value) => updateField("description", value)} multiline error={errors.description} />
-      <SelectInput label="Category" value={hasPresetCategory ? form.category : ""} options={FOOD_CATEGORY_OPTIONS} onChange={handleCategoryChange} error={errors.category} />
+      <SelectInput label="Category" value={hasPresetCategory ? form.category : ""} options={categoryOptions} onChange={handleCategoryChange} error={errors.category} />
       <SelectInput
         label="New Category"
         value={isCustomCategory ? "Add New Category" : ""}
@@ -58,7 +63,13 @@ export default function FoodItemForm({ form, errors, onChange, onSubmit, submitL
           error={errors.category}
         />
       ) : null}
-      <AppInput label="Price" value={String(form.price)} onChangeText={(value) => updateField("price", value)} keyboardType="numeric" error={errors.price} />
+      <AppInput
+        label="Price"
+        value={String(form.price)}
+        onChangeText={handlePriceChange}
+        keyboardType="numeric"
+        error={errors.price}
+      />
       <ImagePickerField value={form.image} onChange={(value) => updateField("image", value)} error={errors.image} />
       <SelectInput label="Availability" value={form.availability} options={AVAILABILITY_OPTIONS} onChange={(value) => updateField("availability", value)} error={errors.availability} />
       <AppButton title={submitLabel} onPress={onSubmit} loading={loading} />
